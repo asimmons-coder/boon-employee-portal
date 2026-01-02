@@ -154,7 +154,7 @@ export default function ProgressPage({ sessions, baseline }: ProgressPageProps) 
         <h2 className="text-xl font-black text-boon-text mb-8 text-center sm:text-left">Patterns we've noticed</h2>
         <div className="grid sm:grid-cols-3 gap-6">
           {[
-            { icon: '📈', title: 'Momentum', desc: 'You've been consistent with your sessions. Keep that rhythm going.' },
+            { icon: '📈', title: 'Momentum', desc: "You've been consistent with your sessions. Keep that rhythm going." },
             { icon: '🎯', title: 'Focus', desc: focusInsights.length > 0 
               ? `${focusInsights[0].label} has been your main area of exploration.`
               : 'Your focus areas will emerge as you continue coaching.' 
