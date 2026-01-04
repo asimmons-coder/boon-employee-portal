@@ -62,22 +62,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function fetchEmployeeProfile(email: string, userId: string) {
     console.log('AuthContext: Fetching employee profile for:', email, userId);
     try {
-      // Try to fetch by email (simpler, works for all cases)
-      console.log('AuthContext: Querying by email...');
-      const { data, error } = await supabase
-        .from('employee_manager')
-        .select('*')
-        .ilike('company_email', email)
-        .limit(1);
+      // Use raw fetch to test if Supabase REST API works
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+      console.log('AuthContext: Making raw fetch request...');
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/employee_manager?company_email=ilike.${encodeURIComponent(email)}&limit=1`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      console.log('AuthContext: Fetch response status:', response.status);
+      const data = await response.json();
       console.log('AuthContext: Query result:', {
         hasData: !!data,
         dataLength: data?.length,
-        error: error?.message
+        data: data?.[0]?.company_email
       });
 
-      if (error) {
-        console.error('Error fetching employee:', error);
+      if (!response.ok) {
+        console.error('Error fetching employee:', data);
         setEmployee(null);
       } else if (data && data.length > 0) {
         console.log('AuthContext: Employee found:', data[0]?.company_email);
