@@ -54,15 +54,28 @@ export default function AuthCallback() {
 
   // Navigate once session is available in context
   useEffect(() => {
-    if (!processingTokens && !loading) {
-      if (session) {
-        console.log('Session confirmed in context, redirecting to dashboard');
-        navigate('/', { replace: true });
-      } else if (!error) {
-        // No session after processing - show error
+    // Wait for token processing to complete
+    if (processingTokens) return;
+
+    // If we have a session, redirect immediately
+    if (session) {
+      console.log('Session confirmed in context, redirecting to dashboard');
+      navigate('/', { replace: true });
+      return;
+    }
+
+    // If still loading auth state, wait
+    if (loading) return;
+
+    // No session after everything loaded - show error after a short delay
+    // (gives time for onAuthStateChange to fire)
+    const timeout = setTimeout(() => {
+      if (!session && !error) {
         setError('No authentication tokens found. Please try signing in again.');
       }
-    }
+    }, 2000);
+
+    return () => clearTimeout(timeout);
   }, [session, loading, processingTokens, navigate, error]);
 
   if (error) {
