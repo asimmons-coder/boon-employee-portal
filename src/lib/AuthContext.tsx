@@ -21,13 +21,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
+    console.log('AuthContext: Getting initial session...');
     auth.getSession().then(({ session }) => {
+      console.log('AuthContext: Initial session:', !!session, session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user?.email) {
         fetchEmployeeProfile(session.user.email, session.user.id);
       } else {
+        console.log('AuthContext: No session, setting loading false');
         setLoading(false);
       }
     });
@@ -54,36 +57,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function fetchEmployeeProfile(email: string, userId: string) {
+    console.log('AuthContext: Fetching employee profile for:', email, userId);
     try {
       // First try to fetch by auth_user_id (more secure)
+      console.log('AuthContext: Trying by auth_user_id...');
       let { data, error } = await supabase
         .from('employee_manager')
         .select('*')
         .eq('auth_user_id', userId)
         .single();
+      console.log('AuthContext: auth_user_id result:', { data: !!data, error: error?.message });
 
       // If not found by auth_user_id, try by email (for first-time login)
       if (error || !data) {
+        console.log('AuthContext: Trying by email...');
         const result = await supabase
           .from('employee_manager')
           .select('*')
           .ilike('company_email', email)
           .single();
-        
+
         data = result.data;
         error = result.error;
+        console.log('AuthContext: email result:', { data: !!data, error: error?.message });
       }
 
       if (error) {
         console.error('Error fetching employee:', error);
         setEmployee(null);
       } else {
+        console.log('AuthContext: Employee found:', data?.company_email);
         setEmployee(data as Employee);
       }
     } catch (err) {
       console.error('Error in fetchEmployeeProfile:', err);
       setEmployee(null);
     } finally {
+      console.log('AuthContext: Setting loading false');
       setLoading(false);
     }
   }
