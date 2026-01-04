@@ -70,7 +70,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md animate-fade-in">
         <div className="text-center mb-10">
           <img 
-            src="https://res.cloudinary.com/djbo6r080/image/upload/v1764863780/Wordmark_Blue_16_aw7lvc.png" 
+            src="https://storage.googleapis.com/boon-public-assets/Wordmark_Blue%20(8)%20(1).png" 
             alt="Boon Health" 
             className="h-10 mx-auto mb-8"
           />
