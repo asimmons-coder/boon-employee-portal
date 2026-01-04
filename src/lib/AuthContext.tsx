@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user?.email) {
-        fetchEmployeeProfile(session.user.email, session.user.id);
+        fetchEmployeeProfile(session.user.email, session.access_token);
       } else {
         console.log('AuthContext: No session, setting loading false');
         setLoading(false);
@@ -46,8 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Link auth user to employee record in background (don't block)
         auth.linkAuthUserToEmployee(session.user.email, session.user.id)
           .catch(err => console.error('Link error:', err));
-        // Fetch employee profile
-        await fetchEmployeeProfile(session.user.email, session.user.id);
+        // Fetch employee profile using the user's access token
+        await fetchEmployeeProfile(session.user.email, session.access_token);
       } else if (event === 'SIGNED_OUT') {
         setEmployee(null);
         setLoading(false);
@@ -59,20 +59,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  async function fetchEmployeeProfile(email: string, userId: string) {
-    console.log('AuthContext: Fetching employee profile for:', email, userId);
+  async function fetchEmployeeProfile(email: string, accessToken: string) {
+    console.log('AuthContext: Fetching employee profile for:', email);
     try {
-      // Use raw fetch to test if Supabase REST API works
+      // Use raw fetch with user's JWT token for RLS
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      console.log('AuthContext: Making raw fetch request...');
+      console.log('AuthContext: Making raw fetch request with user token...');
       const response = await fetch(
         `${supabaseUrl}/rest/v1/employee_manager?company_email=ilike.${encodeURIComponent(email)}&limit=1`,
         {
           headers: {
             'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
         }
