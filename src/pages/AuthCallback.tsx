@@ -36,15 +36,22 @@ export default function AuthCallback() {
 
         if (accessToken && refreshToken) {
           console.log('Found tokens in URL, setting session...');
-          const { error } = await supabase.auth.setSession({
+          const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
+          console.log('setSession result:', { hasSession: !!data.session, error: error?.message });
 
           if (error) {
             throw error;
           }
-          // onAuthStateChange will handle the redirect
+
+          // Redirect immediately after session is set
+          if (data.session) {
+            console.log('Session established, redirecting to dashboard');
+            navigate('/', { replace: true });
+            return;
+          }
         } else {
           // No tokens - check if already have a session
           const { data: { session } } = await supabase.auth.getSession();
