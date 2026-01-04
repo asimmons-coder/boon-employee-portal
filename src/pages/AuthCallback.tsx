@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../lib/AuthContext';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const { session, loading } = useAuth();
   const [error, setError] = useState<string | null>(null);
-  const [processingTokens, setProcessingTokens] = useState(true);
 
-  // Process tokens from URL on mount
   useEffect(() => {
+    // Subscribe to auth changes - this will fire when session is established
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('AuthCallback: Auth event:', event, 'Session:', !!session);
+
+      if (event === 'SIGNED_IN' && session) {
+        console.log('AuthCallback: Redirecting to dashboard');
+        navigate('/', { replace: true });
+      }
+    });
+
+    // Process tokens from URL
     async function processTokens() {
       try {
         // Check for error in URL params first
@@ -19,7 +26,6 @@ export default function AuthCallback() {
 
         if (errorDesc) {
           setError(errorDesc);
-          setProcessingTokens(false);
           return;
         }
 
@@ -38,45 +44,29 @@ export default function AuthCallback() {
           if (error) {
             throw error;
           }
-          console.log('Session set successfully, waiting for context update...');
+          // onAuthStateChange will handle the redirect
+        } else {
+          // No tokens - check if already have a session
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            console.log('Existing session found, redirecting');
+            navigate('/', { replace: true });
+          } else {
+            setError('No authentication tokens found. Please try signing in again.');
+          }
         }
-
-        setProcessingTokens(false);
       } catch (err: any) {
         console.error('Auth callback error:', err);
         setError(err.message || 'Something went wrong');
-        setProcessingTokens(false);
       }
     }
 
     processTokens();
-  }, []);
 
-  // Navigate once session is available in context
-  useEffect(() => {
-    // Wait for token processing to complete
-    if (processingTokens) return;
-
-    // If we have a session, redirect immediately
-    if (session) {
-      console.log('Session confirmed in context, redirecting to dashboard');
-      navigate('/', { replace: true });
-      return;
-    }
-
-    // If still loading auth state, wait
-    if (loading) return;
-
-    // No session after everything loaded - show error after a short delay
-    // (gives time for onAuthStateChange to fire)
-    const timeout = setTimeout(() => {
-      if (!session && !error) {
-        setError('No authentication tokens found. Please try signing in again.');
-      }
-    }, 2000);
-
-    return () => clearTimeout(timeout);
-  }, [session, loading, processingTokens, navigate, error]);
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   if (error) {
     return (
