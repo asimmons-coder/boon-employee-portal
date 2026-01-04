@@ -37,13 +37,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event);
+      console.log('Auth event:', event, 'hasEmail:', !!session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
 
       if (event === 'SIGNED_IN' && session?.user?.email) {
-        // Link auth user to employee record on first sign-in
-        await auth.linkAuthUserToEmployee(session.user.email, session.user.id);
+        console.log('AuthContext: SIGNED_IN handler - fetching employee...');
+        // Link auth user to employee record in background (don't block)
+        auth.linkAuthUserToEmployee(session.user.email, session.user.id)
+          .catch(err => console.error('Link error:', err));
+        // Fetch employee profile
         await fetchEmployeeProfile(session.user.email, session.user.id);
       } else if (event === 'SIGNED_OUT') {
         setEmployee(null);
