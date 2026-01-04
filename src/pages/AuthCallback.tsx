@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/AuthContext';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
+  const { session, loading } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [processingTokens, setProcessingTokens] = useState(true);
 
+  // Process tokens from URL on mount
   useEffect(() => {
-    async function handleCallback() {
+    async function processTokens() {
       try {
         // Check for error in URL params first
         const urlParams = new URLSearchParams(window.location.search);
@@ -15,6 +19,7 @@ export default function AuthCallback() {
 
         if (errorDesc) {
           setError(errorDesc);
+          setProcessingTokens(false);
           return;
         }
 
@@ -24,8 +29,8 @@ export default function AuthCallback() {
         const refreshToken = hashParams.get('refresh_token');
 
         if (accessToken && refreshToken) {
-          // Set the session and wait for it to be confirmed
-          const { data, error } = await supabase.auth.setSession({
+          console.log('Found tokens in URL, setting session...');
+          const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
@@ -33,38 +38,32 @@ export default function AuthCallback() {
           if (error) {
             throw error;
           }
-
-          // Verify session was established before navigating
-          if (data.session) {
-            console.log('Session established, redirecting to dashboard');
-            navigate('/', { replace: true });
-            return;
-          }
+          console.log('Session set successfully, waiting for context update...');
         }
 
-        // If no tokens in hash, check if session already exists
-        // (Supabase may have auto-detected tokens)
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          throw sessionError;
-        }
-
-        if (session) {
-          console.log('Existing session found, redirecting to dashboard');
-          navigate('/', { replace: true });
-        } else {
-          // No session and no tokens - something went wrong
-          setError('No authentication tokens found. Please try signing in again.');
-        }
+        setProcessingTokens(false);
       } catch (err: any) {
         console.error('Auth callback error:', err);
         setError(err.message || 'Something went wrong');
+        setProcessingTokens(false);
       }
     }
 
-    handleCallback();
-  }, [navigate]);
+    processTokens();
+  }, []);
+
+  // Navigate once session is available in context
+  useEffect(() => {
+    if (!processingTokens && !loading) {
+      if (session) {
+        console.log('Session confirmed in context, redirecting to dashboard');
+        navigate('/', { replace: true });
+      } else if (!error) {
+        // No session after processing - show error
+        setError('No authentication tokens found. Please try signing in again.');
+      }
+    }
+  }, [session, loading, processingTokens, navigate, error]);
 
   if (error) {
     return (
@@ -93,10 +92,10 @@ export default function AuthCallback() {
   return (
     <div className="min-h-screen bg-boon-bg flex items-center justify-center p-6">
       <div className="text-center">
-        <img 
-          src="https://res.cloudinary.com/djbo6r080/image/upload/v1764863780/Icon_Blue_10_i8hkao.png" 
-          className="w-12 h-12 animate-bounce mx-auto mb-4" 
-          alt="Loading..." 
+        <img
+          src="https://res.cloudinary.com/djbo6r080/image/upload/v1764863780/Icon_Blue_10_i8hkao.png"
+          className="w-12 h-12 animate-bounce mx-auto mb-4"
+          alt="Loading..."
         />
         <p className="text-boon-blue font-medium">Signing you in...</p>
       </div>
