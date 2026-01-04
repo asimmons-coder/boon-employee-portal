@@ -62,35 +62,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function fetchEmployeeProfile(email: string, userId: string) {
     console.log('AuthContext: Fetching employee profile for:', email, userId);
     try {
-      // First try to fetch by auth_user_id (more secure)
-      console.log('AuthContext: Trying by auth_user_id...');
-      let { data, error } = await supabase
+      // Try to fetch by email (simpler, works for all cases)
+      console.log('AuthContext: Querying by email...');
+      const { data, error } = await supabase
         .from('employee_manager')
         .select('*')
-        .eq('auth_user_id', userId)
-        .single();
-      console.log('AuthContext: auth_user_id result:', { data: !!data, error: error?.message });
+        .ilike('company_email', email)
+        .limit(1);
 
-      // If not found by auth_user_id, try by email (for first-time login)
-      if (error || !data) {
-        console.log('AuthContext: Trying by email...');
-        const result = await supabase
-          .from('employee_manager')
-          .select('*')
-          .ilike('company_email', email)
-          .single();
-
-        data = result.data;
-        error = result.error;
-        console.log('AuthContext: email result:', { data: !!data, error: error?.message });
-      }
+      console.log('AuthContext: Query result:', {
+        hasData: !!data,
+        dataLength: data?.length,
+        error: error?.message
+      });
 
       if (error) {
         console.error('Error fetching employee:', error);
         setEmployee(null);
+      } else if (data && data.length > 0) {
+        console.log('AuthContext: Employee found:', data[0]?.company_email);
+        setEmployee(data[0] as Employee);
       } else {
-        console.log('AuthContext: Employee found:', data?.company_email);
-        setEmployee(data as Employee);
+        console.log('AuthContext: No employee found for email:', email);
+        setEmployee(null);
       }
     } catch (err) {
       console.error('Error in fetchEmployeeProfile:', err);
