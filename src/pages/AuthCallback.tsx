@@ -9,10 +9,7 @@ export default function AuthCallback() {
   useEffect(() => {
     // Subscribe to auth changes - this will fire when session is established
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('AuthCallback: Auth event:', event, 'Session:', !!session);
-
       if (event === 'SIGNED_IN' && session) {
-        console.log('AuthCallback: Redirecting to dashboard');
         navigate('/', { replace: true });
       }
     });
@@ -35,12 +32,10 @@ export default function AuthCallback() {
         const refreshToken = hashParams.get('refresh_token');
 
         if (accessToken && refreshToken) {
-          console.log('Found tokens in URL, setting session...');
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
-          console.log('setSession result:', { hasSession: !!data.session, error: error?.message });
 
           if (error) {
             throw error;
@@ -48,7 +43,6 @@ export default function AuthCallback() {
 
           // Redirect immediately after session is set
           if (data.session) {
-            console.log('Session established, redirecting to dashboard');
             navigate('/', { replace: true });
             return;
           }
@@ -56,7 +50,6 @@ export default function AuthCallback() {
           // No tokens - check if already have a session
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
-            console.log('Existing session found, redirecting');
             navigate('/', { replace: true });
           } else {
             setError('No authentication tokens found. Please try signing in again.');

@@ -21,28 +21,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    console.log('AuthContext: Getting initial session...');
     auth.getSession().then(({ session }) => {
-      console.log('AuthContext: Initial session:', !!session, session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user?.email) {
         fetchEmployeeProfile(session.user.email, session.access_token);
       } else {
-        console.log('AuthContext: No session, setting loading false');
         setLoading(false);
       }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event, 'hasEmail:', !!session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
 
       if (event === 'SIGNED_IN' && session?.user?.email) {
-        console.log('AuthContext: SIGNED_IN handler - fetching employee...');
         // Link auth user to employee record in background (don't block)
         auth.linkAuthUserToEmployee(session.user.email, session.user.id)
           .catch(err => console.error('Link error:', err));
@@ -60,13 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function fetchEmployeeProfile(email: string, accessToken: string) {
-    console.log('AuthContext: Fetching employee profile for:', email);
     try {
       // Use raw fetch with user's JWT token for RLS
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      console.log('AuthContext: Making raw fetch request with user token...');
       const response = await fetch(
         `${supabaseUrl}/rest/v1/employee_manager?company_email=ilike.${encodeURIComponent(email)}&limit=1`,
         {
@@ -78,29 +71,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       );
 
-      console.log('AuthContext: Fetch response status:', response.status);
       const data = await response.json();
-      console.log('AuthContext: Query result:', {
-        hasData: !!data,
-        dataLength: data?.length,
-        data: data?.[0]?.company_email
-      });
 
       if (!response.ok) {
         console.error('Error fetching employee:', data);
         setEmployee(null);
       } else if (data && data.length > 0) {
-        console.log('AuthContext: Employee found:', data[0]?.company_email);
         setEmployee(data[0] as Employee);
       } else {
-        console.log('AuthContext: No employee found for email:', email);
         setEmployee(null);
       }
     } catch (err) {
       console.error('Error in fetchEmployeeProfile:', err);
       setEmployee(null);
     } finally {
-      console.log('AuthContext: Setting loading false');
       setLoading(false);
     }
   }
