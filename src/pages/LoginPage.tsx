@@ -69,11 +69,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-boon-bg flex items-center justify-center p-6">
       <div className="w-full max-w-md animate-fade-in">
         <div className="text-center mb-10">
-          <img
-            src="https://res.cloudinary.com/djbo6r080/image/upload/v1764863780/Wordmark_Blue_16_aw7lvc.png"
-            alt="Boon Health"
-            className="h-9 max-w-[160px] object-contain mx-auto mb-8"
-          />
+          <span className="text-4xl font-black text-boon-blue tracking-tight block mb-8">BOON</span>
           <h1 className="text-3xl font-black text-boon-text mb-3">Welcome back</h1>
           <p className="text-gray-500">Sign in with your work email to access your coaching portal.</p>
         </div>
