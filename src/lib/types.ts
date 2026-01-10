@@ -71,8 +71,8 @@ export interface Coach {
 
 export interface ActionItem {
   id: string;
-  employee_email: string;
-  session_id: string | null;
+  email: string;
+  session_id: number | null;
   coach_name: string;
   action_text: string;
   due_date: string | null;

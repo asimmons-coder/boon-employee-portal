@@ -1,11 +1,14 @@
-import type { Employee, Session } from '../lib/types';
+import type { Employee, Session, ActionItem } from '../lib/types';
+import ActionItems from './ActionItems';
 
 interface DashboardProps {
   profile: Employee | null;
   sessions: Session[];
+  actionItems: ActionItem[];
+  onActionUpdate: () => void;
 }
 
-export default function Dashboard({ profile, sessions }: DashboardProps) {
+export default function Dashboard({ profile, sessions, actionItems, onActionUpdate }: DashboardProps) {
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
@@ -137,6 +140,9 @@ export default function Dashboard({ profile, sessions }: DashboardProps) {
           </div>
         </section>
       </div>
+
+      {/* Action Items */}
+      <ActionItems items={actionItems} onUpdate={onActionUpdate} />
 
       {/* Next Step & Summary Row */}
       <div className="grid md:grid-cols-2 gap-8 md:gap-10 pb-8">

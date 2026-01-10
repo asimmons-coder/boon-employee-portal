@@ -83,7 +83,7 @@ export async function fetchActionItems(email: string): Promise<ActionItem[]> {
   const { data, error } = await supabase
     .from('action_items')
     .select('*')
-    .ilike('employee_email', email)
+    .ilike('email', email)
     .order('created_at', { ascending: false });
 
   if (error) {
