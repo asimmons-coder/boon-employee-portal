@@ -69,10 +69,10 @@ export default function LoginPage() {
     <div className="min-h-screen bg-boon-bg flex items-center justify-center p-6">
       <div className="w-full max-w-md animate-fade-in">
         <div className="text-center mb-10">
-          <img 
-            src="https://storage.googleapis.com/boon-public-assets/Wordmark_Blue%20(8)%20(1).png" 
-            alt="Boon Health" 
-            className="h-10 mx-auto mb-8"
+          <img
+            src="https://storage.googleapis.com/boon-public-assets/Wordmark_Blue%20(8)%20(1).png"
+            alt="Boon Health"
+            className="h-10 w-auto object-contain mx-auto mb-8"
           />
           <h1 className="text-3xl font-black text-boon-text mb-3">Welcome back</h1>
           <p className="text-gray-500">Sign in with your work email to access your coaching portal.</p>

@@ -27,10 +27,10 @@ export default function Layout({ children, currentView, setView }: LayoutProps) 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 z-30">
         <div className="p-6 flex flex-col h-full">
-          <img 
-            src="https://storage.googleapis.com/boon-public-assets/Wordmark_Blue%20(8)%20(1).png" 
-            className="h-8 mb-8" 
-            alt="Boon Health" 
+          <img
+            src="https://storage.googleapis.com/boon-public-assets/Wordmark_Blue%20(8)%20(1).png"
+            className="h-8 w-auto object-contain mb-8"
+            alt="Boon Health"
           />
           
           <nav className="space-y-1 flex-1">
@@ -80,10 +80,10 @@ export default function Layout({ children, currentView, setView }: LayoutProps) 
 
       {/* Mobile Top Header */}
       <header className="md:hidden flex items-center justify-between px-5 py-4 bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-30">
-        <img 
-          src="https://storage.googleapis.com/boon-public-assets/Wordmark_Blue%20(8)%20(1).png" 
-          className="h-5" 
-          alt="Boon Health" 
+        <img
+          src="https://storage.googleapis.com/boon-public-assets/Wordmark_Blue%20(8)%20(1).png"
+          className="h-5 w-auto object-contain"
+          alt="Boon Health"
         />
         <div className="w-8 h-8 rounded-full bg-boon-lightBlue flex items-center justify-center">
           <span className="text-boon-blue text-xs font-bold">{initials}</span>
