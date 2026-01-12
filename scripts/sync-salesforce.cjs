@@ -33,7 +33,6 @@ const FIELD_MAPPING = {
   // Salesforce field -> Supabase column
   'Id': 'salesforce_id',
   'ContactId': 'employee_id',              // Contact lookup = employee
-  'Email': 'employee_email',               // For matching if needed
   'SchedStartTime': 'session_date',        // Scheduled Start
   'Status': 'status',                      // Status picklist
   'Coach_First_Name__c': 'coach_name',     // Coach First Name
