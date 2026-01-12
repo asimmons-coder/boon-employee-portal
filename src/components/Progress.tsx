@@ -1,14 +1,16 @@
-import type { SurveyResponse, BaselineSurvey, Session } from '../lib/types';
+import type { SurveyResponse, BaselineSurvey, Session, ActionItem } from '../lib/types';
 
 interface ProgressPageProps {
   progress: SurveyResponse[];
   baseline: BaselineSurvey | null;
   sessions: Session[];
+  actionItems: ActionItem[];
 }
 
-export default function ProgressPage({ sessions, baseline }: ProgressPageProps) {
+export default function ProgressPage({ sessions, baseline: _baseline, actionItems }: ProgressPageProps) {
   const completedSessions = sessions.filter(s => s.status === 'Completed');
-  
+  const completedActions = actionItems.filter(a => a.status === 'completed');
+
   const themeDefinitions = [
     { key: 'leadership_management_skills', label: 'Leading with empathy and clarity' },
     { key: 'communication_skills', label: 'Communicating with impact and intention' },
@@ -56,22 +58,20 @@ export default function ProgressPage({ sessions, baseline }: ProgressPageProps) 
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Sessions</p>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
-          <p className="text-3xl font-black text-boon-blue">{focusInsights.length}</p>
+          <p className="text-3xl font-black text-green-600">{completedActions.length}</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Actions Done</p>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+          <p className="text-3xl font-black text-purple-600">{focusInsights.length}</p>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Focus Areas</p>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
-          <p className="text-3xl font-black text-boon-blue">
-            {completedSessions.length > 0 
+          <p className="text-3xl font-black text-orange-500">
+            {completedSessions.length > 0
               ? Math.ceil((Date.now() - new Date(completedSessions[completedSessions.length - 1]?.session_date).getTime()) / (1000 * 60 * 60 * 24 * 7))
               : 0}
           </p>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Weeks Active</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
-          <p className="text-3xl font-black text-boon-blue">
-            {baseline ? '✓' : '—'}
-          </p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Baseline Set</p>
         </div>
       </div>
 
@@ -147,6 +147,32 @@ export default function ProgressPage({ sessions, baseline }: ProgressPageProps) 
           </div>
         </section>
       </div>
+
+      {/* Goals Over Time */}
+      {completedSessions.some(s => s.goals) && (
+        <section className="bg-gradient-to-br from-boon-blue/5 to-boon-lightBlue/20 rounded-[2rem] p-8 border border-boon-blue/10">
+          <h2 className="text-xl font-extrabold text-boon-text mb-6">Goals Over Time</h2>
+          <div className="space-y-6">
+            {completedSessions
+              .filter(s => s.goals)
+              .slice(0, 5)
+              .map((session) => (
+                <div key={session.id} className="border-l-2 border-boon-blue/30 pl-4">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                    {new Date(session.session_date).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </p>
+                  <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed line-clamp-3">
+                    {session.goals}
+                  </p>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
 
       {/* Insights */}
       <section className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-gray-100">

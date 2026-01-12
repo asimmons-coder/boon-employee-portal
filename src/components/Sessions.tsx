@@ -8,6 +8,7 @@ interface SessionsPageProps {
 export default function SessionsPage({ sessions }: SessionsPageProps) {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [filter, setFilter] = useState<'all' | 'Completed' | 'Upcoming'>('all');
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [feedbackSession, setFeedbackSession] = useState<Session | null>(null);
   const [feedbackRating, setFeedbackRating] = useState<number>(0);
   const [feedbackText, setFeedbackText] = useState<string>('');
@@ -119,64 +120,120 @@ export default function SessionsPage({ sessions }: SessionsPageProps) {
           </div>
 
           <div className="space-y-4">
-            {filteredSessions.length > 0 ? filteredSessions.map((session) => (
-              <div 
-                key={session.id} 
-                className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:border-boon-blue/10 transition-all"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      session.status === 'Completed' 
-                        ? 'bg-green-50 text-green-600' 
-                        : 'bg-boon-lightBlue text-boon-blue'
-                    }`}>
-                      {session.status === 'Completed' ? (
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      )}
+            {filteredSessions.length > 0 ? filteredSessions.map((session) => {
+              const isExpanded = expandedSession === session.id;
+              const hasDetails = session.goals || session.plan || session.summary;
+              const themes = [
+                session.leadership_management_skills && 'Leadership',
+                session.communication_skills && 'Communication',
+                session.mental_well_being && 'Well-being',
+              ].filter(Boolean);
+
+              return (
+                <div
+                  key={session.id}
+                  className={`bg-white rounded-2xl shadow-sm border transition-all ${
+                    isExpanded ? 'border-boon-blue/20' : 'border-gray-100 hover:border-boon-blue/10'
+                  }`}
+                >
+                  <div
+                    className="p-6 cursor-pointer"
+                    onClick={() => hasDetails && setExpandedSession(isExpanded ? null : session.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                          session.status === 'Completed'
+                            ? 'bg-green-50 text-green-600'
+                            : 'bg-boon-lightBlue text-boon-blue'
+                        }`}>
+                          {session.status === 'Completed' ? (
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-boon-text">
+                            {new Date(session.session_date).toLocaleDateString('en-US', {
+                              weekday: 'long', month: 'long', day: 'numeric'
+                            })}
+                          </p>
+                          <p className="text-sm text-gray-500">with {session.coach_name}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
+                          session.status === 'Completed'
+                            ? 'bg-green-50 text-green-600'
+                            : 'bg-orange-50 text-orange-600'
+                        }`}>
+                          {session.status}
+                        </span>
+                        {hasDetails && (
+                          <svg
+                            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-boon-text">
-                        {new Date(session.session_date).toLocaleDateString('en-US', { 
-                          weekday: 'long', month: 'long', day: 'numeric' 
-                        })}
-                      </p>
-                      <p className="text-sm text-gray-500">with {session.coach_name}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                      session.status === 'Completed' 
-                        ? 'bg-green-50 text-green-600' 
-                        : 'bg-orange-50 text-orange-600'
-                    }`}>
-                      {session.status}
-                    </span>
-                    {session.status === 'Completed' && (
-                      <button 
-                        onClick={() => setFeedbackSession(session)}
-                        className="px-4 py-2 text-xs font-bold text-boon-blue bg-boon-lightBlue/30 rounded-xl hover:bg-boon-lightBlue transition-all"
-                      >
-                        Feedback
-                      </button>
+
+                    {/* Theme tags - always visible */}
+                    {themes.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        {themes.map((theme, i) => (
+                          <span key={i} className="px-3 py-1 bg-boon-bg text-gray-600 text-xs font-medium rounded-full">
+                            {theme}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
+
+                  {/* Expanded Content */}
+                  {isExpanded && hasDetails && (
+                    <div className="px-6 pb-6 space-y-4 border-t border-gray-50 pt-4">
+                      {session.goals && (
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Goals</h4>
+                          <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{session.goals}</p>
+                        </div>
+                      )}
+                      {session.plan && (
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Plan</h4>
+                          <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{session.plan}</p>
+                        </div>
+                      )}
+                      {session.summary && (
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Summary</h4>
+                          <p className="text-sm text-gray-600 leading-relaxed">{session.summary}</p>
+                        </div>
+                      )}
+                      {session.status === 'Completed' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setFeedbackSession(session); }}
+                          className="px-4 py-2 text-xs font-bold text-boon-blue bg-boon-lightBlue/30 rounded-xl hover:bg-boon-lightBlue transition-all"
+                        >
+                          Give Feedback
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
-                
-                {session.summary && (
-                  <div className="mt-4 pt-4 border-t border-gray-50">
-                    <p className="text-sm text-gray-600 line-clamp-2">{session.summary}</p>
-                  </div>
-                )}
-              </div>
-            )) : (
+              );
+            }) : (
               <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
                 <p className="text-gray-400">No sessions found.</p>
               </div>

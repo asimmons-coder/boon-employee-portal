@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/AuthContext';
-import { fetchSessions, fetchProgressData, fetchBaseline } from './lib/dataFetcher';
-import type { View, Session, SurveyResponse, BaselineSurvey } from './lib/types';
+import { fetchSessions, fetchProgressData, fetchBaseline, fetchActionItems } from './lib/dataFetcher';
+import type { View, Session, SurveyResponse, BaselineSurvey, ActionItem } from './lib/types';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -14,6 +14,7 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import SessionsPage from './components/Sessions';
 import ProgressPage from './components/Progress';
+import Resources from './components/Resources';
 import CoachPage from './components/Coach';
 
 function ProtectedApp() {
@@ -23,6 +24,7 @@ function ProtectedApp() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [progress, setProgress] = useState<SurveyResponse[]>([]);
   const [baseline, setBaseline] = useState<BaselineSurvey | null>(null);
+  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -30,15 +32,17 @@ function ProtectedApp() {
       
       setDataLoading(true);
       try {
-        const [sessionsData, progressData, baselineData] = await Promise.all([
+        const [sessionsData, progressData, baselineData, actionItemsData] = await Promise.all([
           fetchSessions(employee.id),
           fetchProgressData(employee.company_email),
           fetchBaseline(employee.company_email),
+          fetchActionItems(employee.company_email),
         ]);
-        
+
         setSessions(sessionsData);
         setProgress(progressData);
         setBaseline(baselineData);
+        setActionItems(actionItemsData);
       } catch (err) {
         console.error('Error loading data:', err);
       } finally {
@@ -48,6 +52,12 @@ function ProtectedApp() {
 
     loadData();
   }, [employee?.id, employee?.company_email]);
+
+  async function reloadActionItems() {
+    if (!employee?.company_email) return;
+    const items = await fetchActionItems(employee.company_email);
+    setActionItems(items);
+  }
 
   if (loading) {
     return (
@@ -86,16 +96,18 @@ function ProtectedApp() {
   const renderView = () => {
     switch (view) {
       case 'dashboard':
-        return <Dashboard profile={employee} sessions={sessions} />;
+        return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} onActionUpdate={reloadActionItems} />;
       case 'sessions':
         return <SessionsPage sessions={sessions} />;
       case 'progress':
-        return <ProgressPage progress={progress} baseline={baseline} sessions={sessions} />;
+        return <ProgressPage progress={progress} baseline={baseline} sessions={sessions} actionItems={actionItems} />;
+      case 'resources':
+        return <Resources />;
       case 'coach':
         const currentCoachName = sessions.length > 0 ? sessions[0].coach_name : "Your Coach";
-        return <CoachPage coachName={currentCoachName} sessions={sessions} />;
+        return <CoachPage coachName={currentCoachName} sessions={sessions} bookingLink={employee?.booking_link || null} />;
       default:
-        return <Dashboard profile={employee} sessions={sessions} />;
+        return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} onActionUpdate={reloadActionItems} />;
     }
   };
 

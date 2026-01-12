@@ -13,6 +13,7 @@ export interface Employee {
   auth_user_id: string | null;
   status: string | null;
   program_type: string | null;
+  booking_link: string | null;
   created_at: string;
 }
 
@@ -28,6 +29,8 @@ export interface Session {
   mental_well_being: boolean;
   other_themes: string | null;
   summary: string | null;
+  goals: string | null;
+  plan: string | null;
   duration_minutes: number | null;
   company_id: string | null;
   account_name: string | null;
@@ -70,8 +73,8 @@ export interface Coach {
 
 export interface ActionItem {
   id: string;
-  employee_email: string;
-  session_id: string | null;
+  email: string;
+  session_id: number | null;
   coach_name: string;
   action_text: string;
   due_date: string | null;

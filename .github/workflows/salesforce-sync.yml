@@ -1,0 +1,59 @@
+name: Salesforce to Supabase Sync
+
+on:
+  # Run every 6 hours
+  schedule:
+    - cron: '0 */6 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      full_sync:
+        description: 'Run full historical sync (not just recent records)'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  SALESFORCE_LOGIN_URL: ${{ secrets.SALESFORCE_LOGIN_URL }}
+  SALESFORCE_USERNAME: ${{ secrets.SALESFORCE_USERNAME }}
+  SALESFORCE_PASSWORD: ${{ secrets.SALESFORCE_PASSWORD }}
+  SALESFORCE_SECURITY_TOKEN: ${{ secrets.SALESFORCE_SECURITY_TOKEN }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install sync script dependencies
+        run: |
+          npm install jsforce @supabase/supabase-js
+
+      - name: Run Salesforce sync
+        run: |
+          node scripts/sync-salesforce.js
+        env:
+          FULL_SYNC: ${{ github.event.inputs.full_sync || 'false' }}
+
+      - name: Report status
+        if: failure()
+        run: |
+          echo "Sync failed. Check the logs above for details."
+          # You could add Slack notification here:
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"Salesforce sync failed!"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}
