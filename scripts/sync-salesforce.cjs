@@ -145,42 +145,75 @@ async function fetchSalesforceRecords(isFullSync) {
   });
 }
 
-async function upsertToSupabase(records) {
+async function updateExistingRecords(records) {
   if (records.length === 0) {
-    console.log('No records to upsert');
-    return { inserted: 0, updated: 0 };
+    console.log('No records to update');
+    return { updated: 0, skipped: 0, errors: 0 };
   }
 
-  console.log(`Upserting ${records.length} records to Supabase...`);
+  console.log(`Processing ${records.length} Salesforce records...`);
 
-  let totalProcessed = 0;
+  // First, get all existing appointment_numbers from Supabase
+  console.log('Fetching existing appointment numbers from Supabase...');
+  const { data: existingRecords, error: fetchError } = await supabase
+    .from('session_tracking')
+    .select('appointment_number')
+    .not('appointment_number', 'is', null);
+
+  if (fetchError) {
+    console.error('Error fetching existing records:', fetchError);
+    throw fetchError;
+  }
+
+  const existingAppointmentNumbers = new Set(
+    existingRecords.map(r => r.appointment_number)
+  );
+  console.log(`Found ${existingAppointmentNumbers.size} existing appointment numbers in Supabase`);
+
+  // Filter to only records that exist in Supabase
+  const recordsToUpdate = records.filter(r =>
+    r.appointment_number && existingAppointmentNumbers.has(r.appointment_number)
+  );
+  const skipped = records.length - recordsToUpdate.length;
+
+  console.log(`Updating ${recordsToUpdate.length} existing records (skipping ${skipped} that don't exist in Supabase)`);
+
+  if (recordsToUpdate.length === 0) {
+    return { updated: 0, skipped, errors: 0 };
+  }
+
+  let totalUpdated = 0;
   let errors = [];
 
-  // Process in batches
-  for (let i = 0; i < records.length; i += CONFIG.batchSize) {
-    const batch = records.slice(i, i + CONFIG.batchSize);
+  // Process in batches - use UPDATE not UPSERT
+  for (let i = 0; i < recordsToUpdate.length; i += CONFIG.batchSize) {
+    const batch = recordsToUpdate.slice(i, i + CONFIG.batchSize);
 
-    const { data, error } = await supabase
-      .from('session_tracking')
-      .upsert(batch, {
-        onConflict: 'appointment_number',
-        ignoreDuplicates: false
-      });
+    // Update each record individually to avoid inserting new ones
+    for (const record of batch) {
+      const { appointment_number, ...updateData } = record;
 
-    if (error) {
-      console.error(`Error upserting batch ${i / CONFIG.batchSize + 1}:`, error);
-      errors.push(error);
-    } else {
-      totalProcessed += batch.length;
-      console.log(`Processed batch ${Math.floor(i / CONFIG.batchSize) + 1}: ${batch.length} records`);
+      const { error } = await supabase
+        .from('session_tracking')
+        .update(updateData)
+        .eq('appointment_number', appointment_number);
+
+      if (error) {
+        console.error(`Error updating ${appointment_number}:`, error.message);
+        errors.push(error);
+      } else {
+        totalUpdated++;
+      }
     }
+
+    console.log(`Processed batch ${Math.floor(i / CONFIG.batchSize) + 1}: ${batch.length} records`);
   }
 
   if (errors.length > 0) {
     console.error(`Completed with ${errors.length} errors`);
   }
 
-  return { processed: totalProcessed, errors: errors.length };
+  return { updated: totalUpdated, skipped, errors: errors.length };
 }
 
 async function main() {
@@ -202,13 +235,14 @@ async function main() {
       return;
     }
 
-    const result = await upsertToSupabase(records);
+    const result = await updateExistingRecords(records);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
     console.log('='.repeat(50));
     console.log('Sync Complete!');
-    console.log(`Records processed: ${result.processed}`);
+    console.log(`Records updated: ${result.updated}`);
+    console.log(`Records skipped (not in Supabase): ${result.skipped}`);
     console.log(`Errors: ${result.errors}`);
     console.log(`Duration: ${duration}s`);
     console.log('='.repeat(50));
