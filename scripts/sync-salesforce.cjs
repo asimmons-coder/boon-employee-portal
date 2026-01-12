@@ -175,7 +175,7 @@ async function upsertToSupabase(records) {
     const { data, error } = await supabase
       .from('session_tracking')
       .upsert(batch, {
-        onConflict: 'salesforce_id',
+        onConflict: 'appointment_number',
         ignoreDuplicates: false
       });
 
