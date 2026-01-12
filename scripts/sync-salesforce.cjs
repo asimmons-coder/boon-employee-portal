@@ -155,44 +155,47 @@ async function updateExistingRecords(records) {
   console.log('Updating only existing records in Supabase (no inserts)...');
 
   let totalUpdated = 0;
-  let errors = [];
+  let errorCount = 0;
+  const CONCURRENCY = 50; // Run 50 updates in parallel
 
-  // Process in batches - use UPDATE not UPSERT
-  // Update will only affect rows where appointment_number exists
-  for (let i = 0; i < records.length; i += CONFIG.batchSize) {
-    const batch = records.slice(i, i + CONFIG.batchSize);
+  // Process records in parallel batches
+  for (let i = 0; i < records.length; i += CONCURRENCY) {
+    const batch = records.slice(i, i + CONCURRENCY);
 
-    // Update each record - if appointment_number doesn't exist, update affects 0 rows (which is fine)
-    for (const record of batch) {
+    const promises = batch.map(async (record) => {
       const { appointment_number, ...updateData } = record;
-
-      if (!appointment_number) continue;
+      if (!appointment_number) return { success: false };
 
       const { error } = await supabase
         .from('session_tracking')
         .update(updateData)
         .eq('appointment_number', appointment_number);
 
-      if (error) {
-        console.error(`Error updating ${appointment_number}:`, error.message);
-        errors.push(error);
-      } else {
+      return { success: !error, error };
+    });
+
+    const results = await Promise.all(promises);
+
+    for (const result of results) {
+      if (result.success) {
         totalUpdated++;
+      } else if (result.error) {
+        errorCount++;
       }
     }
 
-    const batchNum = Math.floor(i / CONFIG.batchSize) + 1;
-    const totalBatches = Math.ceil(records.length / CONFIG.batchSize);
-    if (batchNum % 100 === 0 || batchNum === totalBatches) {
-      console.log(`Processed batch ${batchNum}/${totalBatches}`);
+    // Log progress every 1000 records
+    const processed = Math.min(i + CONCURRENCY, records.length);
+    if (processed % 1000 < CONCURRENCY || processed === records.length) {
+      console.log(`Progress: ${processed}/${records.length} records processed`);
     }
   }
 
-  if (errors.length > 0) {
-    console.error(`Completed with ${errors.length} errors`);
+  if (errorCount > 0) {
+    console.error(`Completed with ${errorCount} errors`);
   }
 
-  return { updated: totalUpdated, skipped: 0, errors: errors.length };
+  return { updated: totalUpdated, skipped: 0, errors: errorCount };
 }
 
 async function main() {
