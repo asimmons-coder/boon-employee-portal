@@ -113,12 +113,8 @@ function mapRecord(sfRecord) {
       value = statusMap[value.toLowerCase()] || value;
     }
 
-    // Multi-select picklists come as semicolon-separated strings
-    // Convert to boolean: true if the field has any value selected
-    if (['leadership_management_skills', 'communication_skills', 'mental_well_being'].includes(supabaseColumn)) {
-      // Has value = theme was discussed in session
-      value = value !== null && value !== undefined && value !== '';
-    }
+    // Multi-select picklists - preserve actual text values (e.g., "Motivating teams")
+    // Don't transform these - keep the original Salesforce values
 
     // Handle dates - SchedStartTime is a datetime
     if (supabaseColumn === 'session_date' && value) {
