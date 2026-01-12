@@ -34,7 +34,7 @@ const FIELD_MAPPING = {
   'Id': 'salesforce_id',
   'SchedStartTime': 'session_date',        // Scheduled Start
   'Status': 'status',                      // Status picklist
-  // Note: coach_name preserved from existing data (Zapier)
+  'Coach_First_Name__c': 'coach_name',     // Coach First Name
   'Leadership_Management_Skills__c': 'leadership_management_skills',  // Multi-select
   'Communication_Skills__c': 'communication_skills',                  // Multi-select
   'Mental_Well_Being__c': 'mental_well_being',                        // Multi-select
