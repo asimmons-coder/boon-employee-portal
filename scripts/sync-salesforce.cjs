@@ -34,8 +34,7 @@ const FIELD_MAPPING = {
   // Required for matching
   'AppointmentNumber': 'appointment_number',
 
-  // New fields to add
-  'Id': 'salesforce_id',
+  // New fields to add (goals, plan, summary only)
   'Notes__c': 'summary',                   // Session summary
   'Goals__c': 'goals',                     // Goals discussed
   'Plan__c': 'plan',                       // Action plan
