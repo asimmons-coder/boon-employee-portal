@@ -23,33 +23,30 @@ const CONFIG = {
   incrementalDays: 7,
   // Batch size for Supabase upserts
   batchSize: 100,
-  // Salesforce object name - UPDATE THIS to match your org
-  salesforceObject: 'Coaching_Session__c',
+  // Salesforce object name - ServiceAppointment (Field Service)
+  salesforceObject: 'ServiceAppointment',
 };
 
 // Field mapping from Salesforce to Supabase
-// UPDATE THESE to match your Salesforce field API names
+// Based on Boon's Salesforce org field structure
 const FIELD_MAPPING = {
   // Salesforce field -> Supabase column
   'Id': 'salesforce_id',
-  'Employee__c': 'employee_id',
-  'Employee_Name__c': 'employee_name',
-  'Session_Date__c': 'session_date',
-  'Status__c': 'status',
-  'Coach_Name__c': 'coach_name',
-  'Leadership_Management_Skills__c': 'leadership_management_skills',
-  'Communication_Skills__c': 'communication_skills',
-  'Mental_Well_Being__c': 'mental_well_being',
-  'Other_Themes__c': 'other_themes',
-  'Summary__c': 'summary',
-  'Goals__c': 'goals',
-  'Plan__c': 'plan',
-  'Duration_Minutes__c': 'duration_minutes',
-  'Company__c': 'company_id',
-  'Account_Name__c': 'account_name',
-  'Program_Name__c': 'program_name',
-  'Program_Title__c': 'program_title',
-  'Appointment_Number__c': 'appointment_number',
+  'ContactId': 'employee_id',              // Contact lookup = employee
+  'Email': 'employee_email',               // For matching if needed
+  'SchedStartTime': 'session_date',        // Scheduled Start
+  'Status': 'status',                      // Status picklist
+  'Coach_First_Name__c': 'coach_name',     // Coach First Name
+  'Leadership_Management_Skills__c': 'leadership_management_skills',  // Multi-select
+  'Communication_Skills__c': 'communication_skills',                  // Multi-select
+  'Mental_Well_Being__c': 'mental_well_being',                        // Multi-select
+  'Other_Themes__c': 'other_themes',       // Long Text
+  'Notes__c': 'summary',                   // Notes = session summary
+  'Goals__c': 'goals',                     // Goals discussed
+  'Plan__c': 'plan',                       // Action plan
+  'ActualDuration': 'duration_minutes',    // Duration in minutes
+  'Account_Name__c': 'account_name',       // Company name
+  'AppointmentNumber': 'appointment_number',
   'CreatedDate': 'created_at',
 };
 
@@ -104,23 +101,28 @@ function mapRecord(sfRecord) {
 
     // Handle special transformations
     if (supabaseColumn === 'status' && value) {
-      // Normalize status values
+      // Normalize status values to match Supabase
       const statusMap = {
         'completed': 'Completed',
-        'upcoming': 'Upcoming',
+        'scheduled': 'Upcoming',
+        'dispatched': 'Upcoming',
+        'in progress': 'Upcoming',
+        'canceled': 'Cancelled',
         'cancelled': 'Cancelled',
+        'cannot complete': 'Cancelled',
         'no show': 'No Show',
-        'no_show': 'No Show',
       };
       value = statusMap[value.toLowerCase()] || value;
     }
 
-    // Convert boolean strings
+    // Multi-select picklists come as semicolon-separated strings
+    // Convert to boolean: true if the field has any value selected
     if (['leadership_management_skills', 'communication_skills', 'mental_well_being'].includes(supabaseColumn)) {
-      value = value === true || value === 'true' || value === '1';
+      // Has value = theme was discussed in session
+      value = value !== null && value !== undefined && value !== '';
     }
 
-    // Handle dates
+    // Handle dates - SchedStartTime is a datetime
     if (supabaseColumn === 'session_date' && value) {
       value = new Date(value).toISOString().split('T')[0];
     }
