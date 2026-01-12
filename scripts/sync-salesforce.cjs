@@ -153,7 +153,7 @@ async function fetchSalesforceRecords(isFullSync) {
       .on('error', (err) => {
         reject(err);
       })
-      .run({ autoFetch: true, maxFetch: 10000 });
+      .run({ autoFetch: true, maxFetch: 100000 });
   });
 }
 
