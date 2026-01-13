@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import {
   fetchSlackConnectionStatus,
@@ -310,11 +310,92 @@ export default function Settings() {
         )}
       </div>
 
-      {/* Nudge History (only show if connected and has history) */}
+      {/* Nudge Analytics (only show if connected and has history) */}
       {slackStatus.connected && nudgeHistory.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-boon-text">Recent Nudges</h2>
+            <h2 className="text-lg font-semibold text-boon-text">Your Nudge Engagement</h2>
+            <p className="text-sm text-gray-500 mt-1">Track how you're responding to coaching reminders</p>
+          </div>
+
+          {/* Analytics Cards */}
+          <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 border-b border-gray-100">
+            {(() => {
+              const responded = nudgeHistory.filter(n => n.status === 'responded').length;
+              const total = nudgeHistory.length;
+              const responseRate = total > 0 ? Math.round((responded / total) * 100) : 0;
+              const completedActions = nudgeHistory.filter(n => n.response === 'action_done').length;
+              const inProgress = nudgeHistory.filter(n => n.response === 'action_in_progress').length;
+              const greatProgress = nudgeHistory.filter(n => n.response === 'progress_great').length;
+
+              return (
+                <>
+                  <div className="bg-gradient-to-br from-boon-blue/10 to-boon-blue/5 rounded-xl p-4">
+                    <div className="text-3xl font-bold text-boon-blue">{responseRate}%</div>
+                    <div className="text-sm text-gray-600 mt-1">Response Rate</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-100 to-green-50 rounded-xl p-4">
+                    <div className="text-3xl font-bold text-green-600">{completedActions}</div>
+                    <div className="text-sm text-gray-600 mt-1">Actions Done</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl p-4">
+                    <div className="text-3xl font-bold text-blue-600">{inProgress}</div>
+                    <div className="text-sm text-gray-600 mt-1">In Progress</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-100 to-purple-50 rounded-xl p-4">
+                    <div className="text-3xl font-bold text-purple-600">{greatProgress}</div>
+                    <div className="text-sm text-gray-600 mt-1">Great Progress</div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
+          {/* Nudge Type Breakdown */}
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="font-medium text-boon-text mb-4">Nudge Breakdown</h3>
+            <div className="space-y-3">
+              {(() => {
+                const typeCount = nudgeHistory.reduce((acc, n) => {
+                  acc[n.nudge_type] = (acc[n.nudge_type] || 0) + 1;
+                  return acc;
+                }, {} as Record<string, number>);
+
+                const typeLabels: Record<string, { label: string; color: string; icon: string }> = {
+                  action_reminder: { label: 'Action Reminders', color: 'bg-orange-500', icon: '📋' },
+                  goal_checkin: { label: 'Goal Check-ins', color: 'bg-blue-500', icon: '🎯' },
+                  session_prep: { label: 'Session Prep', color: 'bg-purple-500', icon: '📅' },
+                  weekly_digest: { label: 'Weekly Digest', color: 'bg-green-500', icon: '📊' },
+                };
+
+                const total = nudgeHistory.length;
+
+                return Object.entries(typeCount).map(([type, count]) => {
+                  const info = typeLabels[type] || { label: type, color: 'bg-gray-500', icon: '📨' };
+                  const pct = Math.round((count / total) * 100);
+
+                  return (
+                    <div key={type} className="flex items-center gap-3">
+                      <span className="text-xl">{info.icon}</span>
+                      <div className="flex-1">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-gray-700">{info.label}</span>
+                          <span className="text-gray-500">{count} ({pct}%)</span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className={`h-full ${info.color} rounded-full`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+
+          {/* Recent Nudges */}
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="font-medium text-boon-text mb-4">Recent Activity</h3>
           </div>
           <div className="divide-y divide-gray-100">
             {nudgeHistory.slice(0, 5).map((nudge) => (
