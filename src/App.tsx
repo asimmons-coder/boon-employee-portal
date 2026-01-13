@@ -16,6 +16,7 @@ import SessionsPage from './components/Sessions';
 import ProgressPage from './components/Progress';
 import Resources from './components/Resources';
 import CoachPage from './components/Coach';
+import Settings from './components/Settings';
 
 function ProtectedApp() {
   const { employee, loading } = useAuth();
@@ -106,6 +107,8 @@ function ProtectedApp() {
       case 'coach':
         const currentCoachName = sessions.length > 0 ? sessions[0].coach_name : "Your Coach";
         return <CoachPage coachName={currentCoachName} sessions={sessions} bookingLink={employee?.booking_link || null} />;
+      case 'settings':
+        return <Settings />;
       default:
         return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} onActionUpdate={reloadActionItems} />;
     }

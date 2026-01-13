@@ -91,4 +91,28 @@ export interface CheckIn {
   created_at: string;
 }
 
-export type View = 'dashboard' | 'sessions' | 'progress' | 'coach' | 'resources' | 'reflection';
+export interface SlackConnection {
+  slack_user_id: string;
+  nudge_enabled: boolean;
+  nudge_frequency: 'smart' | 'daily' | 'weekly' | 'none';
+  preferred_time: string;
+  timezone: string;
+}
+
+export interface SlackConnectionStatus {
+  connected: boolean;
+  settings: SlackConnection | null;
+}
+
+export interface SlackNudge {
+  id: string;
+  employee_email: string;
+  nudge_type: 'action_reminder' | 'goal_checkin' | 'session_prep' | 'weekly_digest' | 'streak_celebration';
+  reference_id: string | null;
+  status: 'sent' | 'delivered' | 'responded' | 'dismissed' | 'failed';
+  response: string | null;
+  sent_at: string;
+  responded_at: string | null;
+}
+
+export type View = 'dashboard' | 'sessions' | 'progress' | 'coach' | 'resources' | 'reflection' | 'settings';

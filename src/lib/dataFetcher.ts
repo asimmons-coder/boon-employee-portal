@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Employee, Session, SurveyResponse, BaselineSurvey, ActionItem } from './types';
+import type { Employee, Session, SurveyResponse, BaselineSurvey, ActionItem, SlackConnectionStatus, SlackNudge } from './types';
 
 /**
  * Fetch employee profile by email
@@ -164,4 +164,125 @@ export async function fetchCoachByName(coachName: string): Promise<any | null> {
   }
 
   return data;
+}
+
+// ============================================
+// SLACK INTEGRATION
+// ============================================
+
+const SLACK_FUNCTION_URL = import.meta.env.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/slack-oauth`
+  : '/functions/v1/slack-oauth';
+
+/**
+ * Get Slack connection status for the current user
+ */
+export async function fetchSlackConnectionStatus(): Promise<SlackConnectionStatus> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return { connected: false, settings: null };
+    }
+
+    const response = await fetch(`${SLACK_FUNCTION_URL}?action=status`, {
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch Slack status');
+      return { connected: false, settings: null };
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching Slack connection:', error);
+    return { connected: false, settings: null };
+  }
+}
+
+/**
+ * Get the URL to start Slack OAuth flow
+ */
+export function getSlackConnectUrl(email: string): string {
+  return `${SLACK_FUNCTION_URL}?action=start&email=${encodeURIComponent(email)}`;
+}
+
+/**
+ * Disconnect Slack integration
+ */
+export async function disconnectSlack(): Promise<boolean> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return false;
+    }
+
+    const response = await fetch(`${SLACK_FUNCTION_URL}?action=disconnect`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Error disconnecting Slack:', error);
+    return false;
+  }
+}
+
+/**
+ * Update Slack nudge settings
+ */
+export async function updateSlackSettings(settings: {
+  nudge_enabled?: boolean;
+  nudge_frequency?: 'smart' | 'daily' | 'weekly' | 'none';
+  preferred_time?: string;
+  timezone?: string;
+}): Promise<boolean> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return false;
+    }
+
+    const response = await fetch(`${SLACK_FUNCTION_URL}?action=settings`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(settings),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Error updating Slack settings:', error);
+    return false;
+  }
+}
+
+/**
+ * Fetch nudge history for the current user
+ */
+export async function fetchNudgeHistory(email: string): Promise<SlackNudge[]> {
+  const { data, error } = await supabase
+    .from('slack_nudges')
+    .select('*')
+    .ilike('employee_email', email)
+    .order('sent_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    // Table might not exist
+    console.error('Error fetching nudge history:', error);
+    return [];
+  }
+
+  return (data as SlackNudge[]) || [];
 }
