@@ -45,7 +45,7 @@ export async function fetchProgressData(email: string): Promise<SurveyResponse[]
     .from('survey_submissions')
     .select('*')
     .ilike('email', email)
-    .order('date', { ascending: true });
+    .order('created_at', { ascending: true });
 
   if (error) {
     console.error('Error fetching progress data:', error);
@@ -156,7 +156,7 @@ export async function fetchLatestSurveyResponse(email: string): Promise<SurveyRe
     .from('survey_submissions')
     .select('*')
     .ilike('email', email)
-    .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(1)
     .single();
 
