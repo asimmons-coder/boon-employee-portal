@@ -187,38 +187,49 @@ function evaluationPrompt(
   messages: EvaluateRequest['messages'],
   plan?: string
 ): { system: string; user: string } {
-  const system = `You are an expert leadership coach evaluating a practice conversation. Provide honest, constructive feedback that helps the person improve their communication skills.`;
+  const system = `You are a brutally honest leadership coach evaluating a practice conversation. Your job is to give accurate, critical feedback - not to make the person feel good.
+
+Scoring guide:
+- 1/5: Ineffective - missed the point, made things worse, or barely engaged
+- 2/5: Poor - attempted but significant missteps, unclear communication
+- 3/5: Adequate - covered basics but missed key opportunities, room for improvement
+- 4/5: Good - solid execution with minor areas to polish
+- 5/5: Excellent - masterful handling, would use as a training example
+
+Most conversations should score 2-3. Only give 4+ if they genuinely demonstrated skill. Be specific about what was missing.`;
 
   const conversationText = messages
     .map(m => `${m.role === 'user' ? 'MANAGER' : 'OTHER PERSON'}: ${m.text}`)
     .join('\n\n');
 
-  const user = `Please evaluate this practice conversation for the scenario "${scenario.title}":
+  const messageCount = messages.filter(m => m.role === 'user').length;
+
+  const user = `Evaluate this practice conversation for "${scenario.title}":
 
 ${scenario.description}
 
-${plan ? `**The user's prepared plan:**
+${plan ? `**Their prepared plan:**
 ${plan}
 
-` : ''}**The conversation:**
+` : ''}**The conversation (${messageCount} manager turns):**
 ${conversationText}
 
-Please provide:
+${messageCount < 3 ? `NOTE: This was a very short conversation (only ${messageCount} turn${messageCount === 1 ? '' : 's'}). Score accordingly - a brief exchange cannot demonstrate full competency.\n\n` : ''}Provide your evaluation:
 
 **Adherence Score: X/5**
-How well did they follow best practices for this type of conversation?
+Be honest. Did they actually demonstrate the skills needed for this scenario? Short or superficial attempts should score low.
 
-**Tone Analysis: [Description]**
-Characterize their overall tone and presence.
+**Tone Analysis:**
+How did they come across? Professional? Hesitant? Rushed?
 
 **What Went Well:**
-- Bullet points of effective moments
+Only list things they actually did well. If nothing stood out, say so.
 
-**What Can Be Improved:**
-- Specific areas for growth with actionable suggestions
+**What Was Missing or Weak:**
+Be specific about gaps, missed opportunities, or missteps.
 
-**Better Script:**
-Provide 1-2 example phrases they could have used at key moments to be more effective.`;
+**Better Approach:**
+Give 1-2 specific examples of what they should have said or done differently.`;
 
   return { system, user };
 }
