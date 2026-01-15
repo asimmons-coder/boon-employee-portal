@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { PracticeScenario } from '../data/scenarios';
+import { generatePlan, getRoleplayResponse, evaluateRoleplay, type ChatMessage } from '../lib/practiceService';
 
 interface PracticeModalProps {
   scenario: PracticeScenario;
@@ -10,17 +11,13 @@ interface PracticeModalProps {
 
 type ViewMode = 'guide' | 'rapid' | 'full' | 'practice';
 
-interface ChatMessage {
-  role: 'user' | 'model';
-  text: string;
-}
-
 export default function PracticeModal({ scenario, initialContext = '', coachName, onClose }: PracticeModalProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('guide');
   const [context, setContext] = useState(initialContext);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Roleplay state
   const [roleplayMessages, setRoleplayMessages] = useState<ChatMessage[]>([]);
@@ -58,54 +55,23 @@ export default function PracticeModal({ scenario, initialContext = '', coachName
   const handleGenerate = async () => {
     if (!context.trim()) return;
     setIsGenerating(true);
+    setError(null);
 
-    // TODO: Replace with actual AI call via Supabase Edge Function
-    // For now, simulate a response
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const { plan, error: apiError } = await generatePlan(scenario, context);
 
-    const mockResponse = `**1. What's Really Happening**
+    if (apiError) {
+      setError(apiError);
+      setIsGenerating(false);
+      return;
+    }
 
-Based on your situation: "${context.slice(0, 100)}...", the core tension here is about clarity and expectations. There may be unstated assumptions on both sides.
-
-**2. What You Need to Clarify First**
-
-- What specific outcome are you hoping for from this conversation?
-- What's your relationship history with this person?
-- Are there any organizational constraints you need to work within?
-
-**3. Your Step-by-Step Plan**
-
-1. **Open with curiosity, not conclusions.** Start by understanding their perspective.
-2. **Name the specific behavior** you've observed without judgment.
-3. **Share the impact** on you, the team, or the work.
-4. **Invite collaboration** on a solution.
-5. **Agree on next steps** and a follow-up checkpoint.
-
-**4. Conversation Script**
-
-"Hey, I wanted to check in about [specific situation]. I've noticed [behavior], and I want to understand what's going on from your side. Can we talk through this?"
-
-**5. If You're Managing Up or Sideways**
-
-If this person has more organizational power than you, focus on framing this as a shared problem to solve together, not a complaint or demand.
-
-**6. System Fix (Prevent This Next Time)**
-
-Consider whether clearer upfront expectations or regular check-ins could prevent similar situations. Sometimes these moments reveal process gaps, not people problems.
-
-**7. Rapid Action Plan**
-
-**Say This Up Front:** "I want to talk through [situation] because I think we might have different assumptions about [X]."
-
-**Give One Concrete Example:** Reference a specific recent instance, not a pattern of behavior.
-
-**Align on What Happens Next:** "What do you think we should do differently going forward?"`;
-
-    setGeneratedPlan(mockResponse);
-    setViewMode('rapid');
+    if (plan) {
+      setGeneratedPlan(plan);
+      setViewMode('rapid');
+      setRoleplayMessages([]);
+      setEvaluation(null);
+    }
     setIsGenerating(false);
-    setRoleplayMessages([]);
-    setEvaluation(null);
   };
 
   const handleCopy = () => {
@@ -114,13 +80,22 @@ Consider whether clearer upfront expectations or regular check-ins could prevent
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const startRoleplay = () => {
+  const startRoleplay = async () => {
     setViewMode('practice');
     if (roleplayMessages.length === 0) {
-      setRoleplayMessages([{
-        role: 'model',
-        text: "*Looks up from their work* Hey, you wanted to talk?"
-      }]);
+      setIsRoleplayLoading(true);
+      // Get the AI's initial response to start the conversation
+      const { response, error: apiError } = await getRoleplayResponse(scenario, [], generatedPlan || undefined);
+      setIsRoleplayLoading(false);
+
+      if (apiError || !response) {
+        setRoleplayMessages([{
+          role: 'model',
+          text: "*Looks up from their work* Hey, you wanted to talk?"
+        }]);
+      } else {
+        setRoleplayMessages([{ role: 'model', text: response }]);
+      }
     }
   };
 
@@ -129,24 +104,25 @@ Consider whether clearer upfront expectations or regular check-ins could prevent
 
     const userMessage = roleplayInput;
     setRoleplayInput('');
-    setRoleplayMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    const updatedMessages: ChatMessage[] = [...roleplayMessages, { role: 'user', text: userMessage }];
+    setRoleplayMessages(updatedMessages);
     setIsRoleplayLoading(true);
 
-    // TODO: Replace with actual AI roleplay call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const { response, error: apiError } = await getRoleplayResponse(
+      scenario,
+      updatedMessages,
+      generatedPlan || undefined
+    );
 
-    // Mock realistic responses based on conversation length
-    const responses = [
-      "Hmm, okay. I wasn't expecting this conversation. Can you tell me more about what you mean?",
-      "I hear what you're saying. I guess I didn't realize it was coming across that way.",
-      "That's fair. I've been dealing with a lot lately, but that's not an excuse. What would you like me to do differently?",
-      "I appreciate you being direct with me. Let me think about that and get back to you.",
-      "Okay, I think I understand. So you're saying we need to be more aligned on expectations going forward?"
-    ];
-
-    const responseIndex = Math.min(Math.floor(roleplayMessages.length / 2), responses.length - 1);
-
-    setRoleplayMessages(prev => [...prev, { role: 'model', text: responses[responseIndex] }]);
+    if (apiError || !response) {
+      // Fallback response if API fails
+      setRoleplayMessages(prev => [...prev, {
+        role: 'model',
+        text: "I hear what you're saying. Can you tell me more about that?"
+      }]);
+    } else {
+      setRoleplayMessages(prev => [...prev, { role: 'model', text: response }]);
+    }
     setIsRoleplayLoading(false);
   };
 
@@ -154,36 +130,40 @@ Consider whether clearer upfront expectations or regular check-ins could prevent
     if (roleplayMessages.length < 2) return;
     setIsEvaluating(true);
 
-    // TODO: Replace with actual evaluation call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const { evaluation: evalResult, error: apiError } = await evaluateRoleplay(
+      scenario,
+      roleplayMessages,
+      generatedPlan || undefined
+    );
 
-    const mockEvaluation = `**Adherence Score: 4/5**
-You followed the key steps well - opened with curiosity and named specific behaviors.
+    if (apiError || !evalResult) {
+      // Fallback evaluation if API fails
+      setEvaluation(`**Evaluation Unavailable**
 
-**Tone Analysis: Professional & Direct**
-Your tone was appropriately professional without being cold.
+We couldn't generate an evaluation at this time. Please try again.
 
-**What Went Well:**
-- You opened the conversation clearly without excessive preamble
-- You stayed focused on the specific situation
-- You invited dialogue rather than lecturing
+**Next Step:** Discuss this scenario with ${coachName} in your next session to get personalized feedback.`);
+    } else {
+      // Append coach reference to evaluation
+      setEvaluation(`${evalResult}
 
-**What Can Be Improved:**
-- Consider pausing more to let them respond fully
-- Could have acknowledged their perspective more explicitly before moving to solutions
-
-**Better Script:**
-"That makes sense, and I appreciate you sharing that. Given what you've said, here's what I'm thinking..."
-
-**Next Step:** Discuss this scenario with ${coachName} in your next session to get personalized feedback.`;
-
-    setEvaluation(mockEvaluation);
+**Next Step:** Discuss this scenario with ${coachName} in your next session to get personalized feedback.`);
+    }
     setIsEvaluating(false);
   };
 
-  const resetRoleplay = () => {
-    setRoleplayMessages([{ role: 'model', text: "*Looks up from their work* Hey, you wanted to talk?" }]);
+  const resetRoleplay = async () => {
     setEvaluation(null);
+    setIsRoleplayLoading(true);
+
+    const { response, error: apiError } = await getRoleplayResponse(scenario, [], generatedPlan || undefined);
+    setIsRoleplayLoading(false);
+
+    if (apiError || !response) {
+      setRoleplayMessages([{ role: 'model', text: "*Looks up from their work* Hey, you wanted to talk?" }]);
+    } else {
+      setRoleplayMessages([{ role: 'model', text: response }]);
+    }
   };
 
   // Format text with bold markers
@@ -264,6 +244,12 @@ Your tone was appropriately professional without being cold.
               placeholder="Describe your specific situation... (e.g., 'Team member has been late to standups 3 times this week')"
               className="flex-1 min-h-[120px] p-4 rounded-2xl border-2 border-white focus:border-boon-blue focus:ring-0 focus:outline-none text-sm resize-none bg-white shadow-sm placeholder-gray-400 transition-all"
             />
+
+            {error && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                {error}
+              </div>
+            )}
 
             <button
               onClick={handleGenerate}
