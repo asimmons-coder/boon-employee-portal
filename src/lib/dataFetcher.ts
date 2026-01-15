@@ -100,14 +100,22 @@ export async function fetchCompetencyScores(email: string): Promise<CompetencySc
 /**
  * Fetch program type for an employee via their program field
  * The program field might contain a UUID, a program name, or the program type directly
+ * Examples: "GROW", "GROW - Cohort 1", "TWC SLX Program 2025", UUID
  */
 export async function fetchProgramType(programId: string | null): Promise<ProgramType | null> {
   if (!programId) return null;
 
-  // Check if it's already a program type
   const upperProgram = programId.toUpperCase();
-  if (upperProgram === 'SCALE' || upperProgram === 'GROW' || upperProgram === 'EXEC') {
-    return upperProgram as ProgramType;
+
+  // Check if it starts with a known program type (e.g., "GROW - Cohort 1")
+  if (upperProgram === 'SCALE' || upperProgram.startsWith('SCALE ') || upperProgram.startsWith('SCALE-')) {
+    return 'SCALE';
+  }
+  if (upperProgram === 'GROW' || upperProgram.startsWith('GROW ') || upperProgram.startsWith('GROW-')) {
+    return 'GROW';
+  }
+  if (upperProgram === 'EXEC' || upperProgram.startsWith('EXEC ') || upperProgram.startsWith('EXEC-')) {
+    return 'EXEC';
   }
 
   // Try to look up by ID first (if it looks like a UUID)
