@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/AuthContext';
-import { fetchSessions, fetchProgressData, fetchBaseline, fetchActionItems } from './lib/dataFetcher';
+import { fetchSessions, fetchProgressData, fetchBaseline, fetchGrowBaseline, fetchActionItems } from './lib/dataFetcher';
 import { determineLifecycleStage } from './lib/useLifecycleStage';
-import type { View, Session, SurveyResponse, BaselineSurvey, ActionItem } from './lib/types';
+import type { View, Session, SurveyResponse, BaselineSurvey, GrowBaselineSurvey, ActionItem } from './lib/types';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -32,19 +32,23 @@ function ProtectedApp() {
   const [dataLoading, setDataLoading] = useState(true);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [progress, setProgress] = useState<SurveyResponse[]>([]);
-  const [baseline, setBaseline] = useState<BaselineSurvey | null>(null);
+  const [baseline, setBaseline] = useState<BaselineSurvey | GrowBaselineSurvey | null>(null);
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
 
   useEffect(() => {
     async function loadData() {
       if (!employee?.id || !employee?.company_email) return;
-      
+
       setDataLoading(true);
       try {
+        const isGrowClient = employee.program_type?.toLowerCase().includes('grow');
+
         const [sessionsData, progressData, baselineData, actionItemsData] = await Promise.all([
           fetchSessions(employee.id),
           fetchProgressData(employee.company_email),
-          fetchBaseline(employee.company_email),
+          isGrowClient
+            ? fetchGrowBaseline(employee.company_email)
+            : fetchBaseline(employee.company_email),
           fetchActionItems(employee.company_email),
         ]);
 
@@ -60,7 +64,7 @@ function ProtectedApp() {
     }
 
     loadData();
-  }, [employee?.id, employee?.company_email]);
+  }, [employee?.id, employee?.company_email, employee?.program_type]);
 
   async function reloadActionItems() {
     if (!employee?.company_email) return;
@@ -126,7 +130,7 @@ function ProtectedApp() {
       case 'sessions':
         return <SessionsPage sessions={sessions} />;
       case 'progress':
-        return <ProgressPage progress={progress} baseline={baseline} sessions={sessions} actionItems={actionItems} />;
+        return <ProgressPage progress={progress} baseline={baseline} sessions={sessions} actionItems={actionItems} programType={employee?.program_type || 'scale'} />;
       case 'practice':
         const practiceCoachName = sessions.length > 0 ? sessions[0].coach_name : "Your Coach";
         return <Practice sessions={sessions} coachName={practiceCoachName} userEmail={employee?.company_email || ''} />;

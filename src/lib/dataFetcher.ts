@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Employee, Session, SurveyResponse, BaselineSurvey, ActionItem, SlackConnectionStatus, SlackNudge } from './types';
+import type { Employee, Session, SurveyResponse, BaselineSurvey, GrowBaselineSurvey, ActionItem, SlackConnectionStatus, SlackNudge } from './types';
 
 /**
  * Fetch employee profile by email
@@ -56,7 +56,7 @@ export async function fetchProgressData(email: string): Promise<SurveyResponse[]
 }
 
 /**
- * Fetch baseline survey for an employee
+ * Fetch baseline survey for a Scale client
  */
 export async function fetchBaseline(email: string): Promise<BaselineSurvey | null> {
   const { data, error } = await supabase
@@ -74,6 +74,49 @@ export async function fetchBaseline(email: string): Promise<BaselineSurvey | nul
   }
 
   return data as BaselineSurvey;
+}
+
+/**
+ * Fetch baseline survey for a Grow client (includes core competencies)
+ */
+export async function fetchGrowBaseline(email: string): Promise<GrowBaselineSurvey | null> {
+  const { data, error } = await supabase
+    .from('welcome_survey_grow')
+    .select('*')
+    .ilike('email', email)
+    .single();
+
+  if (error) {
+    // Not an error if baseline doesn't exist
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching grow baseline:', error);
+    }
+    return null;
+  }
+
+  return data as GrowBaselineSurvey;
+}
+
+/**
+ * Fetch the latest survey response for progress comparison
+ */
+export async function fetchLatestSurveyResponse(email: string): Promise<SurveyResponse | null> {
+  const { data, error } = await supabase
+    .from('survey_submissions')
+    .select('*')
+    .ilike('email', email)
+    .order('date', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching latest survey:', error);
+    }
+    return null;
+  }
+
+  return data as SurveyResponse;
 }
 
 /**

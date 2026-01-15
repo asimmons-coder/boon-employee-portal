@@ -49,6 +49,14 @@ export interface SurveyResponse {
   wellbeing_satisfaction: number | null;
   wellbeing_productivity: number | null;
   wellbeing_balance: number | null;
+  wellbeing_resilience: number | null;
+  // Grow-specific competencies (optional, only for Grow clients)
+  strategic_thinking: number | null;
+  decision_making: number | null;
+  people_management: number | null;
+  influence: number | null;
+  emotional_intelligence: number | null;
+  adaptability: number | null;
 }
 
 export interface BaselineSurvey {
@@ -57,9 +65,21 @@ export interface BaselineSurvey {
   satisfaction: number | null;
   productivity: number | null;
   work_life_balance: number | null;
+  resilience: number | null;
   focus_leadership: boolean;
   focus_communication: boolean;
   focus_wellbeing: boolean;
+}
+
+// Grow clients have additional core competencies
+export interface GrowBaselineSurvey extends BaselineSurvey {
+  // Core competency self-ratings (1-5 scale)
+  strategic_thinking: number | null;
+  decision_making: number | null;
+  people_management: number | null;
+  influence: number | null;
+  emotional_intelligence: number | null;
+  adaptability: number | null;
 }
 
 export interface Coach {
