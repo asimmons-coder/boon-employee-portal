@@ -99,24 +99,46 @@ export async function fetchCompetencyScores(email: string): Promise<CompetencySc
 
 /**
  * Fetch program type for an employee via their program field
+ * The program field might contain a UUID, a program name, or the program type directly
  */
 export async function fetchProgramType(programId: string | null): Promise<ProgramType | null> {
   if (!programId) return null;
 
-  const { data, error } = await supabase
-    .from('programs')
-    .select('program_type')
-    .eq('id', programId)
-    .single();
-
-  if (error) {
-    if (error.code !== 'PGRST116') {
-      console.error('Error fetching program type:', error);
-    }
-    return null;
+  // Check if it's already a program type
+  const upperProgram = programId.toUpperCase();
+  if (upperProgram === 'SCALE' || upperProgram === 'GROW' || upperProgram === 'EXEC') {
+    return upperProgram as ProgramType;
   }
 
-  return data?.program_type as ProgramType || null;
+  // Try to look up by ID first (if it looks like a UUID)
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(programId);
+
+  if (isUuid) {
+    const { data, error } = await supabase
+      .from('programs')
+      .select('program_type')
+      .eq('id', programId)
+      .single();
+
+    if (!error && data?.program_type) {
+      return data.program_type as ProgramType;
+    }
+  }
+
+  // Try to look up by name/title
+  const { data: byName, error: nameError } = await supabase
+    .from('programs')
+    .select('program_type')
+    .ilike('name', `%${programId}%`)
+    .limit(1)
+    .single();
+
+  if (!nameError && byName?.program_type) {
+    return byName.program_type as ProgramType;
+  }
+
+  console.log('Could not determine program type for:', programId);
+  return null;
 }
 
 /**
