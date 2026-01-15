@@ -82,8 +82,8 @@ export default function ProgressPage({
 
   // Build competency data with baseline and current scores
   const competencyData = COMPETENCIES.map(comp => {
-    // Get baseline from welcome_survey_baseline (q_ prefixed columns)
-    const baselineKey = `q_${comp.key}` as keyof BaselineSurvey;
+    // Get baseline from welcome_survey_baseline (comp_ prefixed columns)
+    const baselineKey = `comp_${comp.key}` as keyof BaselineSurvey;
     const baselineValue = baseline?.[baselineKey] as number | null;
 
     // Get current from competency_scores (match by competency_name)
@@ -111,27 +111,28 @@ export default function ProgressPage({
     ? Math.round(competenciesWithImprovement.reduce((sum, c) => sum + (c.improvement || 0), 0) / competenciesWithImprovement.length)
     : null;
 
-  // Wellbeing metrics
+  // Wellbeing metrics (keys match actual baseline column names)
   const wellbeingMetrics = [
-    { key: 'work_satisfaction', label: 'Work Satisfaction', icon: '😊', color: '#4A90A4' },
+    { key: 'satisfaction', label: 'Work Satisfaction', icon: '😊', color: '#4A90A4' },
     { key: 'productivity', label: 'Productivity', icon: '⚡', color: '#10B981' },
     { key: 'work_life_balance', label: 'Work-Life Balance', icon: '⚖️', color: '#8B5CF6' },
-    { key: 'resilience', label: 'Resilience', icon: '💪', color: '#F59E0B' },
+    { key: 'motivation', label: 'Motivation', icon: '💪', color: '#F59E0B' },
   ];
 
   // Get the latest survey response for current wellbeing values
   const latestProgress = progress.length > 0 ? progress[progress.length - 1] : null;
 
   const wellbeingData = wellbeingMetrics.map(metric => {
-    const baselineKey = `q_${metric.key}` as keyof BaselineSurvey;
+    // Baseline uses direct column names (satisfaction, productivity, work_life_balance, motivation)
+    const baselineKey = metric.key as keyof BaselineSurvey;
     const baselineValue = baseline?.[baselineKey] as number | null;
 
     // Map wellbeing metric keys to survey response fields
     const progressKeyMap: Record<string, keyof SurveyResponse> = {
-      'work_satisfaction': 'wellbeing_satisfaction',
+      'satisfaction': 'wellbeing_satisfaction',
       'productivity': 'wellbeing_productivity',
       'work_life_balance': 'wellbeing_balance',
-      'resilience': 'wellbeing_resilience',
+      'motivation': 'wellbeing_resilience',
     };
 
     const progressKey = progressKeyMap[metric.key];

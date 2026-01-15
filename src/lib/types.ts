@@ -65,24 +65,24 @@ export interface BaselineSurvey {
   id: string;
   email: string;
   created_at: string;
-  // Wellbeing metrics
-  q_work_satisfaction: number | null;
-  q_productivity: number | null;
-  q_work_life_balance: number | null;
-  q_resilience: number | null;
-  // 12 Core competencies (baseline self-assessment)
-  q_adaptability_and_resilience: number | null;
-  q_building_relationships_at_work: number | null;
-  q_change_management: number | null;
-  q_delegation_and_accountability: number | null;
-  q_effective_communication: number | null;
-  q_effective_planning_and_execution: number | null;
-  q_emotional_intelligence: number | null;
-  q_giving_and_receiving_feedback: number | null;
-  q_persuasion_and_influence: number | null;
-  q_self_confidence_and_imposter_syndrome: number | null;
-  q_strategic_thinking: number | null;
-  q_time_management_and_productivity: number | null;
+  // Wellbeing metrics (actual column names)
+  satisfaction: number | null;
+  productivity: number | null;
+  work_life_balance: number | null;
+  motivation: number | null;
+  // 12 Core competencies (comp_ prefix)
+  comp_adaptability_and_resilience: number | null;
+  comp_building_relationships_at_work: number | null;
+  comp_change_management: number | null;
+  comp_delegation_and_accountability: number | null;
+  comp_effective_communication: number | null;
+  comp_effective_planning_and_execution: number | null;
+  comp_emotional_intelligence: number | null;
+  comp_giving_and_receiving_feedback: number | null;
+  comp_persuasion_and_influence: number | null;
+  comp_self_confidence_and_imposter_syndrome: number | null;
+  comp_strategic_thinking: number | null;
+  comp_time_management_and_productivity: number | null;
 }
 
 // Competency score from competency_scores table (current/end-of-program scores)
