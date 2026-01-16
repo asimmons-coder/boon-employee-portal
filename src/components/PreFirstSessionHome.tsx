@@ -85,9 +85,35 @@ export default function PreFirstSessionHome({
     return () => clearTimeout(timer);
   }, [preSessionNote, saveNote]);
 
-  // Note: The "What You Shared" section would display open-ended survey responses
-  // For now, we'll show this section only if baseline data exists (to show they completed the survey)
   const hasCompletedSurvey = baseline !== null;
+
+  // Get focus areas from baseline (lowest-scored competencies they want to improve)
+  const competencyLabels: Record<string, string> = {
+    comp_adaptability_and_resilience: 'Adaptability & Resilience',
+    comp_building_relationships_at_work: 'Building Relationships',
+    comp_change_management: 'Change Management',
+    comp_delegation_and_accountability: 'Delegation & Accountability',
+    comp_effective_communication: 'Effective Communication',
+    comp_effective_planning_and_execution: 'Planning & Execution',
+    comp_emotional_intelligence: 'Emotional Intelligence',
+    comp_giving_and_receiving_feedback: 'Giving & Receiving Feedback',
+    comp_persuasion_and_influence: 'Persuasion & Influence',
+    comp_self_confidence_and_imposter_syndrome: 'Self-Confidence',
+    comp_strategic_thinking: 'Strategic Thinking',
+    comp_time_management_and_productivity: 'Time Management',
+  };
+
+  // Get the 3 lowest-scored competencies as growth areas
+  const growthAreas = baseline ? Object.entries(competencyLabels)
+    .map(([key, label]) => ({
+      key,
+      label,
+      score: baseline[key as keyof typeof baseline] as number | null,
+    }))
+    .filter(c => c.score !== null && c.score > 0)
+    .sort((a, b) => (a.score || 0) - (b.score || 0))
+    .slice(0, 3)
+  : [];
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 md:space-y-12 animate-fade-in">
@@ -186,21 +212,64 @@ export default function PreFirstSessionHome({
         </div>
       </section>
 
-      {/* Welcome Survey Completed */}
+      {/* What You Shared - Reflect back their survey data */}
       {hasCompletedSurvey && (
         <section className="bg-gradient-to-br from-purple-50 to-boon-bg rounded-[2rem] p-8 border border-purple-100">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-              <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
             </div>
             <h2 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-              Welcome Survey Complete
+              What You Shared
             </h2>
           </div>
-          <p className="text-gray-600 leading-relaxed">
-            {coachFirstName} has your baseline assessment and will use it to personalize your coaching journey.
+
+          {/* Show coaching goals if they exist */}
+          {baseline?.coaching_goals && (
+            <div className="mb-6">
+              <p className="text-xs font-bold text-purple-600 uppercase tracking-widest mb-2">
+                What you're hoping to work on
+              </p>
+              <p className="text-gray-700 bg-white/60 p-4 rounded-xl border border-purple-100/50 italic leading-relaxed">
+                "{baseline.coaching_goals}"
+              </p>
+            </div>
+          )}
+
+          {/* Show growth areas derived from lowest competencies */}
+          {growthAreas.length > 0 && (
+            <div>
+              {!baseline?.coaching_goals && (
+                <p className="text-xs font-bold text-purple-600 uppercase tracking-widest mb-3">
+                  Areas you identified for growth
+                </p>
+              )}
+              {baseline?.coaching_goals && (
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+                  Focus areas from your assessment
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {growthAreas.map((area) => (
+                  <span
+                    key={area.key}
+                    className="px-3 py-1.5 text-sm font-medium bg-white/70 text-purple-700 rounded-full border border-purple-200/50"
+                  >
+                    {area.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Confirmation message */}
+          <p className="text-sm text-gray-500 mt-5 flex items-center gap-2">
+            <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {coachFirstName} will use this to personalize your first conversation
           </p>
         </section>
       )}
