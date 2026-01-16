@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/AuthContext';
 import { fetchSessions, fetchProgressData, fetchBaseline, fetchCompetencyScores, fetchProgramType, fetchActionItems, fetchReflection } from './lib/dataFetcher';
-import { getCoachingState, type CoachingStateData } from './lib/coachingState';
+import { getCoachingState, type CoachingStateData, type CoachingState } from './lib/coachingState';
 import type { View, Session, SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, ActionItem, ReflectionResponse } from './lib/types';
 
 // Pages
@@ -22,6 +22,7 @@ import Resources from './components/Resources';
 import CoachPage from './components/Coach';
 import Settings from './components/Settings';
 import ReflectionFlow from './components/ReflectionFlow';
+import AdminStatePreview from './components/AdminStatePreview';
 
 // Configuration - Replace with actual survey URL
 const WELCOME_SURVEY_URL = 'https://boon.typeform.com/welcome'; // TODO: Update with actual URL
@@ -38,6 +39,7 @@ function ProtectedApp() {
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [reflection, setReflection] = useState<ReflectionResponse | null>(null);
   const [showReflectionFlow, setShowReflectionFlow] = useState(false);
+  const [stateOverride, setStateOverride] = useState<CoachingState | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -121,15 +123,44 @@ function ProtectedApp() {
   }
 
   // Determine coaching state (single source of truth)
-  const coachingState: CoachingStateData = getCoachingState(employee, sessions, baseline, competencyScores, reflection);
+  const actualCoachingState: CoachingStateData = getCoachingState(employee, sessions, baseline, competencyScores, reflection);
+
+  // Apply state override if set (for admin preview)
+  const coachingState: CoachingStateData = stateOverride
+    ? {
+        ...actualCoachingState,
+        state: stateOverride,
+        // Update derived flags based on override
+        isPendingReflection: stateOverride === 'PENDING_REFLECTION',
+        hasReflection: stateOverride === 'COMPLETED_PROGRAM',
+      }
+    : actualCoachingState;
 
   // Route to appropriate page based on coaching state
   if (coachingState.state === 'NOT_SIGNED_UP') {
-    return <WelcomePage welcomeSurveyUrl={WELCOME_SURVEY_URL} />;
+    return (
+      <>
+        <WelcomePage welcomeSurveyUrl={WELCOME_SURVEY_URL} />
+        <AdminStatePreview
+          currentState={actualCoachingState.state}
+          overrideState={stateOverride}
+          onStateOverride={setStateOverride}
+        />
+      </>
+    );
   }
 
   if (coachingState.state === 'SIGNED_UP_NOT_MATCHED') {
-    return <MatchingPage />;
+    return (
+      <>
+        <MatchingPage />
+        <AdminStatePreview
+          currentState={actualCoachingState.state}
+          overrideState={stateOverride}
+          onStateOverride={setStateOverride}
+        />
+      </>
+    );
   }
 
   // Pre-first-session and beyond - render full dashboard with navigation
@@ -171,6 +202,12 @@ function ProtectedApp() {
           onClose={() => setShowReflectionFlow(false)}
         />
       )}
+      {/* Admin State Preview Panel */}
+      <AdminStatePreview
+        currentState={actualCoachingState.state}
+        overrideState={stateOverride}
+        onStateOverride={setStateOverride}
+      />
     </Layout>
   );
 }
