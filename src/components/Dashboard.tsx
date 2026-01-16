@@ -224,36 +224,35 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, co
           </div>
         </section>
 
-        {/* From Your Coach */}
-        <section className="space-y-5">
-          <h2 className="text-xl font-extrabold text-boon-text">
-            {isCompleted ? 'Final Words from Your Coach' : 'From your coach'}
-          </h2>
-          <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm relative">
-            <div className="absolute top-4 left-6 text-5xl text-boon-blue opacity-10 font-serif">"</div>
-            <p className="text-gray-600 leading-relaxed italic relative z-10 text-[15px]">
-              {lastSession?.summary || (isCompleted
-                ? "It's been a privilege to support your growth. Remember: the real work begins now. Trust yourself."
-                : "Looking forward to our next session. Keep reflecting on what's working well for you."
-              )}
-            </p>
-            <div className="mt-8 flex items-center gap-4 relative z-10">
-              <img
-                src={`https://picsum.photos/seed/${lastSession?.coach_name || 'coach'}/100/100`}
-                alt="Coach"
-                className="w-10 h-10 rounded-full object-cover ring-2 ring-boon-bg shadow-sm"
-              />
-              <div>
-                <p className="text-[13px] font-bold text-boon-text leading-none">
-                  {lastSession?.coach_name || 'Your Coach'}
-                </p>
-                <p className="text-[11px] text-gray-400 mt-1 uppercase tracking-widest font-bold">
-                  Executive Coach
-                </p>
+        {/* From Your Coach - only show for active users, or completed users with actual summary */}
+        {(!isCompleted || lastSession?.summary) && (
+          <section className="space-y-5">
+            <h2 className="text-xl font-extrabold text-boon-text">
+              {isCompleted ? 'Final Words from Your Coach' : 'From your coach'}
+            </h2>
+            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm relative">
+              <div className="absolute top-4 left-6 text-5xl text-boon-blue opacity-10 font-serif">"</div>
+              <p className="text-gray-600 leading-relaxed italic relative z-10 text-[15px]">
+                {lastSession?.summary || "Looking forward to our next session. Keep reflecting on what's working well for you."}
+              </p>
+              <div className="mt-8 flex items-center gap-4 relative z-10">
+                <img
+                  src={`https://picsum.photos/seed/${lastSession?.coach_name || 'coach'}/100/100`}
+                  alt="Coach"
+                  className="w-10 h-10 rounded-full object-cover ring-2 ring-boon-bg shadow-sm"
+                />
+                <div>
+                  <p className="text-[13px] font-bold text-boon-text leading-none">
+                    {lastSession?.coach_name || 'Your Coach'}
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-1 uppercase tracking-widest font-bold">
+                    Executive Coach
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </div>
 
       {/* Action Items for active users, Key Takeaways for completed */}
@@ -332,6 +331,21 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, co
               </div>
             </section>
           </div>
+
+          {/* Soft SCALE Prompt - only if SCALE available (checking profile.program or similar) */}
+          {profile?.program !== 'SCALE' && (
+            <section className="text-center py-4">
+              <p className="text-gray-400 text-sm">
+                Some people continue with ongoing 1:1 coaching.{' '}
+                <a
+                  href="mailto:hello@booncoaching.com?subject=Interest%20in%20SCALE%20Program"
+                  className="text-gray-500 hover:text-boon-blue underline underline-offset-2"
+                >
+                  Learn about SCALE →
+                </a>
+              </p>
+            </section>
+          )}
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-8 md:gap-10 pb-8">

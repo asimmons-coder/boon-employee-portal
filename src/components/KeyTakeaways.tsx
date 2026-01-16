@@ -128,7 +128,7 @@ export default function KeyTakeaways({ actionItems, sessions }: KeyTakeawaysProp
       </div>
 
       <p className="text-sm text-gray-500 mb-6">
-        Lasting principles from your {completedActions.length} completed action items
+        Lasting principles from your coaching journey
       </p>
 
       <div className="space-y-4">
