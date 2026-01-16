@@ -21,6 +21,16 @@ export default function AuthCallback() {
         const urlParams = new URLSearchParams(window.location.search);
         const errorDesc = urlParams.get('error_description');
 
+        // Check for dev mode login
+        if (urlParams.get('dev') === 'true') {
+          const devEmail = localStorage.getItem('boon_dev_email');
+          if (devEmail) {
+            // Dev mode: redirect directly to home
+            navigate('/', { replace: true });
+            return;
+          }
+        }
+
         if (errorDesc) {
           setError(errorDesc);
           return;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { auth } from '../lib/supabase';
 
 export default function LoginPage() {
@@ -6,6 +6,44 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [devMode, setDevMode] = useState(false);
+
+  // Check for dev mode via URL param
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('dev') === 'true') {
+      setDevMode(true);
+    }
+  }, []);
+
+  async function handleDevLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // Check if employee exists
+    const exists = await auth.checkEmployeeExists(trimmedEmail);
+    if (!exists) {
+      setError("We couldn't find an account with that email.");
+      setLoading(false);
+      return;
+    }
+
+    // For dev mode, create a mock session by signing in anonymously
+    // and then fetching the employee data directly
+    try {
+      // Store the email for the AuthContext to use
+      localStorage.setItem('boon_dev_email', trimmedEmail);
+      // Redirect to callback which will handle the dev login
+      window.location.href = '/auth/callback?dev=true';
+    } catch (err) {
+      console.error('Dev login error:', err);
+      setError('Dev login failed');
+      setLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -78,7 +116,13 @@ export default function LoginPage() {
           <p className="text-gray-500">Sign in with your work email to access your coaching portal.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
+        <form onSubmit={devMode ? handleDevLogin : handleSubmit} className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
+          {devMode && (
+            <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-amber-700 text-xs font-bold uppercase tracking-widest">Dev Mode</p>
+              <p className="text-amber-600 text-xs mt-1">Bypassing email verification</p>
+            </div>
+          )}
           <div className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
