@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { SCENARIOS, CATEGORY_INFO, type PracticeScenario, type ScenarioCategory } from '../data/scenarios';
-import type { Session } from '../lib/types';
+import type { Session, CompetencyScore } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import { isAlumniState } from '../lib/coachingState';
 import PracticeModal from './PracticeModal';
@@ -12,9 +12,10 @@ interface PracticeProps {
   coachName: string;
   userEmail: string;
   coachingState: CoachingStateData;
+  competencyScores?: CompetencyScore[];
 }
 
-export default function Practice({ sessions, coachName, userEmail, coachingState }: PracticeProps) {
+export default function Practice({ sessions, coachName, userEmail, coachingState, competencyScores = [] }: PracticeProps) {
   const isCompleted = isAlumniState(coachingState.state);
   const [selectedCategory, setSelectedCategory] = useState<ScenarioCategory | 'all'>('all');
   const [selectedScenario, setSelectedScenario] = useState<PracticeScenario | null>(null);
@@ -80,31 +81,75 @@ export default function Practice({ sessions, coachName, userEmail, coachingState
   // If no themes detected, show all
   const hasAnyTheme = userThemes.leadership || userThemes.communication || userThemes.wellbeing;
 
+  // Identify low-scoring competencies (score <= 3 or label is "Applying")
+  const lowScoringCategories = useMemo(() => {
+    const categoryMap: Record<string, ScenarioCategory> = {
+      'effective_communication': 'communication',
+      'giving_and_receiving_feedback': 'communication',
+      'persuasion_and_influence': 'communication',
+      'building_relationships_at_work': 'communication',
+      'emotional_intelligence': 'wellbeing',
+      'adaptability_and_resilience': 'wellbeing',
+      'self_confidence_and_imposter_syndrome': 'wellbeing',
+      'leadership_management_skills': 'leadership',
+      'people_management': 'leadership',
+      'delegation_and_accountability': 'leadership',
+      'change_management': 'leadership',
+      'strategic_thinking': 'leadership',
+      'effective_planning_and_execution': 'leadership',
+      'time_management_and_productivity': 'leadership',
+    };
+
+    const lowCategories = new Set<ScenarioCategory>();
+
+    competencyScores.forEach(score => {
+      const key = score.competency_name.toLowerCase().replace(/ /g, '_').replace(/&/g, 'and');
+      if (score.score <= 3 || score.score_label?.toLowerCase() === 'applying') {
+        const category = categoryMap[key];
+        if (category) {
+          lowCategories.add(category);
+        }
+      }
+    });
+
+    return lowCategories;
+  }, [competencyScores]);
+
   const filteredScenarios = useMemo(() => {
-    let scenarios = SCENARIOS;
+    let scenarios = [...SCENARIOS]; // Create a copy to avoid mutating original
 
     // Filter by category if selected
     if (selectedCategory !== 'all') {
       scenarios = scenarios.filter(s => s.category === selectedCategory);
     }
 
-    // If user has themes, prioritize those (but still show all)
-    if (hasAnyTheme) {
-      scenarios = scenarios.sort((a, b) => {
-        const aMatch = (a.category === 'leadership' && userThemes.leadership) ||
-                       (a.category === 'communication' && userThemes.communication) ||
-                       (a.category === 'wellbeing' && userThemes.wellbeing);
-        const bMatch = (b.category === 'leadership' && userThemes.leadership) ||
-                       (b.category === 'communication' && userThemes.communication) ||
-                       (b.category === 'wellbeing' && userThemes.wellbeing);
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return 0;
-      });
-    }
+    // Prioritize based on: 1) user themes, 2) low-scoring competencies, 3) all others
+    scenarios = scenarios.sort((a, b) => {
+      // First priority: matches coaching themes
+      const aThemeMatch = (a.category === 'leadership' && userThemes.leadership) ||
+                         (a.category === 'communication' && userThemes.communication) ||
+                         (a.category === 'wellbeing' && userThemes.wellbeing);
+      const bThemeMatch = (b.category === 'leadership' && userThemes.leadership) ||
+                         (b.category === 'communication' && userThemes.communication) ||
+                         (b.category === 'wellbeing' && userThemes.wellbeing);
+
+      // Second priority: matches low-scoring competencies
+      const aCompMatch = lowScoringCategories.has(a.category);
+      const bCompMatch = lowScoringCategories.has(b.category);
+
+      // Theme match wins over competency match
+      if (aThemeMatch && !bThemeMatch) return -1;
+      if (!aThemeMatch && bThemeMatch) return 1;
+
+      // If both have same theme match, check competency match
+      if (aCompMatch && !bCompMatch) return -1;
+      if (!aCompMatch && bCompMatch) return 1;
+
+      return 0;
+    });
 
     return scenarios;
-  }, [selectedCategory, userThemes, hasAnyTheme]);
+  }, [selectedCategory, userThemes, lowScoringCategories]);
 
   const handleCustomSubmit = () => {
     if (!customSituation.trim()) return;

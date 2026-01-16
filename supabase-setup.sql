@@ -228,6 +228,44 @@ WITH CHECK (
 );
 
 
+-- 10b. Create session_prep table for storing session intentions
+-- ============================================
+-- This is the KEY behavior - employees write what they want to talk about
+
+CREATE TABLE IF NOT EXISTS public.session_prep (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  session_id BIGINT NOT NULL,
+  intention TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(email, session_id)
+);
+
+-- Enable RLS on session_prep
+ALTER TABLE session_prep ENABLE ROW LEVEL SECURITY;
+
+-- Employees can manage their own session prep
+DROP POLICY IF EXISTS "employees_manage_own_session_prep" ON session_prep;
+
+CREATE POLICY "employees_manage_own_session_prep"
+ON session_prep
+FOR ALL
+USING (
+  lower(email) = (
+    SELECT lower(company_email)
+    FROM employee_manager
+    WHERE auth_user_id = auth.uid()
+  )
+  OR
+  lower(email) = lower(auth.jwt() ->> 'email')
+);
+
+-- Create index for efficient lookups
+CREATE INDEX IF NOT EXISTS idx_session_prep_email_session
+ON session_prep(lower(email), session_id);
+
+
 -- ============================================
 -- VERIFICATION QUERIES
 -- Run these to verify the setup worked

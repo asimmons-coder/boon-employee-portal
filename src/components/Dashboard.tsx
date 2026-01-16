@@ -1,20 +1,28 @@
-import type { Employee, Session, ActionItem, BaselineSurvey } from '../lib/types';
+import { useState } from 'react';
+import type { Employee, Session, ActionItem, BaselineSurvey, CompetencyScore, View } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
-import { isAlumniState, getStateLabel } from '../lib/coachingState';
+import { isAlumniState } from '../lib/coachingState';
 import ActionItems from './ActionItems';
 import SessionPrep from './SessionPrep';
-import IntegrationModule from './IntegrationModule';
+import CoachProfile from './CoachProfile';
+import GrowthStory from './GrowthStory';
+import KeyTakeaways from './KeyTakeaways';
+import CompletionAcknowledgment from './CompletionAcknowledgment';
 
 interface DashboardProps {
   profile: Employee | null;
   sessions: Session[];
   actionItems: ActionItem[];
   baseline: BaselineSurvey | null;
+  competencyScores: CompetencyScore[];
   onActionUpdate: () => void;
   coachingState: CoachingStateData;
+  userEmail: string;
+  onNavigate?: (view: View) => void;
 }
 
-export default function Dashboard({ profile, sessions, actionItems, baseline: _baseline, onActionUpdate, coachingState }: DashboardProps) {
+export default function Dashboard({ profile, sessions, actionItems, baseline, competencyScores, onActionUpdate, coachingState, userEmail, onNavigate }: DashboardProps) {
+  const [showCompletionAck, setShowCompletionAck] = useState(true);
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
@@ -42,15 +50,13 @@ export default function Dashboard({ profile, sessions, actionItems, baseline: _b
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pt-2">
         <div className="text-center sm:text-left">
           <h1 className="text-3xl md:text-5xl font-extrabold text-boon-text tracking-tight">
-            {isCompleted ? `Congratulations, ${profile?.first_name || 'Graduate'}!` : `Hi ${profile?.first_name || 'there'}`}
+            Hi {profile?.first_name || 'there'}
           </h1>
           <p className="text-gray-500 mt-2 text-lg font-medium">
-            {isCompleted ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
-                {getStateLabel(coachingState.state)}
-              </span>
-            ) : 'Your personal coaching space'}
+            {isCompleted
+              ? 'Your leadership journey with Boon'
+              : 'Your personal coaching space'
+            }
           </p>
         </div>
         {!isCompleted && (
@@ -69,63 +75,102 @@ export default function Dashboard({ profile, sessions, actionItems, baseline: _b
         )}
       </header>
 
-      {/* Stats Summary */}
+      {/* Program Summary */}
       <section className="bg-white rounded-[2.5rem] p-7 md:p-10 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] border border-gray-100">
         <h2 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-8">
-          {isCompleted ? 'Your Coaching Journey' : 'Your Coaching at a Glance'}
+          {isCompleted ? 'Program Summary' : 'Your Coaching at a Glance'}
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-          <div>
-            <p className="text-2xl font-black text-boon-blue tracking-tighter truncate">
-              {lastSession?.coach_name?.split(' ')[0] || '—'}
-            </p>
-            <p className="text-[11px] font-bold text-boon-text uppercase tracking-wide mt-1">Coach</p>
+          {/* Coach */}
+          <div className="flex items-center gap-3">
+            <img
+              src={`https://picsum.photos/seed/${lastSession?.coach_name || 'coach'}/100/100`}
+              alt="Coach"
+              className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100"
+            />
+            <div>
+              <p className="text-lg font-black text-boon-text tracking-tight truncate">
+                {lastSession?.coach_name?.split(' ')[0] || '—'}
+              </p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest">Coach</p>
+            </div>
           </div>
+
           {isCompleted ? (
-            <div>
-              <p className="text-2xl font-black text-green-600 tracking-tighter">
-                {completedSessions.length}
-              </p>
-              <p className="text-[11px] font-bold text-boon-text uppercase tracking-wide mt-1">Sessions Complete</p>
-            </div>
+            <>
+              {/* Program */}
+              <div>
+                <p className="text-lg font-black text-boon-blue tracking-tight">GROW</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Program</p>
+              </div>
+              {/* Sessions */}
+              <div>
+                <p className="text-lg font-black text-green-600 tracking-tight">
+                  {completedSessions.length}
+                </p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Total Sessions</p>
+              </div>
+              {/* Duration */}
+              <div>
+                <p className="text-lg font-black text-boon-text tracking-tight">
+                  {(() => {
+                    const first = completedSessions[completedSessions.length - 1];
+                    const last = completedSessions[0];
+                    if (!first || !last) return '—';
+                    const startDate = new Date(first.session_date);
+                    const endDate = new Date(last.session_date);
+                    const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' });
+                    const endMonth = endDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                    return `${startMonth} – ${endMonth}`;
+                  })()}
+                </p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Duration</p>
+              </div>
+            </>
           ) : (
-            <div>
-              <p className="text-2xl font-black text-boon-blue tracking-tighter">
-                {upcomingSession
-                  ? new Date(upcomingSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                  : '—'}
-              </p>
-              <p className="text-[11px] font-bold text-boon-text uppercase tracking-wide mt-1">Next session</p>
-            </div>
+            <>
+              {/* Next Session */}
+              <div>
+                <p className="text-lg font-black text-boon-blue tracking-tight">
+                  {upcomingSession
+                    ? new Date(upcomingSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    : '—'}
+                </p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Next session</p>
+              </div>
+              {/* Last Session */}
+              <div className="hidden sm:block">
+                <p className="text-lg font-bold text-boon-text">
+                  {lastSession
+                    ? new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    : '—'}
+                </p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Last session</p>
+              </div>
+              {/* Progress */}
+              <div className="hidden sm:block text-right">
+                <p className="text-lg font-bold text-gray-500">{coachingState.programProgress}%</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Progress</p>
+              </div>
+            </>
           )}
-          <div className="hidden sm:block">
-            <p className="text-lg font-bold text-boon-text">
-              {lastSession
-                ? new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : '—'}
-            </p>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest">
-              {isCompleted ? 'Final session' : 'Last session'}
-            </p>
-          </div>
-          <div className="hidden sm:block text-right">
-            <p className="text-lg font-bold text-gray-400">
-              {isCompleted ? (
-                <span className="text-green-600">100%</span>
-              ) : (
-                `${coachingState.programProgress}%`
-              )}
-            </p>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest">Progress</p>
-          </div>
         </div>
       </section>
 
-      {/* Integration Module - Primary for COMPLETED_PROGRAM */}
+      {/* Growth Story - for completed users */}
       {isCompleted && (
-        <IntegrationModule
-          coachName={lastSession?.coach_name || 'Your Coach'}
-          sessions={completedSessions}
+        <GrowthStory
+          sessions={sessions}
+          competencyScores={competencyScores}
+          baseline={baseline}
+        />
+      )}
+
+      {/* Your Coach Profile - for active users */}
+      {!isCompleted && lastSession && (
+        <CoachProfile
+          sessions={sessions}
+          coachName={lastSession.coach_name}
         />
       )}
 
@@ -211,95 +256,138 @@ export default function Dashboard({ profile, sessions, actionItems, baseline: _b
         </section>
       </div>
 
-      {/* Action Items - only show if not completed or has pending items */}
-      {(!isCompleted || actionItems.some(a => a.status === 'pending')) && (
+      {/* Action Items for active users, Key Takeaways for completed */}
+      {isCompleted ? (
+        <KeyTakeaways actionItems={actionItems} sessions={sessions} />
+      ) : (
         <ActionItems items={actionItems} onUpdate={onActionUpdate} />
       )}
 
-      {/* Session Prep - only for active program */}
+      {/* Session Prep - PROMINENT - key behavior for active program */}
       {!isCompleted && (
         <SessionPrep
           sessions={sessions}
           actionItems={actionItems}
           coachName={lastSession?.coach_name || 'Your Coach'}
+          userEmail={userEmail}
         />
       )}
 
       {/* What's Next - different for completed vs active */}
-      <div className="grid md:grid-cols-2 gap-8 md:gap-10 pb-8">
-        <section className="space-y-5">
-          <h2 className="text-xl font-extrabold text-boon-text">
-            {isCompleted ? 'Continue Growing' : "What's Next"}
-          </h2>
-          <div className={`p-8 rounded-[2rem] border shadow-sm flex flex-col justify-between min-h-[160px] ${
-            isCompleted
-              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-100'
-              : 'bg-boon-lightBlue/20 border-boon-lightBlue/30'
-          }`}>
-            <p className="text-boon-text font-bold text-lg leading-snug">
-              {isCompleted ? (
-                <>
-                  Your coaching journey continues. Use the{' '}
-                  <span className="text-green-600">Practice Space</span>{' '}
-                  when it matters most.
-                </>
-              ) : upcomingSession ? (
-                <>
-                  Next session: {' '}
-                  <span className="text-boon-blue underline decoration-2 underline-offset-4">
-                    {new Date(upcomingSession.session_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                  </span>
-                </>
-              ) : "Ready for your next step?"}
+      {isCompleted ? (
+        <div className="space-y-8 pb-8">
+          {/* Soft Practice Space Prompt */}
+          <section className="bg-gradient-to-br from-boon-bg via-white to-purple-50/30 rounded-[2rem] p-8 border border-gray-100">
+            <p className="text-gray-500 text-sm mb-4">
+              When hard moments come up, your practice space is still here.
             </p>
-            <p className="text-sm text-gray-600 mt-4 italic font-medium">
-              {isCompleted
-                ? '"The best leaders never stop learning. Each challenge is an opportunity to apply what you\'ve learned."'
-                : '"Think about one situation this week where you felt your energy shift."'
-              }
-            </p>
-          </div>
-        </section>
+            <button
+              onClick={() => onNavigate?.('practice')}
+              className="inline-flex items-center gap-2 text-boon-blue font-bold hover:underline"
+            >
+              Practice a scenario
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </section>
 
-        <section className="space-y-5">
-          <h2 className="text-xl font-extrabold text-boon-text">
-            {isCompleted ? 'Your Journey' : 'Latest Summary'}
-          </h2>
-          <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-            {isCompleted ? (
+          {/* Your Leadership Profile CTA */}
+          <div className="grid md:grid-cols-2 gap-8">
+            <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
               <div className="flex flex-col h-full justify-between">
                 <div>
-                  <p className="text-[11px] font-black text-green-600 uppercase tracking-widest mb-1">
-                    {completedSessions.length} Sessions Completed
+                  <p className="text-[11px] font-black text-green-600 uppercase tracking-widest mb-2">
+                    Leadership Profile
                   </p>
                   <p className="text-gray-600 text-sm leading-relaxed">
-                    You've built a strong foundation. Your leadership profile reflects your growth across key competencies.
+                    See your complete competency profile and how you grew through your program.
                   </p>
                 </div>
-                <button className="mt-6 text-sm font-black text-boon-blue hover:underline uppercase tracking-widest text-left">
-                  View Leadership Profile →
+                <button
+                  onClick={() => onNavigate?.('progress')}
+                  className="mt-6 text-sm font-black text-boon-blue hover:underline uppercase tracking-widest text-left"
+                >
+                  View Profile →
                 </button>
               </div>
-            ) : lastSession ? (
+            </section>
+
+            <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
               <div className="flex flex-col h-full justify-between">
                 <div>
-                  <p className="text-[11px] font-black text-boon-blue uppercase tracking-widest mb-1">
-                    {new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                  <p className="text-[11px] font-black text-purple-600 uppercase tracking-widest mb-2">
+                    Session Archive
                   </p>
-                  <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
-                    {lastSession.summary || 'Session summary will appear here after your coach adds notes.'}
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    Revisit your complete coaching history and session notes.
                   </p>
                 </div>
-                <button className="mt-6 text-sm font-black text-boon-blue hover:underline uppercase tracking-widest text-left">
-                  Full Summary →
+                <button
+                  onClick={() => onNavigate?.('sessions')}
+                  className="mt-6 text-sm font-black text-boon-blue hover:underline uppercase tracking-widest text-left"
+                >
+                  View Sessions →
                 </button>
               </div>
-            ) : (
-              <p className="text-gray-400 italic text-sm">No summaries yet.</p>
-            )}
+            </section>
           </div>
-        </section>
-      </div>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-8 md:gap-10 pb-8">
+          <section className="space-y-5">
+            <h2 className="text-xl font-extrabold text-boon-text">What's Next</h2>
+            <div className="p-8 rounded-[2rem] border shadow-sm flex flex-col justify-between min-h-[160px] bg-boon-lightBlue/20 border-boon-lightBlue/30">
+              <p className="text-boon-text font-bold text-lg leading-snug">
+                {upcomingSession ? (
+                  <>
+                    Next session: {' '}
+                    <span className="text-boon-blue underline decoration-2 underline-offset-4">
+                      {new Date(upcomingSession.session_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                    </span>
+                  </>
+                ) : "Ready for your next step?"}
+              </p>
+              <p className="text-sm text-gray-600 mt-4 italic font-medium">
+                "Think about one situation this week where you felt your energy shift."
+              </p>
+            </div>
+          </section>
+
+          <section className="space-y-5">
+            <h2 className="text-xl font-extrabold text-boon-text">Latest Summary</h2>
+            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+              {lastSession ? (
+                <div className="flex flex-col h-full justify-between">
+                  <div>
+                    <p className="text-[11px] font-black text-boon-blue uppercase tracking-widest mb-1">
+                      {new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                    </p>
+                    <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
+                      {lastSession.summary || 'Session summary will appear here after your coach adds notes.'}
+                    </p>
+                  </div>
+                  <button className="mt-6 text-sm font-black text-boon-blue hover:underline uppercase tracking-widest text-left">
+                    Full Summary →
+                  </button>
+                </div>
+              ) : (
+                <p className="text-gray-400 italic text-sm">No summaries yet.</p>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Completion Acknowledgment Modal - one-time for completed users */}
+      {isCompleted && showCompletionAck && lastSession && (
+        <CompletionAcknowledgment
+          sessions={sessions}
+          coachName={lastSession.coach_name}
+          userEmail={userEmail}
+          onDismiss={() => setShowCompletionAck(false)}
+        />
+      )}
     </div>
   );
 }

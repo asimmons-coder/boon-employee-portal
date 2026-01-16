@@ -128,14 +128,14 @@ function ProtectedApp() {
   const renderView = () => {
     switch (view) {
       case 'dashboard':
-        return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} onActionUpdate={reloadActionItems} coachingState={coachingState} />;
+        return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} competencyScores={competencyScores} onActionUpdate={reloadActionItems} coachingState={coachingState} userEmail={employee?.company_email || ''} onNavigate={setView} />;
       case 'sessions':
         return <SessionsPage sessions={sessions} coachingState={coachingState} />;
       case 'progress':
         return <ProgressPage progress={progress} baseline={baseline} competencyScores={competencyScores} sessions={sessions} actionItems={actionItems} programType={programType} coachingState={coachingState} />;
       case 'practice':
         const practiceCoachName = sessions.length > 0 ? sessions[0].coach_name : "Your Coach";
-        return <Practice sessions={sessions} coachName={practiceCoachName} userEmail={employee?.company_email || ''} coachingState={coachingState} />;
+        return <Practice sessions={sessions} coachName={practiceCoachName} userEmail={employee?.company_email || ''} coachingState={coachingState} competencyScores={competencyScores} />;
       case 'resources':
         return <Resources />;
       case 'coach':
@@ -144,7 +144,7 @@ function ProtectedApp() {
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} onActionUpdate={reloadActionItems} coachingState={coachingState} />;
+        return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} competencyScores={competencyScores} onActionUpdate={reloadActionItems} coachingState={coachingState} userEmail={employee?.company_email || ''} onNavigate={setView} />;
     }
   };
 
