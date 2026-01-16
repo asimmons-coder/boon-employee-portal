@@ -148,7 +148,7 @@ export default function CheckpointFlow({
               </div>
               <p className="text-gray-500 text-sm mt-1">
                 {step === 'competencies' && (isFirstCheckpoint ? 'Establish your baseline' : 'How are you showing up today?')}
-                {step === 'reflection' && "What's shifted for you?"}
+                {step === 'reflection' && "Reflect on your progress"}
                 {step === 'focus' && 'What do you want to focus on next?'}
                 {step === 'nps' && 'One quick question'}
                 {step === 'submitting' && 'Saving your check-in...'}
@@ -229,7 +229,7 @@ export default function CheckpointFlow({
                 <label className="block text-lg font-bold text-boon-text mb-3">
                   {isFirstCheckpoint
                     ? 'What are you hoping to get from coaching?'
-                    : "What's shifted since your last check-in?"
+                    : "What skill has improved most since your last check-in?"
                   }
                 </label>
                 <textarea
@@ -237,7 +237,7 @@ export default function CheckpointFlow({
                   onChange={(e) => setReflectionText(e.target.value)}
                   placeholder={isFirstCheckpoint
                     ? 'Goals, challenges, areas you want to develop...'
-                    : 'New behaviors, mindsets, or ways of showing up...'
+                    : 'E.g., delegation, giving feedback, difficult conversations...'
                   }
                   className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-boon-blue outline-none resize-none h-40"
                 />

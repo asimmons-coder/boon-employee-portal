@@ -3,7 +3,6 @@ import type { Employee, Session, ActionItem, BaselineSurvey, CompetencyScore, Vi
 import type { CoachingStateData } from '../lib/coachingState';
 import { isAlumniState, isPreFirstSession, isPendingReflectionState } from '../lib/coachingState';
 import ActionItems from './ActionItems';
-import SessionPrep from './SessionPrep';
 import CoachProfile from './CoachProfile';
 import GrowthStory from './GrowthStory';
 import KeyTakeaways from './KeyTakeaways';
@@ -11,6 +10,7 @@ import CompletionAcknowledgment from './CompletionAcknowledgment';
 import PreFirstSessionHome from './PreFirstSessionHome';
 import PendingReflectionHome from './PendingReflectionHome';
 import ScaleHome from './ScaleHome';
+import ActiveGrowHome from './ActiveGrowHome';
 
 interface DashboardProps {
   profile: Employee | null;
@@ -79,6 +79,23 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, co
         userEmail={userEmail}
         onNavigate={onNavigate}
         onStartCheckpoint={onStartCheckpoint}
+      />
+    );
+  }
+
+  // Active GROW/EXEC users: Show ActiveGrowHome with sub-states
+  // (Session Scheduled vs No Session Scheduled)
+  if (!isCompleted && coachingState.isGrowOrExec) {
+    return (
+      <ActiveGrowHome
+        profile={profile}
+        sessions={sessions}
+        actionItems={actionItems}
+        baseline={baseline}
+        coachingState={coachingState}
+        onActionUpdate={onActionUpdate}
+        userEmail={userEmail}
+        onNavigate={onNavigate}
       />
     );
   }
@@ -314,16 +331,6 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, co
         <KeyTakeaways actionItems={actionItems} sessions={sessions} />
       ) : (
         <ActionItems items={actionItems} onUpdate={onActionUpdate} />
-      )}
-
-      {/* Session Prep - PROMINENT - key behavior for active program */}
-      {!isCompleted && (
-        <SessionPrep
-          sessions={sessions}
-          actionItems={actionItems}
-          coachName={lastSession?.coach_name || 'Your Coach'}
-          userEmail={userEmail}
-        />
       )}
 
       {/* What's Next - different for completed vs active */}

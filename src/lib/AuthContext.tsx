@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { auth } from './supabase';
+import { auth, supabase } from './supabase';
 import type { Employee } from './types';
 
 interface AuthContextType {
@@ -20,13 +20,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for dev mode bypass
+    const devEmail = localStorage.getItem('boon_dev_email');
+
     // Get initial session
-    auth.getSession().then(({ session }) => {
+    auth.getSession().then(async ({ session }) => {
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user?.email) {
         fetchEmployeeProfile(session.user.email, session.access_token);
+      } else if (devEmail) {
+        // Dev mode: fetch employee directly without auth
+        await fetchEmployeeProfileDevMode(devEmail);
       } else {
         setLoading(false);
       }
@@ -89,8 +95,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Dev mode: fetch employee directly using anon key (bypasses RLS)
+  async function fetchEmployeeProfileDevMode(email: string) {
+    try {
+      const { data, error } = await supabase
+        .from('employee_manager')
+        .select('*')
+        .ilike('company_email', email)
+        .limit(1);
+
+      if (error) {
+        console.error('Dev mode fetch error:', error);
+        setEmployee(null);
+      } else if (data && data.length > 0) {
+        setEmployee(data[0] as Employee);
+        // Create a mock session for dev mode
+        setSession({ user: { email } } as any);
+      } else {
+        setEmployee(null);
+      }
+    } catch (err) {
+      console.error('Error in fetchEmployeeProfileDevMode:', err);
+      setEmployee(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function signOut() {
     await auth.signOut();
+    // Clear dev mode
+    localStorage.removeItem('boon_dev_email');
     setUser(null);
     setSession(null);
     setEmployee(null);

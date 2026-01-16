@@ -65,6 +65,8 @@ export interface BaselineSurvey {
   id: string;
   email: string;
   created_at: string;
+  // Open-ended goals from welcome survey (what they want to work on)
+  coaching_goals: string | null;
   // Wellbeing metrics (actual column names)
   satisfaction: number | null;
   productivity: number | null;

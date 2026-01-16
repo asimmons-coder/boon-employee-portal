@@ -1,13 +1,22 @@
 import { useState } from 'react';
-import type { ActionItem } from '../lib/types';
+import type { ActionItem, View } from '../lib/types';
 import { updateActionItemStatus } from '../lib/dataFetcher';
 
 interface ActionItemsProps {
   items: ActionItem[];
   onUpdate: () => void;
+  onNavigate?: (view: View) => void;
 }
 
-export default function ActionItems({ items, onUpdate }: ActionItemsProps) {
+// Keywords that suggest an action item might benefit from practice
+const PRACTICE_KEYWORDS = ['feedback', 'conversation', 'discuss', 'tell', 'ask', 'communicate', 'delegation', 'delegate', 'difficult'];
+
+function hasPracticeRelevance(text: string): boolean {
+  const lower = text.toLowerCase();
+  return PRACTICE_KEYWORDS.some(keyword => lower.includes(keyword));
+}
+
+export default function ActionItems({ items, onUpdate, onNavigate }: ActionItemsProps) {
   const [updating, setUpdating] = useState<string | null>(null);
 
   const pendingItems = items.filter(item => item.status === 'pending');
@@ -90,12 +99,21 @@ export default function ActionItems({ items, onUpdate }: ActionItemsProps) {
                   </button>
                   <div className="flex-1 min-w-0">
                     <p className="text-boon-text font-medium leading-relaxed">{item.action_text}</p>
-                    <div className="flex items-center gap-3 mt-2">
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
                       <span className="text-xs text-gray-400">From {item.coach_name.split(' ')[0]}</span>
                       {due && (
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${due.className}`}>
                           {due.text}
                         </span>
+                      )}
+                      {/* Contextual bridge to Practice */}
+                      {onNavigate && hasPracticeRelevance(item.action_text) && (
+                        <button
+                          onClick={() => onNavigate('practice')}
+                          className="text-xs text-purple-600 font-medium hover:underline"
+                        >
+                          Practice this →
+                        </button>
                       )}
                     </div>
                   </div>

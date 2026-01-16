@@ -224,12 +224,12 @@ export default function ReflectionFlow({
 
               <div>
                 <label className="block text-sm font-bold text-boon-text mb-2">
-                  What shifted for you during this program?
+                  What skill improved most for you during this program?
                 </label>
                 <textarea
                   value={qualitativeShift}
                   onChange={(e) => setQualitativeShift(e.target.value)}
-                  placeholder="A behavior, mindset, or way of showing up..."
+                  placeholder="E.g., delegation, giving feedback, managing up, communication..."
                   className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-boon-blue outline-none resize-none h-32"
                 />
                 <p className="text-xs text-gray-400 mt-1">Optional</p>

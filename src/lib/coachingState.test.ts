@@ -54,6 +54,7 @@ const createBaseline = (overrides: Partial<BaselineSurvey> = {}): BaselineSurvey
   id: 'baseline-1',
   email: 'test@example.com',
   created_at: '2024-01-15T00:00:00Z',
+  coaching_goals: null,
   satisfaction: 4,
   productivity: 3,
   work_life_balance: 3,
