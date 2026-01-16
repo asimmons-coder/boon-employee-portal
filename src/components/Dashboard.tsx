@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import type { Employee, Session, ActionItem, BaselineSurvey, CompetencyScore, View } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
-import { isAlumniState } from '../lib/coachingState';
+import { isAlumniState, isPreFirstSession } from '../lib/coachingState';
 import ActionItems from './ActionItems';
 import SessionPrep from './SessionPrep';
 import CoachProfile from './CoachProfile';
 import GrowthStory from './GrowthStory';
 import KeyTakeaways from './KeyTakeaways';
 import CompletionAcknowledgment from './CompletionAcknowledgment';
+import PreFirstSessionHome from './PreFirstSessionHome';
 
 interface DashboardProps {
   profile: Employee | null;
@@ -28,6 +29,20 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, co
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
 
   const isCompleted = isAlumniState(coachingState.state);
+  const isPreFirst = isPreFirstSession(coachingState.state);
+
+  // Pre-first-session: Show dedicated anticipation-focused Home
+  if (isPreFirst) {
+    return (
+      <PreFirstSessionHome
+        profile={profile}
+        sessions={sessions}
+        baseline={baseline}
+        userEmail={userEmail}
+        onNavigate={onNavigate}
+      />
+    );
+  }
 
   const themes = [
     { key: 'leadership_management_skills', label: 'Leading with empathy and clarity' },

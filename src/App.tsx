@@ -11,7 +11,6 @@ import AuthCallback from './pages/AuthCallback';
 import NoEmployeeFound from './pages/NoEmployeeFound';
 import WelcomePage from './pages/WelcomePage';
 import MatchingPage from './pages/MatchingPage';
-import GettingStartedPage from './pages/GettingStartedPage';
 
 // Components
 import Layout from './components/Layout';
@@ -120,11 +119,8 @@ function ProtectedApp() {
     return <MatchingPage />;
   }
 
-  if (coachingState.state === 'MATCHED_PRE_FIRST_SESSION' && !coachingState.hasCompletedSessions) {
-    return <GettingStartedPage sessions={sessions} />;
-  }
-
-  // Active or Completed coaching - render full dashboard with navigation
+  // Pre-first-session and beyond - render full dashboard with navigation
+  // The individual components handle the pre-first-session state appropriately
   const renderView = () => {
     switch (view) {
       case 'dashboard':

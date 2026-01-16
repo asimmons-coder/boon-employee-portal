@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, Session, ActionItem } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
-import { isAlumniState } from '../lib/coachingState';
+import { isAlumniState, isPreFirstSession } from '../lib/coachingState';
 import {
   RadarChart,
   PolarGrid,
@@ -84,6 +84,75 @@ export default function ProgressPage({
 
   const isGrowOrExec = programType === 'GROW' || programType === 'EXEC';
   const isCompleted = isAlumniState(coachingState.state);
+  const isPreFirst = isPreFirstSession(coachingState.state);
+
+  // Get coach name for pre-first-session messaging
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+  const coachFirstName = upcomingSession?.coach_name?.split(' ')[0] || 'your coach';
+
+  // Pre-first-session: Show anticipation-focused empty state
+  if (isPreFirst) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <header className="text-center sm:text-left">
+          <h1 className="text-3xl font-extrabold text-boon-text tracking-tight">My Progress</h1>
+          <p className="text-gray-500 mt-2 font-medium">Track your leadership growth over time.</p>
+        </header>
+
+        {/* Anticipation State */}
+        <section className="bg-gradient-to-br from-purple-50 to-boon-lightBlue/20 rounded-[2.5rem] p-10 md:p-14 border border-purple-100 text-center">
+          <div className="w-20 h-20 mx-auto mb-8 bg-purple-100 rounded-full flex items-center justify-center">
+            <svg className="w-10 h-10 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-extrabold text-boon-text mb-4">
+            Your Leadership Profile
+          </h2>
+          <p className="text-gray-600 text-lg max-w-lg mx-auto leading-relaxed mb-6">
+            Your leadership profile will emerge as you work with {coachFirstName}.
+          </p>
+          <p className="text-gray-500 text-sm max-w-md mx-auto">
+            After your first session, you'll see insights on your competencies, growth patterns, and wellbeing metrics here.
+          </p>
+        </section>
+
+        {/* What to Expect */}
+        <section className="bg-white rounded-[2rem] p-8 border border-gray-100">
+          <h3 className="text-lg font-extrabold text-boon-text mb-6">What You'll Track</h3>
+          <div className="grid sm:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto mb-4 bg-purple-100 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h4 className="font-bold text-boon-text text-sm mb-2">12 Competencies</h4>
+              <p className="text-gray-500 text-xs">Leadership skills like communication, delegation, and emotional intelligence.</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto mb-4 bg-green-100 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <h4 className="font-bold text-boon-text text-sm mb-2">Growth Trends</h4>
+              <p className="text-gray-500 text-xs">Visual comparisons between your baseline and current levels.</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto mb-4 bg-boon-lightBlue rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </div>
+              <h4 className="font-bold text-boon-text text-sm mb-2">Wellbeing Metrics</h4>
+              <p className="text-gray-500 text-xs">Track satisfaction, productivity, balance, and motivation over time.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   // Build competency data with baseline and current scores
   const competencyData = COMPETENCIES.map(comp => {

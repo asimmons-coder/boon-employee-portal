@@ -195,6 +195,13 @@ export function isAlumniState(state: CoachingState): boolean {
 }
 
 /**
+ * Helper to check if user is pre-first-session (matched but no sessions yet)
+ */
+export function isPreFirstSession(state: CoachingState): boolean {
+  return state === 'MATCHED_PRE_FIRST_SESSION';
+}
+
+/**
  * Get display label for state
  */
 export function getStateLabel(state: CoachingState): string {

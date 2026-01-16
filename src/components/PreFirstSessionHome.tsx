@@ -1,0 +1,287 @@
+import { useState, useEffect, useCallback } from 'react';
+import type { Employee, Session, BaselineSurvey, View } from '../lib/types';
+import { supabase } from '../lib/supabase';
+
+interface PreFirstSessionHomeProps {
+  profile: Employee | null;
+  sessions: Session[];
+  baseline: BaselineSurvey | null;
+  userEmail: string;
+  onNavigate?: (view: View) => void;
+}
+
+export default function PreFirstSessionHome({
+  profile,
+  sessions,
+  baseline,
+  userEmail,
+  onNavigate,
+}: PreFirstSessionHomeProps) {
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+  const coachName = upcomingSession?.coach_name || sessions[0]?.coach_name || 'Your Coach';
+  const coachFirstName = coachName.split(' ')[0];
+
+  // Pre-session note state
+  const [preSessionNote, setPreSessionNote] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Load existing pre-session note
+  useEffect(() => {
+    const loadNote = async () => {
+      if (!upcomingSession || !userEmail) return;
+
+      try {
+        const { data } = await supabase
+          .from('session_prep')
+          .select('intention')
+          .eq('email', userEmail.toLowerCase())
+          .eq('session_id', upcomingSession.id)
+          .single();
+
+        if (data?.intention) {
+          setPreSessionNote(data.intention);
+        }
+      } catch {
+        // Try localStorage fallback
+        const key = `pre_session_note_${userEmail}_${upcomingSession.id}`;
+        const saved = localStorage.getItem(key);
+        if (saved) setPreSessionNote(saved);
+      }
+    };
+
+    loadNote();
+  }, [upcomingSession, userEmail]);
+
+  // Auto-save pre-session note
+  const saveNote = useCallback(async (text: string) => {
+    if (!upcomingSession || !userEmail) return;
+
+    setIsSaving(true);
+    const key = `pre_session_note_${userEmail}_${upcomingSession.id}`;
+    localStorage.setItem(key, text);
+
+    try {
+      await supabase
+        .from('session_prep')
+        .upsert({
+          email: userEmail.toLowerCase(),
+          session_id: upcomingSession.id,
+          intention: text,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'email,session_id' });
+
+      setLastSaved(new Date());
+    } catch {
+      // localStorage saved as fallback
+    }
+
+    setIsSaving(false);
+  }, [upcomingSession, userEmail]);
+
+  useEffect(() => {
+    if (!preSessionNote) return;
+    const timer = setTimeout(() => saveNote(preSessionNote), 1000);
+    return () => clearTimeout(timer);
+  }, [preSessionNote, saveNote]);
+
+  // Note: The "What You Shared" section would display open-ended survey responses
+  // For now, we'll show this section only if baseline data exists (to show they completed the survey)
+  const hasCompletedSurvey = baseline !== null;
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-8 md:space-y-12 animate-fade-in">
+      {/* Header */}
+      <header className="text-center pt-2">
+        <h1 className="text-3xl md:text-5xl font-extrabold text-boon-text tracking-tight">
+          Hi {profile?.first_name || 'there'}
+        </h1>
+        <p className="text-gray-500 mt-2 text-lg font-medium">
+          Your coaching journey is about to begin
+        </p>
+      </header>
+
+      {/* First Session Card - Prominent */}
+      {upcomingSession && (
+        <section className="bg-gradient-to-br from-boon-blue/5 via-white to-boon-lightBlue/20 rounded-[2.5rem] p-8 md:p-10 border-2 border-boon-blue/20 shadow-lg">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-boon-blue flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <span className="text-xs font-bold text-boon-blue uppercase tracking-widest">Your First Session</span>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div>
+              <p className="text-3xl font-extrabold text-boon-text mb-2">
+                {new Date(upcomingSession.session_date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </p>
+              <p className="text-gray-500 text-lg">
+                {new Date(upcomingSession.session_date).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })} with {coachName}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <img
+                src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/100/100`}
+                alt={coachName}
+                className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white shadow-lg"
+              />
+            </div>
+          </div>
+
+          {/* Add to Calendar Button */}
+          <div className="mt-6 pt-6 border-t border-boon-blue/10">
+            <button className="inline-flex items-center gap-2 text-sm font-bold text-boon-blue hover:underline">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Add to calendar
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Meet Your Coach */}
+      <section className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
+        <h2 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-6">Meet Your Coach</h2>
+
+        <div className="flex flex-col sm:flex-row gap-6">
+          <img
+            src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`}
+            alt={coachName}
+            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
+          />
+
+          <div className="flex-1 text-center sm:text-left">
+            <h3 className="text-xl font-extrabold text-boon-text">{coachName}</h3>
+            <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">Executive Coach</p>
+
+            <p className="text-sm text-gray-600 mt-4 leading-relaxed">
+              {coachFirstName} specializes in leadership development and emotional intelligence,
+              helping professionals unlock their full potential through personalized coaching.
+            </p>
+
+            <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-4">
+              {['Leadership', 'Communication', 'Well-being'].map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 text-xs font-bold bg-boon-lightBlue/50 text-boon-blue rounded-full"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Welcome Survey Completed */}
+      {hasCompletedSurvey && (
+        <section className="bg-gradient-to-br from-purple-50 to-boon-bg rounded-[2rem] p-8 border border-purple-100">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+              Welcome Survey Complete
+            </h2>
+          </div>
+          <p className="text-gray-600 leading-relaxed">
+            {coachFirstName} has your baseline assessment and will use it to personalize your coaching journey.
+          </p>
+        </section>
+      )}
+
+      {/* Pre-Session Note */}
+      {upcomingSession && (
+        <section className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
+          <h2 className="text-lg font-extrabold text-boon-text mb-2">
+            Before you meet {coachFirstName}
+          </h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Anything specific (beyond your welcome survey) you want to make sure {coachFirstName} knows before your first conversation?
+          </p>
+
+          <div className="relative">
+            <textarea
+              value={preSessionNote}
+              onChange={(e) => setPreSessionNote(e.target.value)}
+              placeholder="Optional—share anything that might be helpful"
+              className="w-full p-5 rounded-2xl border-2 border-gray-100 focus:border-boon-blue focus:ring-0 focus:outline-none text-sm min-h-[120px] resize-none bg-boon-bg placeholder-gray-400 transition-all"
+            />
+            <div className="absolute bottom-3 right-3 flex items-center gap-2">
+              {isSaving && (
+                <span className="text-xs text-gray-400 flex items-center gap-1">
+                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Saving...
+                </span>
+              )}
+              {!isSaving && lastSaved && (
+                <span className="text-xs text-green-600 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Saved
+                </span>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-3 flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            {coachFirstName} will see this before your session
+          </p>
+        </section>
+      )}
+
+      {/* Explore Your Toolkit */}
+      <section className="bg-gradient-to-br from-boon-bg via-white to-purple-50/30 rounded-[2rem] p-8 border border-gray-100 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center mx-auto mb-4">
+          <svg className="w-7 h-7 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-extrabold text-boon-text mb-2">Explore Your Toolkit</h3>
+        <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">
+          While you wait, explore the Practice Space—AI-powered scenarios to help you prepare for real leadership moments.
+        </p>
+        <button
+          onClick={() => onNavigate?.('practice')}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20"
+        >
+          Explore Practice Space
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </section>
+
+      {/* Support */}
+      <div className="text-center pb-8">
+        <p className="text-sm text-gray-400">
+          Questions about what to expect?{' '}
+          <a href="mailto:support@boon-health.com" className="text-boon-blue hover:underline">
+            Reach out anytime
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}

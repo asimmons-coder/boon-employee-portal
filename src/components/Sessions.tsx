@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Session } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
-import { isAlumniState } from '../lib/coachingState';
+import { isAlumniState, isPreFirstSession } from '../lib/coachingState';
 
 interface SessionsPageProps {
   sessions: Session[];
@@ -10,6 +10,7 @@ interface SessionsPageProps {
 
 export default function SessionsPage({ sessions, coachingState }: SessionsPageProps) {
   const isCompleted = isAlumniState(coachingState.state);
+  const isPreFirst = isPreFirstSession(coachingState.state);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [filter, setFilter] = useState<'all' | 'Completed' | 'Upcoming'>(isCompleted ? 'Completed' : 'all');
   const [themeFilter, setThemeFilter] = useState<string | null>(null);
@@ -96,6 +97,71 @@ export default function SessionsPage({ sessions, coachingState }: SessionsPagePr
   const selectedDaySessions = useMemo(() => {
     return sessions.filter(s => s.session_date === selectedCalendarDate);
   }, [selectedCalendarDate, sessions]);
+
+  // Pre-first-session: Show anticipation-focused empty state
+  if (isPreFirst) {
+    const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+    const coachName = upcomingSession?.coach_name || 'your coach';
+
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <header className="text-center md:text-left">
+          <h1 className="text-3xl font-extrabold text-boon-text tracking-tight">My Sessions</h1>
+          <p className="text-gray-500 mt-2 font-medium">Your coaching journey is just beginning.</p>
+        </header>
+
+        {/* Upcoming First Session Card */}
+        {upcomingSession ? (
+          <section className="bg-gradient-to-br from-boon-blue/5 via-white to-boon-lightBlue/20 rounded-[2.5rem] p-8 md:p-10 border-2 border-boon-blue/20 shadow-lg">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-boon-blue flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <span className="text-xs font-bold text-boon-blue uppercase tracking-widest">Your First Session</span>
+            </div>
+
+            <p className="text-2xl md:text-3xl font-extrabold text-boon-text mb-2">
+              {new Date(upcomingSession.session_date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </p>
+            <p className="text-gray-500 text-lg">
+              {new Date(upcomingSession.session_date).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              })} with {coachName}
+            </p>
+          </section>
+        ) : (
+          <section className="bg-white rounded-[2rem] p-8 border border-gray-100 text-center">
+            <p className="text-gray-500">
+              Your first session will appear here once it's scheduled.
+            </p>
+          </section>
+        )}
+
+        {/* Intentional Empty State */}
+        <section className="bg-white rounded-[2rem] p-8 md:p-12 border border-gray-100 text-center">
+          <div className="w-16 h-16 mx-auto mb-6 bg-boon-lightBlue/30 rounded-2xl flex items-center justify-center">
+            <svg className="w-8 h-8 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-extrabold text-boon-text mb-3">Session Notes & History</h3>
+          <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
+            {upcomingSession
+              ? `After your first session with ${coachName.split(' ')[0]}, you'll see notes, reflections, and key themes here.`
+              : "After your first session, you'll see notes, reflections, and key themes here."
+            }
+          </p>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
