@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Employee, Session, ActionItem, BaselineSurvey, CompetencyScore, View } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
-import { isAlumniState, isPreFirstSession } from '../lib/coachingState';
+import { isAlumniState, isPreFirstSession, isPendingReflectionState } from '../lib/coachingState';
 import ActionItems from './ActionItems';
 import SessionPrep from './SessionPrep';
 import CoachProfile from './CoachProfile';
@@ -9,6 +9,7 @@ import GrowthStory from './GrowthStory';
 import KeyTakeaways from './KeyTakeaways';
 import CompletionAcknowledgment from './CompletionAcknowledgment';
 import PreFirstSessionHome from './PreFirstSessionHome';
+import PendingReflectionHome from './PendingReflectionHome';
 
 interface DashboardProps {
   profile: Employee | null;
@@ -20,9 +21,10 @@ interface DashboardProps {
   coachingState: CoachingStateData;
   userEmail: string;
   onNavigate?: (view: View) => void;
+  onStartReflection?: () => void;
 }
 
-export default function Dashboard({ profile, sessions, actionItems, baseline, competencyScores, onActionUpdate, coachingState, userEmail, onNavigate }: DashboardProps) {
+export default function Dashboard({ profile, sessions, actionItems, baseline, competencyScores, onActionUpdate, coachingState, userEmail, onNavigate, onStartReflection }: DashboardProps) {
   const [showCompletionAck, setShowCompletionAck] = useState(true);
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming');
@@ -30,6 +32,7 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, co
 
   const isCompleted = isAlumniState(coachingState.state);
   const isPreFirst = isPreFirstSession(coachingState.state);
+  const isPendingReflection = isPendingReflectionState(coachingState.state);
 
   // Pre-first-session: Show dedicated anticipation-focused Home
   if (isPreFirst) {
@@ -40,6 +43,19 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, co
         baseline={baseline}
         userEmail={userEmail}
         onNavigate={onNavigate}
+      />
+    );
+  }
+
+  // Pending reflection: Show reflection CTA-focused Home
+  if (isPendingReflection && onStartReflection) {
+    return (
+      <PendingReflectionHome
+        profile={profile}
+        sessions={sessions}
+        baseline={baseline}
+        onNavigate={onNavigate}
+        onStartReflection={onStartReflection}
       />
     );
   }

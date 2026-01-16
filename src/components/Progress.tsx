@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, Session, ActionItem } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
-import { isAlumniState, isPreFirstSession } from '../lib/coachingState';
+import { isAlumniState, isPreFirstSession, isPendingReflectionState } from '../lib/coachingState';
 import {
   RadarChart,
   PolarGrid,
@@ -27,6 +27,7 @@ interface ProgressPageProps {
   actionItems: ActionItem[];
   programType: ProgramType | null;
   coachingState: CoachingStateData;
+  onStartReflection?: () => void;
 }
 
 // The 12 competencies with their database column keys
@@ -75,7 +76,8 @@ export default function ProgressPage({
   sessions,
   actionItems,
   programType,
-  coachingState
+  coachingState,
+  onStartReflection
 }: ProgressPageProps) {
   const [activeTab, setActiveTab] = useState<'competencies' | 'wellbeing'>('competencies');
 
@@ -85,6 +87,7 @@ export default function ProgressPage({
   const isGrowOrExec = programType === 'GROW' || programType === 'EXEC';
   const isCompleted = isAlumniState(coachingState.state);
   const isPreFirst = isPreFirstSession(coachingState.state);
+  const isPendingReflection = isPendingReflectionState(coachingState.state);
 
   // Get coach name for pre-first-session messaging
   const upcomingSession = sessions.find(s => s.status === 'Upcoming');
@@ -150,6 +153,182 @@ export default function ProgressPage({
             </div>
           </div>
         </section>
+      </div>
+    );
+  }
+
+  // Pending Reflection: Show baseline only, final scores locked until reflection complete
+  if (isPendingReflection) {
+    // Build baseline-only competency data
+    const baselineCompetencyData = COMPETENCIES.map(comp => {
+      const baselineKey = `comp_${comp.key}` as keyof BaselineSurvey;
+      const baselineValue = baseline?.[baselineKey] as number | null;
+      return {
+        key: comp.key,
+        label: comp.label,
+        shortLabel: comp.shortLabel,
+        baseline: baselineValue ?? 0,
+      };
+    });
+
+    return (
+      <div className="space-y-8 animate-fade-in">
+        {/* Header */}
+        <header className="text-center sm:text-left">
+          <h1 className="text-3xl font-extrabold text-boon-text tracking-tight">Leadership Profile</h1>
+          <p className="text-gray-500 mt-2 font-medium">Track your leadership competency growth over time.</p>
+        </header>
+
+        {/* Completion Status Banner */}
+        <section className="bg-gradient-to-br from-boon-blue/10 via-white to-purple-50 rounded-[2rem] p-8 border-2 border-boon-blue/20">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-boon-blue flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-extrabold text-boon-text">Your Leadership Profile is almost complete</h2>
+          </div>
+          <p className="text-gray-600 mb-6">
+            Finish your final reflection to see your growth across all 12 competencies.
+          </p>
+          <button
+            onClick={onStartReflection}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-boon-blue text-white font-bold rounded-xl hover:bg-boon-darkBlue transition-all"
+          >
+            Complete Reflection
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </section>
+
+        {/* Summary Stats (Partial) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+            <p className="text-3xl font-black text-green-600">{completedSessions.length}</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Sessions</p>
+            <p className="text-[10px] text-green-600 mt-1">Complete</p>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+            <p className="text-3xl font-black text-purple-600">12</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Competencies</p>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+            <p className="text-3xl font-black text-green-600">
+              <svg className="w-7 h-7 mx-auto text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Baseline</p>
+            <p className="text-[10px] text-green-600 mt-1">Complete</p>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+            <p className="text-3xl font-black text-amber-500">
+              <svg className="w-7 h-7 mx-auto text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Final Assessment</p>
+            <p className="text-[10px] text-amber-500 mt-1">Pending</p>
+          </div>
+        </div>
+
+        {/* Competency Grid - Baseline Only */}
+        <section>
+          <h2 className="text-lg font-extrabold text-boon-text mb-4">Core Leadership Competencies</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {baselineCompetencyData.map(comp => (
+              <div
+                key={comp.key}
+                className="bg-white p-5 rounded-2xl border border-gray-100"
+              >
+                <h3 className="font-bold text-boon-text text-sm leading-tight mb-4">{comp.label}</h3>
+
+                <div className="space-y-3">
+                  {/* Baseline */}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-400 uppercase tracking-wide">Baseline</span>
+                      <span className="font-bold text-gray-500">{comp.baseline || '—'}/5</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gray-300 rounded-full transition-all duration-500"
+                        style={{ width: `${(comp.baseline || 0) * 20}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Final - Locked */}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-400 uppercase tracking-wide">Final</span>
+                      <span className="font-medium text-amber-500 italic text-[11px]">Complete reflection to reveal</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-gray-200 rounded-full border-2 border-dashed border-gray-300" style={{ width: '100%' }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Radar Chart - Baseline Only */}
+        {baseline && (
+          <section className="bg-white p-8 rounded-[2rem] border border-gray-100 relative">
+            <h2 className="text-lg font-extrabold text-boon-text mb-6 text-center">
+              Competency Profile
+            </h2>
+            <div className="h-96 opacity-50">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={baselineCompetencyData.map(comp => ({
+                  competency: comp.shortLabel,
+                  baseline: comp.baseline,
+                  fullMark: 5,
+                }))} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
+                  <PolarGrid stroke="#e5e7eb" />
+                  <PolarAngleAxis
+                    dataKey="competency"
+                    tick={{ fill: '#374151', fontSize: 9, fontWeight: 600 }}
+                  />
+                  <PolarRadiusAxis
+                    angle={30}
+                    domain={[0, 5]}
+                    tick={{ fill: '#9ca3af', fontSize: 10 }}
+                  />
+                  <Radar
+                    name="Baseline"
+                    dataKey="baseline"
+                    stroke="#9ca3af"
+                    fill="#9ca3af"
+                    fillOpacity={0.3}
+                    strokeWidth={2}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Overlay */}
+            <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-[2rem]">
+              <div className="text-center p-8">
+                <p className="text-gray-600 font-medium mb-4">
+                  Complete your reflection to see your full profile
+                </p>
+                <button
+                  onClick={onStartReflection}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-boon-blue text-white font-bold rounded-xl hover:bg-boon-darkBlue transition-all"
+                >
+                  Complete Reflection
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     );
   }

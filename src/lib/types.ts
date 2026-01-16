@@ -154,3 +154,30 @@ export interface SlackNudge {
 }
 
 export type View = 'dashboard' | 'sessions' | 'progress' | 'practice' | 'coach' | 'resources' | 'reflection' | 'settings';
+
+// Post-program reflection data
+export interface ReflectionResponse {
+  id: string;
+  email: string;
+  created_at: string;
+  // Competency post-assessment (same 12 as baseline)
+  comp_adaptability_and_resilience: number | null;
+  comp_building_relationships_at_work: number | null;
+  comp_change_management: number | null;
+  comp_delegation_and_accountability: number | null;
+  comp_effective_communication: number | null;
+  comp_effective_planning_and_execution: number | null;
+  comp_emotional_intelligence: number | null;
+  comp_giving_and_receiving_feedback: number | null;
+  comp_persuasion_and_influence: number | null;
+  comp_self_confidence_and_imposter_syndrome: number | null;
+  comp_strategic_thinking: number | null;
+  comp_time_management_and_productivity: number | null;
+  // NPS
+  nps_score: number | null;
+  // Qualitative
+  qualitative_shift: string | null;
+  qualitative_other: string | null;
+  // Testimonial consent
+  testimonial_consent: boolean;
+}

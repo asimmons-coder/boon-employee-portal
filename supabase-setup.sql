@@ -267,6 +267,61 @@ ON session_prep(lower(email), session_id);
 
 
 -- ============================================
+-- 10c. Create reflection_responses table for post-program reflections
+-- ============================================
+-- This stores the final reflection/assessment submitted at program end
+
+CREATE TABLE IF NOT EXISTS public.reflection_responses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  -- Competency post-assessment (same 12 as baseline)
+  comp_adaptability_and_resilience INTEGER CHECK (comp_adaptability_and_resilience BETWEEN 1 AND 5),
+  comp_building_relationships_at_work INTEGER CHECK (comp_building_relationships_at_work BETWEEN 1 AND 5),
+  comp_change_management INTEGER CHECK (comp_change_management BETWEEN 1 AND 5),
+  comp_delegation_and_accountability INTEGER CHECK (comp_delegation_and_accountability BETWEEN 1 AND 5),
+  comp_effective_communication INTEGER CHECK (comp_effective_communication BETWEEN 1 AND 5),
+  comp_effective_planning_and_execution INTEGER CHECK (comp_effective_planning_and_execution BETWEEN 1 AND 5),
+  comp_emotional_intelligence INTEGER CHECK (comp_emotional_intelligence BETWEEN 1 AND 5),
+  comp_giving_and_receiving_feedback INTEGER CHECK (comp_giving_and_receiving_feedback BETWEEN 1 AND 5),
+  comp_persuasion_and_influence INTEGER CHECK (comp_persuasion_and_influence BETWEEN 1 AND 5),
+  comp_self_confidence_and_imposter_syndrome INTEGER CHECK (comp_self_confidence_and_imposter_syndrome BETWEEN 1 AND 5),
+  comp_strategic_thinking INTEGER CHECK (comp_strategic_thinking BETWEEN 1 AND 5),
+  comp_time_management_and_productivity INTEGER CHECK (comp_time_management_and_productivity BETWEEN 1 AND 5),
+  -- NPS
+  nps_score INTEGER CHECK (nps_score BETWEEN 0 AND 10),
+  -- Qualitative feedback
+  qualitative_shift TEXT,
+  qualitative_other TEXT,
+  -- Testimonial consent
+  testimonial_consent BOOLEAN DEFAULT false
+);
+
+-- Enable RLS on reflection_responses
+ALTER TABLE reflection_responses ENABLE ROW LEVEL SECURITY;
+
+-- Employees can insert and view their own reflection
+DROP POLICY IF EXISTS "employees_manage_own_reflection" ON reflection_responses;
+
+CREATE POLICY "employees_manage_own_reflection"
+ON reflection_responses
+FOR ALL
+USING (
+  lower(email) = (
+    SELECT lower(company_email)
+    FROM employee_manager
+    WHERE auth_user_id = auth.uid()
+  )
+  OR
+  lower(email) = lower(auth.jwt() ->> 'email')
+);
+
+-- Create index for efficient lookups
+CREATE INDEX IF NOT EXISTS idx_reflection_responses_email
+ON reflection_responses(lower(email));
+
+
+-- ============================================
 -- VERIFICATION QUERIES
 -- Run these to verify the setup worked
 -- ============================================
