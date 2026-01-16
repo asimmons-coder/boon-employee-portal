@@ -1,13 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import type { Session } from '../lib/types';
+import type { CoachingStateData } from '../lib/coachingState';
+import { isAlumniState } from '../lib/coachingState';
 
 interface SessionsPageProps {
   sessions: Session[];
+  coachingState: CoachingStateData;
 }
 
-export default function SessionsPage({ sessions }: SessionsPageProps) {
+export default function SessionsPage({ sessions, coachingState }: SessionsPageProps) {
+  const isCompleted = isAlumniState(coachingState.state);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [filter, setFilter] = useState<'all' | 'Completed' | 'Upcoming'>('all');
+  const [filter, setFilter] = useState<'all' | 'Completed' | 'Upcoming'>(isCompleted ? 'Completed' : 'all');
+  const [themeFilter, setThemeFilter] = useState<string | null>(null);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [feedbackSession, setFeedbackSession] = useState<Session | null>(null);
   const [feedbackRating, setFeedbackRating] = useState<number>(0);
@@ -18,7 +23,33 @@ export default function SessionsPage({ sessions }: SessionsPageProps) {
   // Calendar State
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const filteredSessions = sessions.filter(s => filter === 'all' || s.status === filter);
+  // Get unique themes from all sessions for filtering
+  const allThemes = useMemo(() => {
+    const themeSet = new Set<string>();
+    sessions.forEach(s => {
+      if (s.leadership_management_skills) themeSet.add('Leadership');
+      if (s.communication_skills) themeSet.add('Communication');
+      if (s.mental_well_being) themeSet.add('Well-being');
+    });
+    return Array.from(themeSet);
+  }, [sessions]);
+
+  const filteredSessions = sessions.filter(s => {
+    // Status filter
+    if (filter !== 'all' && s.status !== filter) return false;
+
+    // Theme filter
+    if (themeFilter) {
+      const sessionThemes = [
+        s.leadership_management_skills && 'Leadership',
+        s.communication_skills && 'Communication',
+        s.mental_well_being && 'Well-being',
+      ].filter(Boolean);
+      if (!sessionThemes.includes(themeFilter)) return false;
+    }
+
+    return true;
+  });
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,8 +101,15 @@ export default function SessionsPage({ sessions }: SessionsPageProps) {
     <div className="space-y-8 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="text-center md:text-left">
-          <h1 className="text-3xl font-extrabold text-boon-text tracking-tight">My Sessions</h1>
-          <p className="text-gray-500 mt-2 font-medium">Manage and review your coaching journey.</p>
+          <h1 className="text-3xl font-extrabold text-boon-text tracking-tight">
+            {isCompleted ? 'Session Archive' : 'My Sessions'}
+          </h1>
+          <p className="text-gray-500 mt-2 font-medium">
+            {isCompleted
+              ? `${sessions.filter(s => s.status === 'Completed').length} coaching sessions completed`
+              : 'Manage and review your coaching journey.'
+            }
+          </p>
         </div>
         
         {/* View Toggle */}
@@ -100,22 +138,56 @@ export default function SessionsPage({ sessions }: SessionsPageProps) {
       {viewMode === 'list' ? (
         <div className="space-y-8">
           <div className="overflow-x-auto pb-4 -mx-5 px-5 scrollbar-hide">
-            <div className="flex bg-white p-1.5 rounded-2xl border border-gray-100 w-fit shadow-sm">
-              {[
-                { id: 'all', label: 'All Sessions' },
-                { id: 'Completed', label: 'Completed' },
-                { id: 'Upcoming', label: 'Upcoming' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setFilter(tab.id as any)}
-                  className={`px-6 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap active:scale-95 ${
-                    filter === tab.id ? 'bg-boon-blue text-white shadow-lg shadow-boon-blue/20' : 'text-gray-400 hover:text-boon-blue'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Status filter */}
+              <div className="flex bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm">
+                {(isCompleted
+                  ? [{ id: 'all', label: 'All Sessions' }, { id: 'Completed', label: 'Completed' }]
+                  : [
+                      { id: 'all', label: 'All Sessions' },
+                      { id: 'Completed', label: 'Completed' },
+                      { id: 'Upcoming', label: 'Upcoming' }
+                    ]
+                ).map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setFilter(tab.id as any)}
+                    className={`px-6 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap active:scale-95 ${
+                      filter === tab.id ? 'bg-boon-blue text-white shadow-lg shadow-boon-blue/20' : 'text-gray-400 hover:text-boon-blue'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Theme filter - enhanced for archive mode */}
+              {allThemes.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Theme:</span>
+                  <div className="flex bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
+                    <button
+                      onClick={() => setThemeFilter(null)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        themeFilter === null ? 'bg-gray-100 text-boon-text' : 'text-gray-400 hover:text-boon-blue'
+                      }`}
+                    >
+                      All
+                    </button>
+                    {allThemes.map(theme => (
+                      <button
+                        key={theme}
+                        onClick={() => setThemeFilter(theme)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          themeFilter === theme ? 'bg-boon-blue text-white' : 'text-gray-400 hover:text-boon-blue'
+                        }`}
+                      >
+                        {theme}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

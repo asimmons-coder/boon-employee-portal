@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { SCENARIOS, CATEGORY_INFO, type PracticeScenario, type ScenarioCategory } from '../data/scenarios';
 import type { Session } from '../lib/types';
+import type { CoachingStateData } from '../lib/coachingState';
+import { isAlumniState } from '../lib/coachingState';
 import PracticeModal from './PracticeModal';
 import TeamManager from './TeamManager';
 import { getTeamMembers, getSavedPlans, deleteSavedPlan, type TeamMember, type SavedPlan } from '../lib/storageService';
@@ -9,9 +11,11 @@ interface PracticeProps {
   sessions: Session[];
   coachName: string;
   userEmail: string;
+  coachingState: CoachingStateData;
 }
 
-export default function Practice({ sessions, coachName, userEmail }: PracticeProps) {
+export default function Practice({ sessions, coachName, userEmail, coachingState }: PracticeProps) {
+  const isCompleted = isAlumniState(coachingState.state);
   const [selectedCategory, setSelectedCategory] = useState<ScenarioCategory | 'all'>('all');
   const [selectedScenario, setSelectedScenario] = useState<PracticeScenario | null>(null);
   const [customSituation, setCustomSituation] = useState('');
@@ -142,11 +146,22 @@ Describe your situation in detail so we can provide the most relevant guidance.`
       {/* Header */}
       <header className="text-center pt-4">
         <h1 className="text-3xl md:text-4xl font-extrabold text-boon-text mb-3">
-          Practice Space
+          {isCompleted ? 'Leadership Toolkit' : 'Practice Space'}
         </h1>
         <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-          Prepare for challenging moments with AI-powered scenarios. Get a gameplan, then practice the conversation.
+          {isCompleted
+            ? 'Apply your coaching insights when it matters most. Prepare for real leadership moments with confidence.'
+            : 'Prepare for challenging moments with AI-powered scenarios. Get a gameplan, then practice the conversation.'
+          }
         </p>
+        {isCompleted && (
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-medium">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Available to you as a program graduate
+          </div>
+        )}
       </header>
 
       {/* My Team & My Playbook Row */}
@@ -233,10 +248,14 @@ Describe your situation in detail so we can provide the most relevant guidance.`
       </div>
 
       {/* Custom Situation Input */}
-      <section className="bg-gradient-to-br from-boon-blue/5 via-white to-boon-lightBlue/20 rounded-[2rem] p-6 md:p-8 border border-boon-blue/10">
+      <section className={`rounded-[2rem] p-6 md:p-8 border ${
+        isCompleted
+          ? 'bg-gradient-to-br from-green-50/50 via-white to-emerald-50/30 border-green-100'
+          : 'bg-gradient-to-br from-boon-blue/5 via-white to-boon-lightBlue/20 border-boon-blue/10'
+      }`}>
         <div className="max-w-2xl mx-auto">
           <h2 className="text-lg font-extrabold text-boon-text mb-4 text-center">
-            What's on your mind?
+            {isCompleted ? 'What challenge are you facing?' : "What's on your mind?"}
           </h2>
 
           {/* Team Member Selector */}
@@ -287,9 +306,13 @@ Describe your situation in detail so we can provide the most relevant guidance.`
             <button
               onClick={handleCustomSubmit}
               disabled={!customSituation.trim()}
-              className="absolute bottom-4 right-4 px-5 py-2.5 bg-boon-blue text-white rounded-xl font-bold text-sm hover:bg-boon-darkBlue disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-boon-blue/20"
+              className={`absolute bottom-4 right-4 px-5 py-2.5 text-white rounded-xl font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg ${
+                isCompleted
+                  ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20'
+                  : 'bg-boon-blue hover:bg-boon-darkBlue shadow-boon-blue/20'
+              }`}
             >
-              Get Help
+              {isCompleted ? 'Get Strategy' : 'Get Help'}
             </button>
           </div>
         </div>

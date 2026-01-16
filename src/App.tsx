@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/AuthContext';
 import { fetchSessions, fetchProgressData, fetchBaseline, fetchCompetencyScores, fetchProgramType, fetchActionItems } from './lib/dataFetcher';
-import { determineLifecycleStage } from './lib/useLifecycleStage';
+import { getCoachingState, type CoachingStateData } from './lib/coachingState';
 import type { View, Session, SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, ActionItem } from './lib/types';
 
 // Pages
@@ -108,34 +108,34 @@ function ProtectedApp() {
     );
   }
 
-  // Determine lifecycle stage
-  const lifecycle = determineLifecycleStage(employee, sessions, baseline);
+  // Determine coaching state (single source of truth)
+  const coachingState: CoachingStateData = getCoachingState(employee, sessions, baseline, competencyScores);
 
-  // Route to appropriate page based on lifecycle stage
-  if (lifecycle.stage === 'welcome') {
+  // Route to appropriate page based on coaching state
+  if (coachingState.state === 'NOT_SIGNED_UP') {
     return <WelcomePage welcomeSurveyUrl={WELCOME_SURVEY_URL} />;
   }
 
-  if (lifecycle.stage === 'matching') {
+  if (coachingState.state === 'SIGNED_UP_NOT_MATCHED') {
     return <MatchingPage />;
   }
 
-  if (lifecycle.stage === 'getting-started') {
+  if (coachingState.state === 'MATCHED_PRE_FIRST_SESSION' && !coachingState.hasCompletedSessions) {
     return <GettingStartedPage sessions={sessions} />;
   }
 
-  // Active coaching - render full dashboard with navigation
+  // Active or Completed coaching - render full dashboard with navigation
   const renderView = () => {
     switch (view) {
       case 'dashboard':
-        return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} onActionUpdate={reloadActionItems} />;
+        return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} onActionUpdate={reloadActionItems} coachingState={coachingState} />;
       case 'sessions':
-        return <SessionsPage sessions={sessions} />;
+        return <SessionsPage sessions={sessions} coachingState={coachingState} />;
       case 'progress':
-        return <ProgressPage progress={progress} baseline={baseline} competencyScores={competencyScores} sessions={sessions} actionItems={actionItems} programType={programType} />;
+        return <ProgressPage progress={progress} baseline={baseline} competencyScores={competencyScores} sessions={sessions} actionItems={actionItems} programType={programType} coachingState={coachingState} />;
       case 'practice':
         const practiceCoachName = sessions.length > 0 ? sessions[0].coach_name : "Your Coach";
-        return <Practice sessions={sessions} coachName={practiceCoachName} userEmail={employee?.company_email || ''} />;
+        return <Practice sessions={sessions} coachName={practiceCoachName} userEmail={employee?.company_email || ''} coachingState={coachingState} />;
       case 'resources':
         return <Resources />;
       case 'coach':
@@ -144,12 +144,12 @@ function ProtectedApp() {
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} onActionUpdate={reloadActionItems} />;
+        return <Dashboard profile={employee} sessions={sessions} actionItems={actionItems} baseline={baseline} onActionUpdate={reloadActionItems} coachingState={coachingState} />;
     }
   };
 
   return (
-    <Layout currentView={view} setView={setView}>
+    <Layout currentView={view} setView={setView} coachingState={coachingState}>
       {renderView()}
     </Layout>
   );

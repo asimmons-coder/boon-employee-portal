@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, Session, ActionItem } from '../lib/types';
+import type { CoachingStateData } from '../lib/coachingState';
+import { isAlumniState } from '../lib/coachingState';
 import {
   RadarChart,
   PolarGrid,
@@ -24,6 +26,7 @@ interface ProgressPageProps {
   sessions: Session[];
   actionItems: ActionItem[];
   programType: ProgramType | null;
+  coachingState: CoachingStateData;
 }
 
 // The 12 competencies with their database column keys
@@ -71,7 +74,8 @@ export default function ProgressPage({
   competencyScores,
   sessions,
   actionItems,
-  programType
+  programType,
+  coachingState
 }: ProgressPageProps) {
   const [activeTab, setActiveTab] = useState<'competencies' | 'wellbeing'>('competencies');
 
@@ -79,6 +83,7 @@ export default function ProgressPage({
   const completedActions = actionItems.filter(a => a.status === 'completed');
 
   const isGrowOrExec = programType === 'GROW' || programType === 'EXEC';
+  const isCompleted = isAlumniState(coachingState.state);
 
   // Build competency data with baseline and current scores
   const competencyData = COMPETENCIES.map(comp => {
@@ -166,12 +171,22 @@ export default function ProgressPage({
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
       <header className="text-center sm:text-left">
-        <h1 className="text-3xl font-extrabold text-boon-text tracking-tight">My Progress</h1>
+        <h1 className="text-3xl font-extrabold text-boon-text tracking-tight">
+          {isCompleted ? 'Leadership Profile' : 'My Progress'}
+        </h1>
         <p className="text-gray-500 mt-2 font-medium">
-          {isGrowOrExec
-            ? 'Track your leadership competency growth over time.'
-            : 'Track your wellbeing and growth over time.'}
+          {isCompleted
+            ? 'Your leadership strengths and capabilities.'
+            : isGrowOrExec
+              ? 'Track your leadership competency growth over time.'
+              : 'Track your wellbeing and growth over time.'}
         </p>
+        {isCompleted && (
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-medium">
+            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+            Program Graduate
+          </div>
+        )}
       </header>
 
       {/* Tab Navigation - Show both tabs for Grow/Exec, only wellbeing for Scale */}
@@ -185,7 +200,7 @@ export default function ProgressPage({
                 : 'text-gray-500 hover:text-boon-text'
             }`}
           >
-            Competencies
+            {isCompleted ? 'Competency Profile' : 'Competencies'}
           </button>
         )}
         <button
@@ -200,34 +215,63 @@ export default function ProgressPage({
         </button>
       </div>
 
-      {/* Stats Summary */}
+      {/* Stats Summary - Different for completed vs active */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-boon-blue to-boon-darkBlue p-6 rounded-2xl text-center text-white">
-          <p className="text-4xl font-black">
-            {avgCompetencyImprovement !== null ? (
-              <span>{avgCompetencyImprovement > 0 ? '+' : ''}{avgCompetencyImprovement}%</span>
-            ) : (
-              <span>{competencyScores.length > 0 ? competencyScores.length : '—'}</span>
-            )}
-          </p>
-          <p className="text-xs font-bold uppercase tracking-widest mt-1 opacity-80">
-            {avgCompetencyImprovement !== null ? 'Avg Growth' : 'Scores Recorded'}
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
-          <p className="text-3xl font-black text-boon-text">{completedSessions.length}</p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Sessions</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
-          <p className="text-3xl font-black text-green-600">{completedActions.length}</p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Actions Done</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
-          <p className="text-3xl font-black text-purple-600">
-            {competencyScores.filter(c => c.score_label?.toLowerCase() === 'excelling').length}
-          </p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Excelling</p>
-        </div>
+        {isCompleted ? (
+          // Leadership Profile stats (de-emphasize numeric deltas)
+          <>
+            <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 rounded-2xl text-center text-white">
+              <p className="text-4xl font-black">
+                {competencyScores.filter(c => c.score_label?.toLowerCase() === 'excelling' || c.score_label?.toLowerCase() === 'mastering').length}
+              </p>
+              <p className="text-xs font-bold uppercase tracking-widest mt-1 opacity-80">
+                Strengths
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+              <p className="text-3xl font-black text-boon-text">{completedSessions.length}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Sessions</p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+              <p className="text-3xl font-black text-purple-600">{competencyScores.length}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Competencies</p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+              <p className="text-3xl font-black text-green-600">100%</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Complete</p>
+            </div>
+          </>
+        ) : (
+          // Active program stats (show growth metrics)
+          <>
+            <div className="bg-gradient-to-br from-boon-blue to-boon-darkBlue p-6 rounded-2xl text-center text-white">
+              <p className="text-4xl font-black">
+                {avgCompetencyImprovement !== null ? (
+                  <span>{avgCompetencyImprovement > 0 ? '+' : ''}{avgCompetencyImprovement}%</span>
+                ) : (
+                  <span>{competencyScores.length > 0 ? competencyScores.length : '—'}</span>
+                )}
+              </p>
+              <p className="text-xs font-bold uppercase tracking-widest mt-1 opacity-80">
+                {avgCompetencyImprovement !== null ? 'Avg Growth' : 'Scores Recorded'}
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+              <p className="text-3xl font-black text-boon-text">{completedSessions.length}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Sessions</p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+              <p className="text-3xl font-black text-green-600">{completedActions.length}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Actions Done</p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
+              <p className="text-3xl font-black text-purple-600">
+                {competencyScores.filter(c => c.score_label?.toLowerCase() === 'excelling').length}
+              </p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Excelling</p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Competencies Tab */}
