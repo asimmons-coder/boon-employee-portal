@@ -142,9 +142,12 @@ function ProtectedApp() {
   // Effective program type (actual or overridden for admin preview)
   const effectiveProgramType = programTypeOverride || programType;
 
-  // Mock data for admin preview of Pre-First Session state
+  // Mock data for admin preview states
+  const mockCoachName = sessions[0]?.coach_name || 'Darcy Roberts';
+
+  // Mock upcoming session (for Pre-First Session and Active Program previews)
   const mockUpcomingSession: Session = {
-    id: 'preview-session-1',
+    id: 'preview-session-upcoming',
     employee_id: employee?.id || '',
     session_date: (() => {
       const date = new Date();
@@ -153,8 +156,8 @@ function ProtectedApp() {
       return date.toISOString();
     })(),
     status: 'Upcoming',
-    session_number: 1,
-    coach_name: sessions[0]?.coach_name || 'Darcy Roberts',
+    session_number: 7,
+    coach_name: mockCoachName,
     themes: null,
     session_notes: null,
     employee_name: employee?.first_name || 'there',
@@ -166,6 +169,33 @@ function ProtectedApp() {
     post_session_2: null,
     post_session_3: null,
   };
+
+  // Mock completed sessions (for Active Program preview)
+  const mockCompletedSessions: Session[] = Array.from({ length: 6 }, (_, i) => ({
+    id: `preview-session-${i + 1}`,
+    employee_id: employee?.id || '',
+    session_date: (() => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i) * 14); // Every 2 weeks going back
+      date.setHours(14, 0, 0, 0);
+      return date.toISOString();
+    })(),
+    status: 'Completed' as const,
+    session_number: i + 1,
+    coach_name: mockCoachName,
+    themes: i === 5 ? 'Leadership, Communication' : null,
+    session_notes: null,
+    employee_name: employee?.first_name || 'there',
+    one_liner: i === 5 ? 'Focused on building confidence in difficult conversations' : null,
+    focus_area: i === 5 ? 'Giving feedback' : null,
+    participant_goal: null,
+    exercises_discussed: null,
+    post_session_1: null,
+    post_session_2: null,
+    post_session_3: null,
+    goals: i === 5 ? 'Practice delivering constructive feedback to direct reports while maintaining psychological safety.' : undefined,
+    summary: i === 5 ? 'Great progress on reframing feedback as a gift. Next session we\'ll work on handling defensive reactions.' : undefined,
+  }));
 
   const mockBaseline: BaselineSurvey = {
     id: 'preview-baseline-1',
@@ -188,8 +218,19 @@ function ProtectedApp() {
 
   // Determine if we need mock data for preview
   const isPreviewingPreFirstSession = stateOverride === 'MATCHED_PRE_FIRST_SESSION';
-  const effectiveSessions = isPreviewingPreFirstSession ? [mockUpcomingSession] : sessions;
-  const effectiveBaseline = isPreviewingPreFirstSession ? mockBaseline : baseline;
+  const isPreviewingActiveProgram = stateOverride === 'ACTIVE_PROGRAM';
+
+  // Build effective sessions based on preview state
+  let effectiveSessions = sessions;
+  if (isPreviewingPreFirstSession) {
+    // Pre-first session: just one upcoming session
+    effectiveSessions = [{ ...mockUpcomingSession, session_number: 1 }];
+  } else if (isPreviewingActiveProgram) {
+    // Active program: completed sessions + upcoming session
+    effectiveSessions = [...mockCompletedSessions, mockUpcomingSession];
+  }
+
+  const effectiveBaseline = (isPreviewingPreFirstSession || isPreviewingActiveProgram) ? mockBaseline : baseline;
 
   // Apply state override if set (for admin preview)
   const coachingState: CoachingStateData = (stateOverride || programTypeOverride)
