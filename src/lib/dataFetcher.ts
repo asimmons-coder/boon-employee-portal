@@ -72,7 +72,6 @@ export async function fetchBaseline(email: string): Promise<BaselineSurvey | nul
     return null;
   }
 
-  console.log('Baseline data fetched:', data);
   return (data && data.length > 0) ? data[0] as BaselineSurvey : null;
 }
 
