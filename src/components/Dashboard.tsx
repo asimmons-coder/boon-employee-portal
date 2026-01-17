@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Employee, Session, ActionItem, BaselineSurvey, CompetencyScore, View, Checkpoint } from '../lib/types';
+import type { Employee, Session, ActionItem, BaselineSurvey, WelcomeSurveyScale, CompetencyScore, ProgramType, View, Checkpoint } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import { isAlumniState, isPreFirstSession, isPendingReflectionState } from '../lib/coachingState';
 import ActionItems from './ActionItems';
@@ -17,6 +17,8 @@ interface DashboardProps {
   sessions: Session[];
   actionItems: ActionItem[];
   baseline: BaselineSurvey | null;
+  welcomeSurveyScale: WelcomeSurveyScale | null;
+  programType: ProgramType | null;
   competencyScores: CompetencyScore[];
   onActionUpdate: () => void;
   coachingState: CoachingStateData;
@@ -27,7 +29,7 @@ interface DashboardProps {
   onStartCheckpoint?: () => void;
 }
 
-export default function Dashboard({ profile, sessions, actionItems, baseline, competencyScores, onActionUpdate, coachingState, userEmail, onNavigate, onStartReflection, checkpoints: _checkpoints = [], onStartCheckpoint }: DashboardProps) {
+export default function Dashboard({ profile, sessions, actionItems, baseline, welcomeSurveyScale, programType, competencyScores, onActionUpdate, coachingState, userEmail, onNavigate, onStartReflection, checkpoints: _checkpoints = [], onStartCheckpoint }: DashboardProps) {
   // Note: checkpoints not used directly in Dashboard, but passed through for type consistency
   void _checkpoints;
   const [showCompletionAck, setShowCompletionAck] = useState(true);
@@ -47,6 +49,8 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, co
         profile={profile}
         sessions={sessions}
         baseline={baseline}
+        welcomeSurveyScale={welcomeSurveyScale}
+        programType={programType}
         userEmail={userEmail}
         onNavigate={onNavigate}
       />

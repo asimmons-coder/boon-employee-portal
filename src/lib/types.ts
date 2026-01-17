@@ -38,6 +38,8 @@ export interface Session {
   program_title: string | null;
   appointment_number: number | null;
   created_at: string;
+  // Zoom integration
+  zoom_join_link: string | null;
 }
 
 export interface SurveyResponse {
@@ -86,6 +88,56 @@ export interface BaselineSurvey {
   comp_strategic_thinking: number | null;
   comp_time_management_and_productivity: number | null;
 }
+
+// Welcome survey for SCALE users
+export interface WelcomeSurveyScale {
+  id: string;
+  email: string;
+  created_at: string;
+  // Open-ended goals from welcome survey (what they want to work on)
+  coaching_goals: string | null;
+  // 18 Focus area boolean fields
+  focus_work_relationships: boolean;
+  focus_work_life_balance: boolean;
+  focus_leadership_development: boolean;
+  focus_realizing_potential: boolean;
+  focus_work_performance: boolean;
+  focus_work_stress: boolean;
+  focus_new_environment: boolean;
+  focus_adapting_to_change: boolean;
+  focus_dealing_with_uncertainty: boolean;
+  focus_bouncing_back: boolean;
+  focus_relationship_with_self: boolean;
+  focus_inner_confidence: boolean;
+  focus_positive_habits: boolean;
+  focus_personal_accountability: boolean;
+  focus_professional_development: boolean;
+  focus_persevering_through_change: boolean;
+  focus_relationships_self_others: boolean;
+  focus_coping_stress_anxiety: boolean;
+}
+
+// Focus area display labels for SCALE welcome survey
+export const SCALE_FOCUS_AREA_LABELS: Record<string, string> = {
+  focus_work_relationships: "Work Relationships",
+  focus_work_life_balance: "Work-Life Balance",
+  focus_leadership_development: "Leadership Development",
+  focus_realizing_potential: "Realizing Potential",
+  focus_work_performance: "Work Performance",
+  focus_work_stress: "Work Stress",
+  focus_new_environment: "New Environment",
+  focus_adapting_to_change: "Adapting to Change",
+  focus_dealing_with_uncertainty: "Dealing with Uncertainty",
+  focus_bouncing_back: "Bouncing Back",
+  focus_relationship_with_self: "Relationship with Self",
+  focus_inner_confidence: "Inner Confidence",
+  focus_positive_habits: "Positive Habits",
+  focus_personal_accountability: "Personal Accountability",
+  focus_professional_development: "Professional Development",
+  focus_persevering_through_change: "Persevering Through Change",
+  focus_relationships_self_others: "Relationships with Self & Others",
+  focus_coping_stress_anxiety: "Coping with Stress & Anxiety",
+};
 
 // Competency score from competency_scores table (current/end-of-program scores)
 export interface CompetencyScore {

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Employee, Session, SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, ActionItem, SlackConnectionStatus, SlackNudge, ReflectionResponse, Checkpoint } from './types';
+import type { Employee, Session, SurveyResponse, BaselineSurvey, WelcomeSurveyScale, CompetencyScore, ProgramType, ActionItem, SlackConnectionStatus, SlackNudge, ReflectionResponse, Checkpoint } from './types';
 
 /**
  * Fetch employee profile by email
@@ -73,6 +73,29 @@ export async function fetchBaseline(email: string): Promise<BaselineSurvey | nul
   }
 
   return (data && data.length > 0) ? data[0] as BaselineSurvey : null;
+}
+
+/**
+ * Fetch welcome survey for SCALE users
+ * Contains coaching goals and focus area selections
+ */
+export async function fetchWelcomeSurveyScale(email: string): Promise<WelcomeSurveyScale | null> {
+  const { data, error } = await supabase
+    .from('welcome_survey_scale')
+    .select('*')
+    .ilike('email', email)
+    .order('id', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    // Table might not exist yet
+    if (error.code !== '42P01' && error.code !== 'PGRST116') {
+      console.error('Error fetching SCALE welcome survey:', error);
+    }
+    return null;
+  }
+
+  return (data && data.length > 0) ? data[0] as WelcomeSurveyScale : null;
 }
 
 /**
