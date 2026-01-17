@@ -135,16 +135,16 @@ export default function PreFirstSessionHome({
   // Use appropriate focus areas based on program type
   const focusAreas = isScaleUser ? scaleFocusAreas : growCompetencyAreas;
 
-  // Calculate if Zoom button should be shown (within 24 hours of session)
-  const getShowZoomButton = (session: Session) => {
+  // Check if session is within 30 minutes (joinable window: 30 min before to 60 min after)
+  const isSessionJoinable = (session: Session) => {
     if (!session.zoom_join_link) return false;
     const sessionDate = new Date(session.session_date);
     const now = new Date();
-    const hoursUntilSession = (sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-    return hoursUntilSession <= 24 && hoursUntilSession > -1;
+    const diffMinutes = (sessionDate.getTime() - now.getTime()) / (1000 * 60);
+    return diffMinutes <= 30 && diffMinutes >= -60;
   };
 
-  const showZoomButton = upcomingSession ? getShowZoomButton(upcomingSession) : false;
+  const showJoinButton = upcomingSession ? isSessionJoinable(upcomingSession) : false;
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 md:space-y-12 animate-fade-in">
@@ -198,27 +198,27 @@ export default function PreFirstSessionHome({
           </div>
 
           {/* Session Actions */}
-          <div className="mt-6 pt-6 border-t border-boon-blue/10 flex flex-wrap items-center gap-4">
-            {/* Join with Zoom - only shown within 24 hours */}
-            {showZoomButton && upcomingSession?.zoom_join_link && (
+          <div className="mt-6 pt-6 border-t border-boon-blue/10 flex gap-4">
+            {showJoinButton && upcomingSession?.zoom_join_link ? (
               <a
                 href={upcomingSession.zoom_join_link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2D8CFF] text-white font-bold text-sm rounded-xl hover:bg-[#1a7ae8] transition-all shadow-md"
+                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold text-white bg-green-600 rounded-xl hover:bg-green-700 transition-all shadow-lg"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1zm1 2v14h14V5H5zm4.5 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm5 0a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM8 14h8v1a1 1 0 01-1 1H9a1 1 0 01-1-1v-1z"/>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-                Join with Zoom
+                Join Session
               </a>
+            ) : (
+              <button className="inline-flex items-center gap-2 text-sm font-bold text-boon-blue hover:underline">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add to calendar
+              </button>
             )}
-            <button className="inline-flex items-center gap-2 text-sm font-bold text-boon-blue hover:underline">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add to calendar
-            </button>
           </div>
         </section>
       )}

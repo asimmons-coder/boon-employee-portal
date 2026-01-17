@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Employee, Session, ActionItem, BaselineSurvey, View } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import { supabase } from '../lib/supabase';
-import ActionItems from './ActionItems';
 
 interface ActiveGrowHomeProps {
   profile: Employee | null;
@@ -20,10 +19,11 @@ export default function ActiveGrowHome({
   sessions,
   actionItems,
   coachingState,
-  onActionUpdate,
+  onActionUpdate: _onActionUpdate,
   userEmail,
   onNavigate,
 }: ActiveGrowHomeProps) {
+  void _onActionUpdate; // Reserved for future action item updates
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
@@ -40,14 +40,14 @@ export default function ActiveGrowHome({
     ? Math.floor((Date.now() - new Date(lastSession.session_date).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
 
-  // Session prep intention state
-  const [intention, setIntention] = useState('');
+  // Session prep reflection state
+  const [reflection, setReflection] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-  // Load existing intention for upcoming session
+  // Load existing reflection for upcoming session
   useEffect(() => {
-    const loadIntention = async () => {
+    const loadReflection = async () => {
       if (!upcomingSession || !userEmail) return;
 
       try {
@@ -59,20 +59,20 @@ export default function ActiveGrowHome({
           .single();
 
         if (!error && data) {
-          setIntention(data.intention || '');
+          setReflection(data.intention || '');
         }
       } catch {
         const key = `session_prep_${userEmail}_${upcomingSession.id}`;
         const saved = localStorage.getItem(key);
-        if (saved) setIntention(saved);
+        if (saved) setReflection(saved);
       }
     };
 
-    loadIntention();
+    loadReflection();
   }, [upcomingSession, userEmail]);
 
-  // Auto-save intention with debounce
-  const saveIntention = useCallback(async (text: string) => {
+  // Auto-save reflection with debounce
+  const saveReflection = useCallback(async (text: string) => {
     if (!upcomingSession || !userEmail) return;
 
     setIsSaving(true);
@@ -98,31 +98,20 @@ export default function ActiveGrowHome({
   }, [upcomingSession, userEmail]);
 
   useEffect(() => {
-    if (!intention) return;
-    const timer = setTimeout(() => saveIntention(intention), 1000);
+    if (!reflection) return;
+    const timer = setTimeout(() => saveReflection(reflection), 1000);
     return () => clearTimeout(timer);
-  }, [intention, saveIntention]);
+  }, [reflection, saveReflection]);
 
-  // Calculate countdown to session
-  const getCountdown = (date: string) => {
-    const sessionDate = new Date(date);
-    const now = new Date();
-    const diffDays = Math.ceil((sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    return `In ${diffDays} days`;
-  };
-
-  // Calculate if Zoom button should be shown (within 24 hours of session)
-  const getShowZoomButton = (session: Session) => {
-    if (!session.zoom_join_link) return false;
+  // Check if session is within 2 days (joinable window for prominent display)
+  const isSessionSoon = (session: Session) => {
     const sessionDate = new Date(session.session_date);
     const now = new Date();
-    const hoursUntilSession = (sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-    return hoursUntilSession <= 24 && hoursUntilSession > -1;
+    const diffDays = (sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays <= 2 && diffDays >= -0.5; // 2 days before to 12 hours after
   };
 
-  const showZoomButton = upcomingSession ? getShowZoomButton(upcomingSession) : false;
+  const showJoinButton = upcomingSession?.zoom_join_link && isSessionSoon(upcomingSession);
 
   // Time-aware messaging for no session state
   const getBookingMessage = () => {
@@ -144,7 +133,7 @@ export default function ActiveGrowHome({
     }
   };
 
-  // Coaching themes from sessions
+  // Coaching themes from sessions - these become "Current Focus"
   const themes = [
     { key: 'leadership_management_skills', label: 'Leading with empathy and clarity' },
     { key: 'communication_skills', label: 'Communicating with impact and intention' },
@@ -188,33 +177,67 @@ export default function ActiveGrowHome({
         )}
       </header>
 
-      {/* SUB-STATE A: Session Scheduled - Session Prep is HERO */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          CURRENT FOCUS - THE HEADLINE (moved to top)
+          Uses Georgia (serif) + amber accents for journal feel
+          ═══════════════════════════════════════════════════════════════════ */}
+      {focusAreas.length > 0 && (
+        <section className="bg-gradient-to-br from-boon-amberLight/50 to-white rounded-[2rem] p-8 border border-boon-amber/20">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-boon-amber/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-boon-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Current Focus</h2>
+          </div>
+          <div className="space-y-4">
+            {focusAreas.map((area, i) => (
+              <div
+                key={i}
+                className="group"
+              >
+                <h3 className="font-serif text-xl text-boon-text leading-relaxed">{area!.label}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-boon-amber font-medium">
+                    {area!.count} {area!.count === 1 ? 'session' : 'sessions'}
+                  </span>
+                  <span className="text-gray-300">·</span>
+                  <span className="text-xs text-gray-400">
+                    since {new Date(area!.firstDiscussed).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SUB-STATE A: Session Scheduled
+          ═══════════════════════════════════════════════════════════════════ */}
       {hasUpcomingSession && (
         <>
-          {/* Upcoming Session Card - Prominent */}
-          <section className="bg-gradient-to-br from-boon-blue/5 via-white to-boon-lightBlue/20 rounded-[2.5rem] p-8 md:p-10 border-2 border-boon-blue/20 shadow-lg">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-boon-blue flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <span className="text-xs font-bold text-boon-blue uppercase tracking-widest">Your Next Session</span>
-              <span className="ml-auto text-xs font-bold text-boon-blue bg-boon-lightBlue/50 px-3 py-1 rounded-full">
-                {getCountdown(upcomingSession.session_date)}
-              </span>
+          {/* Your Next Session Card - Secondary positioning but contextually prominent when soon */}
+          <section className={`rounded-[2rem] p-8 border-2 transition-all ${
+            showJoinButton
+              ? 'bg-gradient-to-br from-boon-blue/10 via-white to-boon-lightBlue/30 border-boon-blue/40 shadow-xl'
+              : 'bg-white border-gray-100 shadow-sm'
+          }`}>
+            <div className="flex items-center gap-2 mb-5">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Your Next Session</span>
             </div>
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
-                <p className="text-3xl font-extrabold text-boon-text mb-2">
+                <p className="text-2xl font-bold text-boon-text">
                   {new Date(upcomingSession.session_date).toLocaleDateString('en-US', {
                     weekday: 'long',
                     month: 'long',
                     day: 'numeric',
                   })}
                 </p>
-                <p className="text-gray-500 text-lg">
+                <p className="text-gray-500 mt-1">
                   {new Date(upcomingSession.session_date).toLocaleTimeString('en-US', {
                     hour: 'numeric',
                     minute: '2-digit',
@@ -226,191 +249,157 @@ export default function ActiveGrowHome({
                 <img
                   src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/100/100`}
                   alt={coachName}
-                  className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white shadow-lg"
+                  className="w-14 h-14 rounded-xl object-cover ring-2 ring-gray-100"
                 />
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-boon-blue/10 flex flex-wrap items-center gap-4">
-              {/* Join with Zoom - only shown within 24 hours */}
-              {showZoomButton && upcomingSession?.zoom_join_link && (
+            <div className="mt-6 pt-5 border-t border-gray-100 flex gap-4">
+              {showJoinButton ? (
                 <a
-                  href={upcomingSession.zoom_join_link}
+                  href={upcomingSession.zoom_join_link!}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2D8CFF] text-white font-bold text-sm rounded-xl hover:bg-[#1a7ae8] transition-all shadow-md"
+                  className="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold text-white bg-boon-blue rounded-xl hover:bg-boon-darkBlue transition-all shadow-lg"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1zm1 2v14h14V5H5zm4.5 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm5 0a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM8 14h8v1a1 1 0 01-1 1H9a1 1 0 01-1-1v-1z"/>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
-                  Join with Zoom
+                  Join Session
                 </a>
+              ) : (
+                <>
+                  <button className="inline-flex items-center gap-2 text-sm font-bold text-boon-blue hover:underline">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add to calendar
+                  </button>
+                  <button className="inline-flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-gray-600 hover:underline">
+                    Reschedule
+                  </button>
+                </>
               )}
-              <button className="inline-flex items-center gap-2 text-sm font-bold text-boon-blue hover:underline">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Add to calendar
-              </button>
-              <button className="inline-flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-gray-600 hover:underline">
-                Reschedule
-              </button>
             </div>
           </section>
 
-          {/* Session Prep - THE HERO ELEMENT */}
-          <section className="relative bg-white rounded-[2.5rem] p-8 md:p-10 border-2 border-purple-200 shadow-xl overflow-hidden">
-            {/* Emphasis styling */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 via-boon-blue to-purple-400" />
-            <div className="absolute top-0 right-0 w-40 h-40 bg-purple-100/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          {/* ═══════════════════════════════════════════════════════════════════
+              BEFORE YOU MEET - Reflection card with last session context
+              Uses Georgia for prompts, amber accents
+              ═══════════════════════════════════════════════════════════════════ */}
+          <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-boon-amber/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-boon-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Before you meet with {coachFirstName}</h2>
+            </div>
 
-            <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-boon-blue flex items-center justify-center flex-shrink-0 shadow-lg">
-                  <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-extrabold text-boon-text">Before you meet with {coachFirstName}</h2>
-                  <p className="text-sm text-gray-500 mt-1">Walk in with intention</p>
+            {/* Last session context */}
+            {lastSession?.plan && (
+              <div className="mb-6 p-5 bg-white/60 rounded-xl border border-boon-amber/10">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Last time, you were working on:</p>
+                <p className="font-serif text-gray-700 leading-relaxed italic">"{lastSession.plan}"</p>
+              </div>
+            )}
+            {!lastSession?.plan && lastSession?.goals && (
+              <div className="mb-6 p-5 bg-white/60 rounded-xl border border-boon-amber/10">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Last time, you were working on:</p>
+                <p className="font-serif text-gray-700 leading-relaxed italic">"{lastSession.goals}"</p>
+              </div>
+            )}
+
+            {/* Reflection prompt */}
+            <div className="space-y-3">
+              <label className="block">
+                <span className="font-serif text-lg text-boon-text">
+                  How's it going?
+                </span>
+              </label>
+              <div className="relative">
+                <textarea
+                  value={reflection}
+                  onChange={(e) => setReflection(e.target.value)}
+                  placeholder="Share what's on your mind..."
+                  className="w-full p-5 rounded-xl border border-boon-amber/20 focus:border-boon-amber focus:ring-0 focus:outline-none font-serif text-base min-h-[120px] resize-none bg-white placeholder-gray-400 transition-all"
+                />
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  {isSaving && (
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Saving...
+                    </span>
+                  )}
+                  {!isSaving && lastSaved && (
+                    <span className="text-xs text-boon-amber flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Saved
+                    </span>
+                  )}
                 </div>
               </div>
-
-              {/* Context Section */}
-              <div className="mb-8 space-y-4">
-                {/* Current Goal */}
-                {lastSession?.goals && (
-                  <div className="bg-boon-bg/50 p-5 rounded-2xl border border-gray-100">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Current Goal</p>
-                    <p className="text-gray-700 leading-relaxed">{lastSession.goals}</p>
-                  </div>
-                )}
-
-                {/* Open Action Items */}
-                {pendingActions.length > 0 && (
-                  <div className="bg-boon-bg/50 p-5 rounded-2xl border border-gray-100">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                      Open Action Items ({pendingActions.length})
-                    </p>
-                    <ul className="space-y-2">
-                      {pendingActions.slice(0, 4).map((action) => (
-                        <li key={action.id} className="flex items-start gap-3 text-sm text-gray-700">
-                          <span className="w-2 h-2 rounded-full bg-boon-blue mt-1.5 flex-shrink-0" />
-                          <span>{action.action_text}</span>
-                          {/* Contextual bridge to Practice - placeholder */}
-                          {action.action_text.toLowerCase().includes('feedback') && (
-                            <button
-                              onClick={() => onNavigate?.('practice')}
-                              className="ml-auto text-xs text-purple-600 font-medium hover:underline whitespace-nowrap"
-                            >
-                              Practice this →
-                            </button>
-                          )}
-                        </li>
-                      ))}
-                      {pendingActions.length > 4 && (
-                        <li className="text-xs text-gray-400 pl-5">+{pendingActions.length - 4} more</li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* THE KEY INPUT - Session Intention */}
-              <div className="space-y-3">
-                <label className="block">
-                  <span className="text-lg font-bold text-boon-text">
-                    What do you want to make sure you talk about?
-                  </span>
-                  <span className="text-sm text-gray-400 ml-2">(optional)</span>
-                </label>
-                <div className="relative">
-                  <textarea
-                    value={intention}
-                    onChange={(e) => setIntention(e.target.value)}
-                    placeholder="Anything on your mind—big or small"
-                    className="w-full p-5 rounded-2xl border-2 border-gray-200 focus:border-boon-blue focus:ring-0 focus:outline-none text-base min-h-[140px] resize-none bg-white shadow-sm placeholder-gray-400 transition-all"
-                  />
-                  <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                    {isSaving && (
-                      <span className="text-xs text-gray-400 flex items-center gap-1">
-                        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Saving...
-                      </span>
-                    )}
-                    {!isSaving && lastSaved && (
-                      <span className="text-xs text-green-600 flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Saved
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm text-gray-500 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  {coachFirstName} will see this before your session
-                </p>
-              </div>
+              <p className="text-sm text-gray-500 flex items-center gap-2">
+                <svg className="w-4 h-4 text-boon-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                {coachFirstName} will see this before your session
+              </p>
             </div>
           </section>
         </>
       )}
 
-      {/* SUB-STATE B: No Session Scheduled - Booking is HERO */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          SUB-STATE B: No Session Scheduled - Booking is HERO
+          ═══════════════════════════════════════════════════════════════════ */}
       {!hasUpcomingSession && (
         <>
-          {/* Book a Session Card - HERO ELEMENT */}
-          <section className="relative bg-gradient-to-br from-boon-blue/10 via-white to-purple-50 rounded-[2.5rem] p-8 md:p-10 border-2 border-boon-blue/30 shadow-xl overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-boon-blue via-purple-400 to-boon-blue" />
-            <div className="absolute top-0 right-0 w-48 h-48 bg-boon-blue/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-
-            <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-boon-blue flex items-center justify-center shadow-lg shadow-boon-blue/30">
-                  <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-2xl font-extrabold text-boon-text">{getBookingMessage().title}</h2>
-                  <p className="text-gray-500 mt-1">{getBookingMessage().subtitle}</p>
-                </div>
+          {/* Book a Session Card */}
+          <section className="bg-gradient-to-br from-boon-blue/10 via-white to-boon-lightBlue/20 rounded-[2rem] p-8 border-2 border-boon-blue/30 shadow-lg">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-boon-blue flex items-center justify-center shadow-lg shadow-boon-blue/30">
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
               </div>
-
-              {profile?.booking_link && (
-                <a
-                  href={profile.booking_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 px-8 py-4 bg-boon-blue text-white font-bold text-lg rounded-2xl hover:bg-boon-darkBlue transition-all shadow-lg shadow-boon-blue/30 active:scale-95"
-                >
-                  Book a Session
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </a>
-              )}
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-boon-text">{getBookingMessage().title}</h2>
+                <p className="text-gray-500 mt-1 text-sm">{getBookingMessage().subtitle}</p>
+              </div>
             </div>
+
+            {profile?.booking_link && (
+              <a
+                href={profile.booking_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 px-8 py-4 bg-boon-blue text-white font-bold text-base rounded-xl hover:bg-boon-darkBlue transition-all shadow-lg shadow-boon-blue/30 active:scale-95"
+              >
+                Book a Session
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </a>
+            )}
           </section>
 
-          {/* Current Goal - from last session */}
+          {/* Where You Left Off */}
           {lastSession?.goals && (
-            <section className="bg-gradient-to-br from-boon-bg to-white rounded-[2rem] p-8 border border-gray-100">
+            <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
               <div className="flex items-start justify-between mb-4">
-                <h2 className="text-lg font-extrabold text-boon-text">Where You Left Off</h2>
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Where You Left Off</h2>
+                <span className="text-xs font-medium text-gray-400">
                   {new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
               </div>
-              <p className="text-gray-700 leading-relaxed">{lastSession.goals}</p>
+              <p className="font-serif text-gray-700 leading-relaxed">{lastSession.goals}</p>
             </section>
           )}
 
@@ -424,7 +413,7 @@ export default function ActiveGrowHome({
                 className="w-24 h-24 rounded-2xl object-cover ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
               />
               <div className="flex-1 text-center sm:text-left">
-                <h3 className="text-xl font-extrabold text-boon-text">{coachName}</h3>
+                <h3 className="text-xl font-bold text-boon-text">{coachName}</h3>
                 <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">Executive Coach</p>
                 <p className="text-sm text-gray-600 mt-4 leading-relaxed">
                   {coachFirstName} specializes in leadership development and emotional intelligence,
@@ -436,32 +425,51 @@ export default function ActiveGrowHome({
               </div>
             </div>
           </section>
-
-          {/* Latest Summary */}
-          {lastSession && (
-            <section className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
-              <div className="flex items-start justify-between mb-4">
-                <h2 className="text-lg font-extrabold text-boon-text">Latest Summary</h2>
-                <span className="text-xs font-bold text-boon-blue uppercase tracking-widest">
-                  {new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                </span>
-              </div>
-              <p className="text-gray-600 leading-relaxed line-clamp-3">
-                {lastSession.summary || 'Session summary will appear here after your coach adds notes.'}
-              </p>
-              <button
-                onClick={() => onNavigate?.('sessions')}
-                className="mt-4 text-sm font-bold text-boon-blue hover:underline"
-              >
-                View full summary →
-              </button>
-            </section>
-          )}
         </>
       )}
 
+      {/* ═══════════════════════════════════════════════════════════════════
+          THINGS YOU'RE WORKING ON (renamed from Action Items)
+          Uses Georgia, amber accents, no strikethrough
+          ═══════════════════════════════════════════════════════════════════ */}
+      {pendingActions.length > 0 && (
+        <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-boon-amber/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-boon-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Things You're Working On</h2>
+          </div>
+          <div className="space-y-4">
+            {pendingActions.map((action) => (
+              <div
+                key={action.id}
+                className="p-4 bg-white/60 rounded-xl border border-boon-amber/10 hover:border-boon-amber/30 transition-all"
+              >
+                <p className="font-serif text-gray-700 leading-relaxed">{action.action_text}</p>
+                <div className="flex items-center gap-3 mt-3">
+                  <span className="text-xs text-gray-400">
+                    From {new Date(action.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  {action.action_text.toLowerCase().includes('feedback') && (
+                    <button
+                      onClick={() => onNavigate?.('practice')}
+                      className="ml-auto text-xs text-boon-amber font-medium hover:underline"
+                    >
+                      Practice this →
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Coaching at a Glance - Progress indicator */}
-      <section className="bg-white rounded-[2.5rem] p-7 md:p-8 shadow-sm border border-gray-100">
+      <section className="bg-white rounded-[2rem] p-7 md:p-8 shadow-sm border border-gray-100">
         <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
           Coaching at a Glance
         </h2>
@@ -474,7 +482,7 @@ export default function ActiveGrowHome({
               className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100"
             />
             <div>
-              <p className="text-lg font-black text-boon-text tracking-tight truncate">
+              <p className="text-lg font-bold text-boon-text truncate">
                 {coachFirstName}
               </p>
               <p className="text-[10px] text-gray-400 uppercase tracking-widest">Coach</p>
@@ -483,7 +491,7 @@ export default function ActiveGrowHome({
 
           {/* Progress */}
           <div>
-            <p className="text-lg font-black text-boon-text tracking-tight">
+            <p className="text-lg font-bold text-boon-text">
               {coachingState.completedSessionCount} of {coachingState.totalExpectedSessions}
             </p>
             <p className="text-[10px] text-gray-400 uppercase tracking-widest">Sessions</p>
@@ -497,7 +505,7 @@ export default function ActiveGrowHome({
 
           {/* Next Session */}
           <div>
-            <p className="text-lg font-black text-boon-blue tracking-tight">
+            <p className="text-lg font-bold text-boon-blue">
               {upcomingSession
                 ? new Date(upcomingSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                 : '—'}
@@ -507,7 +515,7 @@ export default function ActiveGrowHome({
 
           {/* Last Session */}
           <div>
-            <p className="text-lg font-bold text-gray-500">
+            <p className="text-lg font-medium text-gray-500">
               {lastSession
                 ? new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                 : '—'}
@@ -516,9 +524,6 @@ export default function ActiveGrowHome({
           </div>
         </div>
       </section>
-
-      {/* Action Items - persists in both sub-states */}
-      <ActionItems items={actionItems} onUpdate={onActionUpdate} onNavigate={onNavigate} />
 
       {/* Your Coach - Compact version for session scheduled state */}
       {hasUpcomingSession && (
@@ -540,38 +545,12 @@ export default function ActiveGrowHome({
         </section>
       )}
 
-      {/* Themes - What you're working on */}
-      {focusAreas.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-lg font-extrabold text-boon-text">What You're Working On</h2>
-          <div className="space-y-3">
-            {focusAreas.map((area, i) => (
-              <div
-                key={i}
-                className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:border-boon-blue/20 transition-all"
-              >
-                <h3 className="font-bold text-boon-text leading-snug">{area!.label}</h3>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    {area!.count} {area!.count === 1 ? 'session' : 'sessions'}
-                  </span>
-                  <span className="text-gray-200">•</span>
-                  <span className="text-xs font-medium text-gray-400">
-                    Since {new Date(area!.firstDiscussed).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* From Your Coach */}
       {lastSession?.summary && (
         <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm relative">
           <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">From Your Coach</h2>
-          <div className="absolute top-12 left-6 text-5xl text-boon-blue opacity-10 font-serif">"</div>
-          <p className="text-gray-600 leading-relaxed italic relative z-10">
+          <div className="absolute top-12 left-6 text-5xl text-boon-amber/30 font-serif">"</div>
+          <p className="font-serif text-gray-600 leading-relaxed italic relative z-10">
             {lastSession.summary}
           </p>
           <div className="mt-6 flex items-center gap-3 relative z-10">
@@ -588,16 +567,16 @@ export default function ActiveGrowHome({
         </section>
       )}
 
-      {/* Explore Practice Space */}
+      {/* Explore Practice Space - only show contextual prompt if exact participant text exists */}
       <section className="bg-gradient-to-br from-purple-50 to-boon-bg rounded-[2rem] p-8 border border-purple-100/50 text-center">
         <div className="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center mx-auto mb-4">
           <svg className="w-7 h-7 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
         </div>
-        <h3 className="text-lg font-extrabold text-boon-text mb-2">Practice Space</h3>
+        <h3 className="text-lg font-bold text-boon-text mb-2">Practice Space</h3>
         <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">
-          Prepare for challenging conversations with AI-powered scenarios tied to your coaching themes.
+          Prepare for challenging conversations with AI-powered scenarios.
         </p>
         <button
           onClick={() => onNavigate?.('practice')}
