@@ -113,6 +113,17 @@ export default function ActiveGrowHome({
     return `In ${diffDays} days`;
   };
 
+  // Calculate if Zoom button should be shown (within 24 hours of session)
+  const getShowZoomButton = (session: Session) => {
+    if (!session.zoom_join_link) return false;
+    const sessionDate = new Date(session.session_date);
+    const now = new Date();
+    const hoursUntilSession = (sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return hoursUntilSession <= 24 && hoursUntilSession > -1;
+  };
+
+  const showZoomButton = upcomingSession ? getShowZoomButton(upcomingSession) : false;
+
   // Time-aware messaging for no session state
   const getBookingMessage = () => {
     if (daysSinceLastSession <= 14) {
@@ -220,7 +231,21 @@ export default function ActiveGrowHome({
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-boon-blue/10 flex gap-4">
+            <div className="mt-6 pt-6 border-t border-boon-blue/10 flex flex-wrap items-center gap-4">
+              {/* Join with Zoom - only shown within 24 hours */}
+              {showZoomButton && upcomingSession?.zoom_join_link && (
+                <a
+                  href={upcomingSession.zoom_join_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2D8CFF] text-white font-bold text-sm rounded-xl hover:bg-[#1a7ae8] transition-all shadow-md"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1zm1 2v14h14V5H5zm4.5 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm5 0a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM8 14h8v1a1 1 0 01-1 1H9a1 1 0 01-1-1v-1z"/>
+                  </svg>
+                  Join with Zoom
+                </a>
+              )}
               <button className="inline-flex items-center gap-2 text-sm font-bold text-boon-blue hover:underline">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

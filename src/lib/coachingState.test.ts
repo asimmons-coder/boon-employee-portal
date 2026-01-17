@@ -47,6 +47,7 @@ const createSession = (overrides: Partial<Session> = {}): Session => ({
   program_title: null,
   appointment_number: 1,
   created_at: '2024-02-01T10:00:00Z',
+  zoom_join_link: null,
   ...overrides,
 });
 

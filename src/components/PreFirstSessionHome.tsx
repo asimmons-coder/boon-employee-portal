@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Employee, Session, BaselineSurvey, View } from '../lib/types';
+import type { Employee, Session, BaselineSurvey, WelcomeSurveyScale, ProgramType, View } from '../lib/types';
+import { SCALE_FOCUS_AREA_LABELS } from '../lib/types';
 import { supabase } from '../lib/supabase';
 
 interface PreFirstSessionHomeProps {
   profile: Employee | null;
   sessions: Session[];
   baseline: BaselineSurvey | null;
+  welcomeSurveyScale: WelcomeSurveyScale | null;
+  programType: ProgramType | null;
   userEmail: string;
   onNavigate?: (view: View) => void;
 }
@@ -14,6 +17,8 @@ export default function PreFirstSessionHome({
   profile,
   sessions,
   baseline,
+  welcomeSurveyScale,
+  programType,
   userEmail,
   onNavigate,
 }: PreFirstSessionHomeProps) {
@@ -85,9 +90,20 @@ export default function PreFirstSessionHome({
     return () => clearTimeout(timer);
   }, [preSessionNote, saveNote]);
 
-  const hasCompletedSurvey = baseline !== null;
+  // Determine if we have survey data to show
+  const isScaleUser = programType === 'SCALE';
+  const hasWelcomeSurvey = isScaleUser ? welcomeSurveyScale !== null : baseline !== null;
 
-  // Get focus areas from baseline (lowest-scored competencies they want to improve)
+  // Get coaching goals from the appropriate survey
+  const coachingGoals = isScaleUser ? welcomeSurveyScale?.coaching_goals : baseline?.coaching_goals;
+
+  // Get focus areas from SCALE survey (selected boolean fields)
+  const scaleFocusAreas = welcomeSurveyScale ? Object.entries(SCALE_FOCUS_AREA_LABELS)
+    .filter(([key]) => welcomeSurveyScale[key as keyof WelcomeSurveyScale] === true)
+    .map(([, label]) => label)
+  : [];
+
+  // Get focus areas from GROW baseline (lowest-scored competencies they want to improve)
   const competencyLabels: Record<string, string> = {
     comp_adaptability_and_resilience: 'Adaptability & Resilience',
     comp_building_relationships_at_work: 'Building Relationships',
@@ -103,8 +119,8 @@ export default function PreFirstSessionHome({
     comp_time_management_and_productivity: 'Time Management',
   };
 
-  // Get the 3 lowest-scored competencies as growth areas
-  const growthAreas = baseline ? Object.entries(competencyLabels)
+  // Get the 3 lowest-scored competencies as growth areas (for GROW/EXEC)
+  const growCompetencyAreas = baseline ? Object.entries(competencyLabels)
     .map(([key, label]) => ({
       key,
       label,
@@ -113,7 +129,22 @@ export default function PreFirstSessionHome({
     .filter(c => c.score !== null && c.score > 0)
     .sort((a, b) => (a.score || 0) - (b.score || 0))
     .slice(0, 3)
+    .map(c => c.label)
   : [];
+
+  // Use appropriate focus areas based on program type
+  const focusAreas = isScaleUser ? scaleFocusAreas : growCompetencyAreas;
+
+  // Calculate if Zoom button should be shown (within 24 hours of session)
+  const getShowZoomButton = (session: Session) => {
+    if (!session.zoom_join_link) return false;
+    const sessionDate = new Date(session.session_date);
+    const now = new Date();
+    const hoursUntilSession = (sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return hoursUntilSession <= 24 && hoursUntilSession > -1;
+  };
+
+  const showZoomButton = upcomingSession ? getShowZoomButton(upcomingSession) : false;
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 md:space-y-12 animate-fade-in">
@@ -166,8 +197,22 @@ export default function PreFirstSessionHome({
             </div>
           </div>
 
-          {/* Add to Calendar Button */}
-          <div className="mt-6 pt-6 border-t border-boon-blue/10">
+          {/* Session Actions */}
+          <div className="mt-6 pt-6 border-t border-boon-blue/10 flex flex-wrap items-center gap-4">
+            {/* Join with Zoom - only shown within 24 hours */}
+            {showZoomButton && upcomingSession?.zoom_join_link && (
+              <a
+                href={upcomingSession.zoom_join_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2D8CFF] text-white font-bold text-sm rounded-xl hover:bg-[#1a7ae8] transition-all shadow-md"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1zm1 2v14h14V5H5zm4.5 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm5 0a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM8 14h8v1a1 1 0 01-1 1H9a1 1 0 01-1-1v-1z"/>
+                </svg>
+                Join with Zoom
+              </a>
+            )}
             <button className="inline-flex items-center gap-2 text-sm font-bold text-boon-blue hover:underline">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -213,7 +258,7 @@ export default function PreFirstSessionHome({
       </section>
 
       {/* What You Shared - Reflect back their survey data */}
-      {hasCompletedSurvey && (
+      {hasWelcomeSurvey && (
         <section className="bg-gradient-to-br from-purple-50 to-boon-bg rounded-[2rem] p-8 border border-purple-100">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -227,37 +272,37 @@ export default function PreFirstSessionHome({
           </div>
 
           {/* Show coaching goals if they exist */}
-          {baseline?.coaching_goals && (
+          {coachingGoals && (
             <div className="mb-6">
               <p className="text-xs font-bold text-purple-600 uppercase tracking-widest mb-2">
                 What you're hoping to work on
               </p>
               <p className="text-gray-700 bg-white/60 p-4 rounded-xl border border-purple-100/50 italic leading-relaxed">
-                "{baseline.coaching_goals}"
+                "{coachingGoals}"
               </p>
             </div>
           )}
 
-          {/* Show growth areas derived from lowest competencies */}
-          {growthAreas.length > 0 && (
+          {/* Show focus areas (from SCALE survey or GROW competencies) */}
+          {focusAreas.length > 0 && (
             <div>
-              {!baseline?.coaching_goals && (
+              {!coachingGoals && (
                 <p className="text-xs font-bold text-purple-600 uppercase tracking-widest mb-3">
-                  Areas you identified for growth
+                  {isScaleUser ? 'Focus areas you selected' : 'Areas you identified for growth'}
                 </p>
               )}
-              {baseline?.coaching_goals && (
+              {coachingGoals && (
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
                   Focus areas from your assessment
                 </p>
               )}
               <div className="flex flex-wrap gap-2">
-                {growthAreas.map((area) => (
+                {focusAreas.map((area) => (
                   <span
-                    key={area.key}
+                    key={area}
                     className="px-3 py-1.5 text-sm font-medium bg-white/70 text-purple-700 rounded-full border border-purple-200/50"
                   >
-                    {area.label}
+                    {area}
                   </span>
                 ))}
               </div>

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/AuthContext';
-import { fetchSessions, fetchProgressData, fetchBaseline, fetchCompetencyScores, fetchProgramType, fetchActionItems, fetchReflection, fetchCheckpoints } from './lib/dataFetcher';
+import { fetchSessions, fetchProgressData, fetchBaseline, fetchWelcomeSurveyScale, fetchCompetencyScores, fetchProgramType, fetchActionItems, fetchReflection, fetchCheckpoints } from './lib/dataFetcher';
 import { getCoachingState, type CoachingStateData, type CoachingState } from './lib/coachingState';
-import type { View, Session, SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, ActionItem, ReflectionResponse, Checkpoint } from './lib/types';
+import type { View, Session, SurveyResponse, BaselineSurvey, WelcomeSurveyScale, CompetencyScore, ProgramType, ActionItem, ReflectionResponse, Checkpoint } from './lib/types';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -40,6 +40,7 @@ function ProtectedApp() {
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [reflection, setReflection] = useState<ReflectionResponse | null>(null);
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
+  const [welcomeSurveyScale, setWelcomeSurveyScale] = useState<WelcomeSurveyScale | null>(null);
   const [showReflectionFlow, setShowReflectionFlow] = useState(false);
   const [showCheckpointFlow, setShowCheckpointFlow] = useState(false);
   const [stateOverride, setStateOverride] = useState<CoachingState | null>(null);
@@ -51,10 +52,11 @@ function ProtectedApp() {
 
       setDataLoading(true);
       try {
-        const [sessionsData, progressData, baselineData, competencyData, programTypeData, actionItemsData, reflectionData, checkpointsData] = await Promise.all([
+        const [sessionsData, progressData, baselineData, welcomeSurveyScaleData, competencyData, programTypeData, actionItemsData, reflectionData, checkpointsData] = await Promise.all([
           fetchSessions(employee.id),
           fetchProgressData(employee.company_email),
           fetchBaseline(employee.company_email),
+          fetchWelcomeSurveyScale(employee.company_email),
           fetchCompetencyScores(employee.company_email),
           fetchProgramType(employee.program),
           fetchActionItems(employee.company_email),
@@ -65,6 +67,7 @@ function ProtectedApp() {
         setSessions(sessionsData);
         setProgress(progressData);
         setBaseline(baselineData);
+        setWelcomeSurveyScale(welcomeSurveyScaleData);
         setCompetencyScores(competencyData);
         setProgramType(programTypeData);
         setActionItems(actionItemsData);
@@ -172,6 +175,7 @@ function ProtectedApp() {
     program_title: null,
     appointment_number: 7,
     created_at: new Date().toISOString(),
+    zoom_join_link: 'https://zoom.us/j/123456789',
   };
 
   // Mock completed sessions (for Active Program preview)
@@ -201,6 +205,7 @@ function ProtectedApp() {
     program_title: null,
     appointment_number: i + 1,
     created_at: new Date().toISOString(),
+    zoom_join_link: null,
   }));
 
   const mockBaseline: BaselineSurvey = {
@@ -312,7 +317,7 @@ function ProtectedApp() {
   const renderView = () => {
     switch (view) {
       case 'dashboard':
-        return <Dashboard profile={employee} sessions={effectiveSessions} actionItems={actionItems} baseline={effectiveBaseline} competencyScores={competencyScores} onActionUpdate={reloadActionItems} coachingState={coachingState} userEmail={employee?.company_email || ''} onNavigate={setView} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
+        return <Dashboard profile={employee} sessions={effectiveSessions} actionItems={actionItems} baseline={effectiveBaseline} welcomeSurveyScale={welcomeSurveyScale} programType={programType} competencyScores={competencyScores} onActionUpdate={reloadActionItems} coachingState={coachingState} userEmail={employee?.company_email || ''} onNavigate={setView} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
       case 'sessions':
         return <SessionsPage sessions={sessions} coachingState={coachingState} />;
       case 'progress':
@@ -328,7 +333,7 @@ function ProtectedApp() {
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard profile={employee} sessions={effectiveSessions} actionItems={actionItems} baseline={effectiveBaseline} competencyScores={competencyScores} onActionUpdate={reloadActionItems} coachingState={coachingState} userEmail={employee?.company_email || ''} onNavigate={setView} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
+        return <Dashboard profile={employee} sessions={effectiveSessions} actionItems={actionItems} baseline={effectiveBaseline} welcomeSurveyScale={welcomeSurveyScale} programType={programType} competencyScores={competencyScores} onActionUpdate={reloadActionItems} coachingState={coachingState} userEmail={employee?.company_email || ''} onNavigate={setView} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
     }
   };
 
