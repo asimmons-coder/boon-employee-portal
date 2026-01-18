@@ -559,9 +559,9 @@ export async function fetchCoreCompetencies(): Promise<CoreCompetency[]> {
 
 /**
  * Check for pending survey after login
- * Returns the most recent session that needs a survey
+ * Returns the OLDEST session that needs a survey (so users complete in order)
  */
-export async function fetchPendingSurvey(email: string): Promise<PendingSurvey | null> {
+export async function fetchPendingSurvey(email: string, programType?: string | null): Promise<PendingSurvey | null> {
   // First, try the RPC function
   const { data: rpcData, error: rpcError } = await supabase
     .rpc('get_pending_survey', { user_email: email });
@@ -572,13 +572,14 @@ export async function fetchPendingSurvey(email: string): Promise<PendingSurvey |
 
   // Fallback: manual query for pending surveys
   // Get completed sessions at survey milestones without matching survey
+  // Order by ascending (oldest first) so users complete surveys in order
   const { data: sessions, error: sessionsError } = await supabase
     .from('session_tracking')
-    .select('id, employee_email, session_date, appointment_number, coach_name')
+    .select('id, employee_email, session_date, appointment_number, coach_name, program_name')
     .ilike('employee_email', email)
     .eq('status', 'Completed')
     .in('appointment_number', [1, 3, 6, 12, 18, 24, 30, 36])
-    .order('session_date', { ascending: false });
+    .order('session_date', { ascending: true });
 
   if (sessionsError || !sessions || sessions.length === 0) {
     return null;
@@ -594,12 +595,27 @@ export async function fetchPendingSurvey(email: string): Promise<PendingSurvey |
       .limit(1);
 
     if (!existingSurvey || existingSurvey.length === 0) {
+      // Determine survey type based on program
+      // GROW uses grow surveys, SCALE uses scale_feedback
+      const sessionProgram = session.program_name || programType;
+      const isGrow = sessionProgram?.toUpperCase() === 'GROW';
+
+      // For GROW, check if baseline exists - if not, show baseline survey
+      // Otherwise show regular feedback
+      let surveyType: SurveyType = 'scale_feedback';
+
+      if (isGrow) {
+        // Check if user has completed baseline survey
+        const hasBaseline = await hasCompletedBaselineSurvey(email);
+        surveyType = hasBaseline ? 'scale_feedback' : 'grow_baseline';
+      }
+
       return {
         session_id: session.id,
         session_number: session.appointment_number,
         session_date: session.session_date,
         coach_name: session.coach_name || 'Your Coach',
-        survey_type: 'scale_feedback' as SurveyType,
+        survey_type: surveyType,
       };
     }
   }

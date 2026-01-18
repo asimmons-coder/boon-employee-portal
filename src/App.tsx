@@ -81,7 +81,8 @@ function ProtectedApp() {
         setCheckpoints(checkpointsData);
 
         // Check for pending survey after data loads
-        const pending = await fetchPendingSurvey(employee.company_email);
+        // Pass program type to help detect GROW vs SCALE surveys
+        const pending = await fetchPendingSurvey(employee.company_email, programTypeData);
         if (pending) {
           setPendingSurvey(pending);
           setShowSurveyModal(true);

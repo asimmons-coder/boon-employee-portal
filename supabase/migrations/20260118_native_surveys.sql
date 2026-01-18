@@ -77,7 +77,11 @@ SELECT
   st.coach_name,
   st.company_id,
   em.program as program_type,
+  -- Determine survey type based on program
+  -- GROW users get grow_baseline if they haven't done it, otherwise scale_feedback
+  -- SCALE users always get scale_feedback
   CASE
+    WHEN upper(em.program) = 'GROW' THEN 'grow_baseline'
     WHEN st.appointment_number IN (1, 3, 6, 12, 18, 24, 30, 36) THEN 'scale_feedback'
     ELSE NULL
   END as suggested_survey_type
@@ -90,7 +94,7 @@ LEFT JOIN survey_submissions ss ON (
 WHERE st.status = 'Completed'
   AND st.appointment_number IN (1, 3, 6, 12, 18, 24, 30, 36)
   AND ss.id IS NULL
-ORDER BY st.session_date DESC;
+ORDER BY st.session_date ASC;
 
 -- 5. RLS Policies
 -- ============================================
@@ -124,6 +128,7 @@ FOR INSERT WITH CHECK (
 
 -- 6. Helper function to check for pending survey
 -- ============================================
+-- Returns the OLDEST pending survey (so users complete in order)
 CREATE OR REPLACE FUNCTION get_pending_survey(user_email TEXT)
 RETURNS TABLE (
   session_id uuid,
@@ -145,7 +150,7 @@ BEGIN
     ps.suggested_survey_type as survey_type
   FROM pending_surveys ps
   WHERE lower(ps.email) = lower(user_email)
-  ORDER BY ps.session_date DESC
+  ORDER BY ps.session_date ASC
   LIMIT 1;
 END;
 $$;
