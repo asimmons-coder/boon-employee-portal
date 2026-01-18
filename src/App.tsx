@@ -247,6 +247,45 @@ function ProtectedApp() {
 
   const effectiveBaseline = (isPreviewingPreFirstSession || isPreviewingActiveProgram) ? mockBaseline : baseline;
 
+  // Mock action items for Active Program preview
+  const mockActionItems: ActionItem[] = isPreviewingActiveProgram ? [
+    {
+      id: 'mock-action-1',
+      email: employee?.company_email || '',
+      session_id: 6,
+      coach_name: mockCoachName,
+      action_text: 'Practice the SBI model in your next 1:1 with a direct report',
+      due_date: null,
+      status: 'pending',
+      created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week ago
+      completed_at: null,
+    },
+    {
+      id: 'mock-action-2',
+      email: employee?.company_email || '',
+      session_id: 5,
+      coach_name: mockCoachName,
+      action_text: 'Journal about a recent difficult feedback conversation and what you would do differently',
+      due_date: null,
+      status: 'pending',
+      created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks ago
+      completed_at: null,
+    },
+    {
+      id: 'mock-action-3',
+      email: employee?.company_email || '',
+      session_id: 4,
+      coach_name: mockCoachName,
+      action_text: 'Schedule a skip-level meeting with someone on your team',
+      due_date: null,
+      status: 'pending',
+      created_at: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString(), // 3 weeks ago
+      completed_at: null,
+    },
+  ] : [];
+
+  const effectiveActionItems = isPreviewingActiveProgram ? mockActionItems : actionItems;
+
   // Apply state override if set (for admin preview)
   const coachingState: CoachingStateData = (stateOverride || programTypeOverride)
     ? {
@@ -317,11 +356,11 @@ function ProtectedApp() {
   const renderView = () => {
     switch (view) {
       case 'dashboard':
-        return <Dashboard profile={employee} sessions={effectiveSessions} actionItems={actionItems} baseline={effectiveBaseline} welcomeSurveyScale={welcomeSurveyScale} programType={programType} competencyScores={competencyScores} onActionUpdate={reloadActionItems} coachingState={coachingState} userEmail={employee?.company_email || ''} onNavigate={setView} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
+        return <Dashboard profile={employee} sessions={effectiveSessions} actionItems={effectiveActionItems} baseline={effectiveBaseline} welcomeSurveyScale={welcomeSurveyScale} programType={programType} competencyScores={competencyScores} onActionUpdate={reloadActionItems} coachingState={coachingState} userEmail={employee?.company_email || ''} onNavigate={setView} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
       case 'sessions':
         return <SessionsPage sessions={sessions} coachingState={coachingState} />;
       case 'progress':
-        return <ProgressPage progress={progress} baseline={baseline} competencyScores={competencyScores} sessions={sessions} actionItems={actionItems} programType={programType} coachingState={coachingState} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
+        return <ProgressPage progress={progress} baseline={baseline} competencyScores={competencyScores} sessions={sessions} actionItems={effectiveActionItems} programType={programType} coachingState={coachingState} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
       case 'practice':
         const practiceCoachName = sessions.length > 0 ? sessions[0].coach_name : "Your Coach";
         return <Practice sessions={sessions} coachName={practiceCoachName} userEmail={employee?.company_email || ''} coachingState={coachingState} competencyScores={competencyScores} />;
@@ -333,7 +372,7 @@ function ProtectedApp() {
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard profile={employee} sessions={effectiveSessions} actionItems={actionItems} baseline={effectiveBaseline} welcomeSurveyScale={welcomeSurveyScale} programType={programType} competencyScores={competencyScores} onActionUpdate={reloadActionItems} coachingState={coachingState} userEmail={employee?.company_email || ''} onNavigate={setView} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
+        return <Dashboard profile={employee} sessions={effectiveSessions} actionItems={effectiveActionItems} baseline={effectiveBaseline} welcomeSurveyScale={welcomeSurveyScale} programType={programType} competencyScores={competencyScores} onActionUpdate={reloadActionItems} coachingState={coachingState} userEmail={employee?.company_email || ''} onNavigate={setView} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
     }
   };
 

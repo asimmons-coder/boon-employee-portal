@@ -24,8 +24,13 @@ export default function ActiveGrowHome({
   onNavigate,
 }: ActiveGrowHomeProps) {
   void _onActionUpdate; // Reserved for future action item updates
-  const completedSessions = sessions.filter(s => s.status === 'Completed');
-  const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+
+  // Sort sessions by date descending to get most recent first
+  const sortedSessions = [...sessions].sort((a, b) =>
+    new Date(b.session_date).getTime() - new Date(a.session_date).getTime()
+  );
+  const completedSessions = sortedSessions.filter(s => s.status === 'Completed');
+  const upcomingSession = sortedSessions.find(s => s.status === 'Upcoming');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
   const pendingActions = actionItems.filter(a => a.status === 'pending');
 
