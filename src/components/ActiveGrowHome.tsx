@@ -27,57 +27,48 @@ export default function ActiveGrowHome({
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
-  void actionItems; // Reserved for potential future use
 
   const coachName = lastSession?.coach_name || upcomingSession?.coach_name || 'Your Coach';
   const coachFirstName = coachName.split(' ')[0];
 
-  // Extract plans from recent sessions for "Things You're Working On"
-  const sessionPlans = completedSessions
-    .filter(s => s.plan && s.plan.trim().length > 0)
-    .slice(0, 5) // Last 5 sessions with plans
-    .map(s => ({
-      id: s.id,
-      plan: s.plan!,
-      sessionDate: s.session_date,
-      coachName: s.coach_name,
-    }));
+  // Action items for "Things You're Working On" - from action_items table
+  const pendingActions = actionItems.filter(a => a.status === 'pending');
 
-  // State for notes on plan items
-  const [planNotes, setPlanNotes] = useState<Record<string, string>>({});
+  // State for notes on action items
+  const [actionNotes, setActionNotes] = useState<Record<string, string>>({});
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
 
   // Load existing notes from localStorage
   useEffect(() => {
     if (!userEmail) return;
-    const savedNotes = localStorage.getItem(`plan_notes_${userEmail}`);
+    const savedNotes = localStorage.getItem(`action_notes_${userEmail}`);
     if (savedNotes) {
       try {
-        setPlanNotes(JSON.parse(savedNotes));
+        setActionNotes(JSON.parse(savedNotes));
       } catch {
         // Invalid JSON, ignore
       }
     }
   }, [userEmail]);
 
-  // Save note for a plan item
-  const saveNote = async (sessionId: string, note: string) => {
-    setSavingNoteId(sessionId);
-    const updatedNotes = { ...planNotes, [sessionId]: note };
-    setPlanNotes(updatedNotes);
-    localStorage.setItem(`plan_notes_${userEmail}`, JSON.stringify(updatedNotes));
+  // Save note for an action item
+  const saveNote = async (actionId: string, note: string) => {
+    setSavingNoteId(actionId);
+    const updatedNotes = { ...actionNotes, [actionId]: note };
+    setActionNotes(updatedNotes);
+    localStorage.setItem(`action_notes_${userEmail}`, JSON.stringify(updatedNotes));
 
     // Optionally save to Supabase
     try {
       await supabase
-        .from('session_plan_notes')
+        .from('action_item_notes')
         .upsert({
           email: userEmail.toLowerCase(),
-          session_id: sessionId,
+          action_id: actionId,
           note: note,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'email,session_id' });
+        }, { onConflict: 'email,action_id' });
     } catch {
       // localStorage saved as fallback
     }
@@ -251,7 +242,7 @@ export default function ActiveGrowHome({
                 key={i}
                 className="group"
               >
-                <h3 className="font-serif text-xl text-boon-text leading-relaxed">{area!.label}</h3>
+                <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text leading-relaxed">{area!.label}</h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs text-boon-amber font-medium">
                     {area!.count} {area!.count === 1 ? 'session' : 'sessions'}
@@ -483,10 +474,10 @@ export default function ActiveGrowHome({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          THINGS YOU'RE WORKING ON - From session plans
+          THINGS YOU'RE WORKING ON - From action_items table
           Uses Georgia, amber accents, no strikethrough, with "Add note" option
           ═══════════════════════════════════════════════════════════════════ */}
-      {sessionPlans.length > 0 && (
+      {pendingActions.length > 0 && (
         <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-boon-amber/20 flex items-center justify-center">
@@ -497,40 +488,41 @@ export default function ActiveGrowHome({
             <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Things You're Working On</h2>
           </div>
           <div className="space-y-4">
-            {sessionPlans.map((item) => (
+            {pendingActions.map((action) => (
               <div
-                key={item.id}
+                key={action.id}
                 className="p-5 bg-white/60 rounded-xl border border-boon-amber/10 hover:border-boon-amber/30 transition-all"
               >
-                <p className="font-serif text-gray-700 leading-relaxed">{item.plan}</p>
+                <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-gray-700 leading-relaxed">{action.action_text}</p>
 
                 {/* Existing note display */}
-                {planNotes[item.id] && expandedNoteId !== item.id && (
+                {actionNotes[action.id] && expandedNoteId !== action.id && (
                   <div className="mt-3 p-3 bg-boon-amberLight/30 rounded-lg border border-boon-amber/10">
                     <p className="text-xs font-bold text-boon-amber uppercase tracking-widest mb-1">Your note</p>
-                    <p className="font-serif text-sm text-gray-600 italic">{planNotes[item.id]}</p>
+                    <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-sm text-gray-600 italic">{actionNotes[action.id]}</p>
                   </div>
                 )}
 
                 {/* Add/Edit note form */}
-                {expandedNoteId === item.id ? (
+                {expandedNoteId === action.id ? (
                   <div className="mt-4 space-y-3">
                     <textarea
-                      defaultValue={planNotes[item.id] || ''}
+                      defaultValue={actionNotes[action.id] || ''}
                       placeholder="How's this going? Any progress to note..."
-                      className="w-full p-3 rounded-lg border border-boon-amber/20 focus:border-boon-amber focus:ring-0 focus:outline-none font-serif text-sm min-h-[80px] resize-none bg-white placeholder-gray-400"
-                      id={`note-${item.id}`}
+                      style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}
+                      className="w-full p-3 rounded-lg border border-boon-amber/20 focus:border-boon-amber focus:ring-0 focus:outline-none text-sm min-h-[80px] resize-none bg-white placeholder-gray-400"
+                      id={`note-${action.id}`}
                     />
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
-                          const textarea = document.getElementById(`note-${item.id}`) as HTMLTextAreaElement;
-                          saveNote(item.id, textarea.value);
+                          const textarea = document.getElementById(`note-${action.id}`) as HTMLTextAreaElement;
+                          saveNote(action.id, textarea.value);
                         }}
-                        disabled={savingNoteId === item.id}
+                        disabled={savingNoteId === action.id}
                         className="px-4 py-2 text-xs font-bold text-white bg-boon-amber rounded-lg hover:bg-boon-amberDark transition-colors disabled:opacity-50"
                       >
-                        {savingNoteId === item.id ? 'Saving...' : 'Save note'}
+                        {savingNoteId === action.id ? 'Saving...' : 'Save note'}
                       </button>
                       <button
                         onClick={() => setExpandedNoteId(null)}
@@ -543,16 +535,16 @@ export default function ActiveGrowHome({
                 ) : (
                   <div className="flex items-center gap-3 mt-3">
                     <span className="text-xs text-gray-400">
-                      From session on {new Date(item.sessionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      From {new Date(action.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                     <button
-                      onClick={() => setExpandedNoteId(item.id)}
+                      onClick={() => setExpandedNoteId(action.id)}
                       className="ml-auto text-xs text-boon-amber font-medium hover:underline flex items-center gap-1"
                     >
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
-                      {planNotes[item.id] ? 'Edit note' : 'Add note'}
+                      {actionNotes[action.id] ? 'Edit note' : 'Add note'}
                     </button>
                   </div>
                 )}
