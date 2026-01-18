@@ -274,3 +274,113 @@ export interface ReflectionResponse {
   // Testimonial consent
   testimonial_consent: boolean;
 }
+
+// ============================================
+// NATIVE SURVEY SYSTEM
+// ============================================
+
+export type SurveyType = 'scale_feedback' | 'scale_end' | 'grow_baseline' | 'grow_end';
+
+export type CoachQuality = 'made_me_feel_safe' | 'listened_well' | 'provided_tools' | 'challenged_me';
+
+export const COACH_QUALITY_LABELS: Record<CoachQuality, string> = {
+  made_me_feel_safe: 'Made me feel safe',
+  listened_well: 'Listened well',
+  provided_tools: 'Provided me with concrete tools',
+  challenged_me: 'Challenged me',
+};
+
+export interface CoreCompetency {
+  id: string;
+  name: string;
+  description: string | null;
+  display_order: number;
+  is_active: boolean;
+}
+
+// Score levels for competencies: 1=Learning → 5=Mastering
+export type CompetencyScoreLevel = 1 | 2 | 3 | 4 | 5;
+
+export const COMPETENCY_SCORE_LABELS: Record<CompetencyScoreLevel, string> = {
+  1: 'Learning',
+  2: 'Growing',
+  3: 'Applying',
+  4: 'Excelling',
+  5: 'Mastering',
+};
+
+export interface SurveyCompetencyScore {
+  id: string;
+  survey_submission_id: string;
+  email: string;
+  competency_name: string;
+  score: CompetencyScoreLevel;
+  score_type: 'pre' | 'post';
+  created_at: string;
+}
+
+export interface NativeSurveySubmission {
+  id: string;
+  email: string;
+  survey_type: SurveyType;
+  session_id: string | null;
+  session_number: number | null;
+  company_id: string | null;
+  coach_name: string | null;
+  // Ratings
+  coach_satisfaction: number | null; // 1-10
+  nps: number | null; // 0-10
+  // Coach rematch
+  wants_rematch: boolean | null;
+  rematch_reason: string | null;
+  // Coach qualities (multi-select)
+  coach_qualities: CoachQuality[] | null;
+  // Next session
+  has_booked_next_session: boolean | null;
+  // Open-ended
+  feedback_text: string | null;
+  outcomes: string | null;
+  // Testimonial
+  open_to_testimonial: boolean | null;
+  // GROW baseline/end specific
+  focus_areas: string[] | null; // max 3 competencies
+  // Meta
+  submitted_at: string;
+  created_at: string;
+}
+
+export interface PendingSurvey {
+  session_id: string;
+  session_number: number;
+  session_date: string;
+  coach_name: string;
+  survey_type: SurveyType;
+}
+
+// Survey form data (for submission)
+export interface ScaleFeedbackFormData {
+  coach_satisfaction: number;
+  wants_rematch?: boolean;
+  rematch_reason?: string;
+  coach_qualities: CoachQuality[];
+  has_booked_next_session: boolean;
+  nps: number;
+  feedback_text?: string;
+}
+
+export interface ScaleEndFormData extends ScaleFeedbackFormData {
+  outcomes: string;
+  open_to_testimonial: boolean;
+}
+
+export interface GrowBaselineFormData {
+  competency_scores: Record<string, CompetencyScoreLevel>;
+  focus_areas: string[]; // max 3
+}
+
+export interface GrowEndFormData {
+  competency_scores: Record<string, CompetencyScoreLevel>;
+  nps: number;
+  outcomes: string;
+  open_to_testimonial: boolean;
+}
