@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Employee, Session, BaselineSurvey, WelcomeSurveyScale, ProgramType, View } from '../lib/types';
+import type { Employee, Session, BaselineSurvey, WelcomeSurveyScale, ProgramType, View, Coach } from '../lib/types';
 import { SCALE_FOCUS_AREA_LABELS } from '../lib/types';
 import { supabase } from '../lib/supabase';
+import { fetchCoachByName, fetchCoachById, parseCoachSpecialties, getCoachTitleLine, getCoachBackgroundLine } from '../lib/dataFetcher';
 
 interface PreFirstSessionHomeProps {
   profile: Employee | null;
@@ -24,42 +25,47 @@ export default function PreFirstSessionHome({
 }: PreFirstSessionHomeProps) {
   const upcomingSession = sessions.find(s => s.status === 'Upcoming');
 
-  // Coach name state - will try to fetch from coaches table if not in sessions
+  // Coach state - full coach data from coaches table
+  const [coach, setCoach] = useState<Coach | null>(null);
   const [coachName, setCoachName] = useState<string>(
     upcomingSession?.coach_name || sessions[0]?.coach_name || 'Your Coach'
   );
-  const [coachBio, setCoachBio] = useState<string | null>(null);
-  const [coachSpecialties, setCoachSpecialties] = useState<string[]>(['Leadership', 'Communication', 'Well-being']);
 
-  // Fetch coach details if we have coach_id but no session data
+  // Fetch coach details
   useEffect(() => {
-    const fetchCoachDetails = async () => {
-      // If we already have coach name from sessions, skip
-      if (sessions.length > 0 && sessions[0]?.coach_name) {
-        setCoachName(sessions[0].coach_name);
+    const loadCoachDetails = async () => {
+      // If we have coach name from sessions, fetch by name
+      const nameFromSession = sessions[0]?.coach_name || upcomingSession?.coach_name;
+      if (nameFromSession) {
+        setCoachName(nameFromSession);
+        const coachData = await fetchCoachByName(nameFromSession);
+        if (coachData) setCoach(coachData);
         return;
       }
 
-      // Try to fetch from coaches table using coach_id
+      // Otherwise try to fetch from coaches table using coach_id
       if (profile?.coach_id) {
-        const { data } = await supabase
-          .from('coaches')
-          .select('name, bio, specialties')
-          .eq('id', profile.coach_id)
-          .single();
-
-        if (data?.name) {
-          setCoachName(data.name);
-          if (data.bio) setCoachBio(data.bio);
-          if (data.specialties?.length) setCoachSpecialties(data.specialties);
+        const coachData = await fetchCoachById(profile.coach_id);
+        if (coachData) {
+          setCoach(coachData);
+          setCoachName(coachData.name);
         }
       }
     };
 
-    fetchCoachDetails();
-  }, [profile?.coach_id, sessions]);
+    loadCoachDetails();
+  }, [profile?.coach_id, sessions, upcomingSession?.coach_name]);
 
   const coachFirstName = coachName.split(' ')[0];
+
+  // Coach display data
+  const coachTitleLine = getCoachTitleLine(coach, programType);
+  const coachBackgroundLine = getCoachBackgroundLine(coach);
+  const coachSpecialties = coach?.special_services
+    ? parseCoachSpecialties(coach.special_services, 4)
+    : ['Leadership', 'Communication', 'Well-being'];
+  const coachBio = coach?.bio || null;
+  const coachPhotoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;
 
   // Pre-session note state
   const [preSessionNote, setPreSessionNote] = useState('');
@@ -235,7 +241,7 @@ export default function PreFirstSessionHome({
 
             <div className="flex items-center gap-4">
               <img
-                src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/100/100`}
+                src={coachPhotoUrl}
                 alt={coachName}
                 className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white shadow-lg"
               />
@@ -290,7 +296,7 @@ export default function PreFirstSessionHome({
 
             <div className="flex items-center gap-4">
               <img
-                src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/100/100`}
+                src={coachPhotoUrl}
                 alt={coachName}
                 className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white shadow-lg"
               />
@@ -319,14 +325,21 @@ export default function PreFirstSessionHome({
 
         <div className="flex flex-col sm:flex-row gap-6">
           <img
-            src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`}
+            src={coachPhotoUrl}
             alt={coachName}
             className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
           />
 
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-xl font-extrabold text-boon-text">{coachName}</h3>
-            <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">Executive Coach</p>
+            <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">{coachTitleLine}</p>
+
+            {/* Background line for Industry Practitioners */}
+            {coachBackgroundLine && (
+              <p className="text-sm text-gray-500 mt-2 italic">
+                {coachBackgroundLine}
+              </p>
+            )}
 
             <p className="text-sm text-gray-600 mt-4 leading-relaxed">
               {coachBio || `${coachFirstName} specializes in leadership development and emotional intelligence, helping professionals unlock their full potential through personalized coaching.`}

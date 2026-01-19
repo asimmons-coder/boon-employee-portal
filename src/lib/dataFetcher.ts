@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Employee, Session, SurveyResponse, BaselineSurvey, WelcomeSurveyScale, CompetencyScore, ProgramType, ActionItem, SlackConnectionStatus, SlackNudge, ReflectionResponse, Checkpoint } from './types';
+import type { Employee, Session, SurveyResponse, BaselineSurvey, WelcomeSurveyScale, CompetencyScore, ProgramType, ActionItem, SlackConnectionStatus, SlackNudge, ReflectionResponse, Checkpoint, Coach } from './types';
 
 /**
  * Fetch employee profile by email
@@ -341,9 +341,9 @@ export async function submitSessionFeedback(
 }
 
 /**
- * Fetch coach details by name (for now - could be by ID later)
+ * Fetch coach details by name
  */
-export async function fetchCoachByName(coachName: string): Promise<any | null> {
+export async function fetchCoachByName(coachName: string): Promise<Coach | null> {
   const { data, error } = await supabase
     .from('coaches')
     .select('*')
@@ -352,11 +352,112 @@ export async function fetchCoachByName(coachName: string): Promise<any | null> {
 
   if (error) {
     // Coaches table might not exist
-    console.error('Error fetching coach:', error);
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching coach by name:', error);
+    }
     return null;
   }
 
-  return data;
+  return data as Coach;
+}
+
+/**
+ * Fetch coach details by ID
+ */
+export async function fetchCoachById(coachId: string): Promise<Coach | null> {
+  const { data, error } = await supabase
+    .from('coaches')
+    .select('*')
+    .eq('id', coachId)
+    .single();
+
+  if (error) {
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching coach by id:', error);
+    }
+    return null;
+  }
+
+  return data as Coach;
+}
+
+/**
+ * Parse special_services string into prioritized specialty tags
+ * Priority: ADHD, Neurodivergence, LGBTQIA+, Working Mothers, then Leadership, Stress, etc.
+ */
+export function parseCoachSpecialties(specialServices: string | null, maxTags: number = 4): string[] {
+  if (!specialServices) return [];
+
+  const allSpecialties = specialServices.split(';').map(s => s.trim()).filter(Boolean);
+
+  // Priority specialties (show these first if present)
+  const priorityKeywords = [
+    'ADHD',
+    'Neurodiverg',
+    'LGBTQ',
+    'Working Mother',
+    'Working Parent',
+    'Women in Leadership',
+  ];
+
+  const priorityMatches: string[] = [];
+  const otherSpecialties: string[] = [];
+
+  allSpecialties.forEach(specialty => {
+    const isPriority = priorityKeywords.some(keyword =>
+      specialty.toLowerCase().includes(keyword.toLowerCase())
+    );
+    if (isPriority) {
+      priorityMatches.push(specialty);
+    } else {
+      otherSpecialties.push(specialty);
+    }
+  });
+
+  // Combine priority first, then others, limited to maxTags
+  return [...priorityMatches, ...otherSpecialties].slice(0, maxTags);
+}
+
+/**
+ * Get coach title line based on product certifications and ICF level
+ */
+export function getCoachTitleLine(coach: Coach | null, programType?: ProgramType | null): string {
+  if (!coach) return 'Executive Coach';
+
+  // Determine product type
+  let productLabel = 'COACH';
+  if (programType === 'EXEC' || coach.is_exec_coach) {
+    productLabel = 'EXECUTIVE COACH';
+  } else if (programType === 'GROW' || coach.is_grow_coach) {
+    productLabel = 'LEADERSHIP COACH';
+  } else if (programType === 'SCALE' || coach.is_scale_coach) {
+    productLabel = 'COACH';
+  }
+
+  // Add ICF level if available
+  if (coach.icf_level) {
+    return `${productLabel} · ${coach.icf_level}`;
+  }
+
+  return productLabel;
+}
+
+/**
+ * Get coach background line for Industry Practitioners
+ */
+export function getCoachBackgroundLine(coach: Coach | null): string | null {
+  if (!coach) return null;
+
+  // Only show for Industry Practitioners with companies
+  if (coach.practitioner_type !== 'Industry Practitioner') return null;
+  if (!coach.companies || coach.companies.length === 0) return null;
+
+  // Get primary industry label
+  const industryLabel = coach.industries?.[0] || 'Executive';
+
+  // Format: "Former [industry] · [companies]"
+  const companiesStr = coach.companies.slice(0, 3).join(' · ');
+  return `Former ${industryLabel} · ${companiesStr}`;
 }
 
 // ============================================
