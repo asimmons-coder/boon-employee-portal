@@ -1,4 +1,4 @@
-import type { Employee, Session, BaselineSurvey, CompetencyScore, ReflectionResponse, Checkpoint, ScaleCheckpointStatus } from './types';
+import type { Employee, Session, BaselineSurvey, CompetencyScore, ReflectionResponse, Checkpoint, ScaleCheckpointStatus, WelcomeSurveyScale } from './types';
 
 /**
  * GROW Coaching State Machine
@@ -185,7 +185,8 @@ export function getCoachingState(
   baseline: BaselineSurvey | null,
   competencyScores: CompetencyScore[] = [],
   reflection: ReflectionResponse | null = null,
-  checkpoints: Checkpoint[] = []
+  checkpoints: Checkpoint[] = [],
+  welcomeSurveyScale: WelcomeSurveyScale | null = null
 ): CoachingStateData {
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming') || null;
@@ -227,10 +228,18 @@ export function getCoachingState(
         latestCheckpoint: null,
       };
 
+  // Check if user has completed any onboarding survey
+  // Either welcome_survey_scale (SCALE users) or welcome_survey_baseline (GROW/EXEC users)
+  const hasCompletedOnboarding = !!welcomeSurveyScale || !!baseline;
+
   // Determine state
   let state: CoachingState;
 
-  if (!employee || !hasProgram) {
+  if (!employee) {
+    // No employee record at all
+    state = 'NOT_SIGNED_UP';
+  } else if (!hasProgram && !hasCompletedOnboarding) {
+    // Has employee record but no program and no welcome survey
     state = 'NOT_SIGNED_UP';
   } else if (isFullyCompleted) {
     state = 'COMPLETED_PROGRAM';

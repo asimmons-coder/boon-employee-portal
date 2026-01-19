@@ -161,7 +161,8 @@ function ProtectedApp() {
   }
 
   // Determine coaching state (single source of truth)
-  const actualCoachingState: CoachingStateData = getCoachingState(employee, sessions, baseline, competencyScores, reflection, checkpoints);
+  // Pass welcomeSurveyScale to detect if user has completed onboarding
+  const actualCoachingState: CoachingStateData = getCoachingState(employee, sessions, baseline, competencyScores, reflection, checkpoints, welcomeSurveyScale);
 
   // Effective program type (actual or overridden for admin preview)
   const effectiveProgramType = programTypeOverride || programType;
