@@ -8,9 +8,10 @@ interface CoachPageProps {
   bookingLink: string | null;
   programType?: ProgramType | null;
   employeeId?: string | null;
+  userEmail?: string | null;
 }
 
-export default function CoachPage({ coachName, sessions, bookingLink, programType, employeeId }: CoachPageProps) {
+export default function CoachPage({ coachName, sessions, bookingLink, programType, employeeId, userEmail }: CoachPageProps) {
   const [coach, setCoach] = useState<Coach | null>(null);
   const [matchSummary, setMatchSummary] = useState<string | null>(null);
 
@@ -32,16 +33,16 @@ export default function CoachPage({ coachName, sessions, bookingLink, programTyp
     }
   }, [coachName]);
 
-  // Fetch match summary
+  // Fetch match summary with email fallback
   useEffect(() => {
     const loadMatchSummary = async () => {
       if (!employeeId) return;
-      const summary = await fetchMatchSummary(employeeId);
+      const summary = await fetchMatchSummary(employeeId, userEmail || undefined);
       setMatchSummary(summary);
     };
 
     loadMatchSummary();
-  }, [employeeId]);
+  }, [employeeId, userEmail]);
 
   // Coach title line (product type + ICF level)
   const titleLine = getCoachTitleLine(coach, programType);

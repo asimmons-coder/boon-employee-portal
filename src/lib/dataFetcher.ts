@@ -463,30 +463,47 @@ export function getCoachBackgroundLine(coach: Coach | null): string | null {
 /**
  * Fetch match summary for a coach-employee pairing
  * Tries welcome_survey_scale first, then welcome_survey_baseline
- * Uses employee_id for lookup
+ * Uses employee_id for lookup, with email fallback
  */
-export async function fetchMatchSummary(employeeId: string): Promise<string | null> {
-  console.log('[fetchMatchSummary] Looking up match_summary for employee_id:', employeeId);
+export async function fetchMatchSummary(employeeId: string, email?: string): Promise<string | null> {
+  console.log('[fetchMatchSummary] Looking up match_summary for employee_id:', employeeId, 'email:', email);
 
-  // Try welcome_survey_scale first
+  // Try welcome_survey_scale by employee_id first
   const { data: scaleData, error: scaleError } = await supabase
     .from('welcome_survey_scale')
-    .select('match_summary')
+    .select('match_summary, employee_id, email')
     .eq('employee_id', employeeId)
     .order('created_at', { ascending: false })
     .limit(1);
 
-  console.log('[fetchMatchSummary] welcome_survey_scale result:', { scaleData, scaleError });
+  console.log('[fetchMatchSummary] welcome_survey_scale by employee_id result:', { scaleData, scaleError });
 
   if (!scaleError && scaleData && scaleData.length > 0 && scaleData[0].match_summary) {
     console.log('[fetchMatchSummary] Found in welcome_survey_scale:', scaleData[0].match_summary);
     return scaleData[0].match_summary;
   }
 
-  // Fallback to welcome_survey_baseline
+  // Try welcome_survey_scale by email as fallback
+  if (email) {
+    const { data: scaleByEmail, error: scaleEmailError } = await supabase
+      .from('welcome_survey_scale')
+      .select('match_summary, employee_id, email')
+      .eq('email', email.toLowerCase())
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    console.log('[fetchMatchSummary] welcome_survey_scale by email result:', { scaleByEmail, scaleEmailError });
+
+    if (!scaleEmailError && scaleByEmail && scaleByEmail.length > 0 && scaleByEmail[0].match_summary) {
+      console.log('[fetchMatchSummary] Found in welcome_survey_scale by email:', scaleByEmail[0].match_summary);
+      return scaleByEmail[0].match_summary;
+    }
+  }
+
+  // Fallback to welcome_survey_baseline by employee_id
   const { data: baselineData, error: baselineError } = await supabase
     .from('welcome_survey_baseline')
-    .select('match_summary')
+    .select('match_summary, employee_id, email')
     .eq('employee_id', employeeId)
     .order('created_at', { ascending: false })
     .limit(1);
@@ -496,6 +513,23 @@ export async function fetchMatchSummary(employeeId: string): Promise<string | nu
   if (!baselineError && baselineData && baselineData.length > 0 && baselineData[0].match_summary) {
     console.log('[fetchMatchSummary] Found in welcome_survey_baseline:', baselineData[0].match_summary);
     return baselineData[0].match_summary;
+  }
+
+  // Try welcome_survey_baseline by email as fallback
+  if (email) {
+    const { data: baselineByEmail, error: baselineEmailError } = await supabase
+      .from('welcome_survey_baseline')
+      .select('match_summary, employee_id, email')
+      .eq('email', email.toLowerCase())
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    console.log('[fetchMatchSummary] welcome_survey_baseline by email result:', { baselineByEmail, baselineEmailError });
+
+    if (!baselineEmailError && baselineByEmail && baselineByEmail.length > 0 && baselineByEmail[0].match_summary) {
+      console.log('[fetchMatchSummary] Found in welcome_survey_baseline by email:', baselineByEmail[0].match_summary);
+      return baselineByEmail[0].match_summary;
+    }
   }
 
   console.log('[fetchMatchSummary] No match_summary found for employee_id:', employeeId);

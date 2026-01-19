@@ -7,9 +7,10 @@ interface CoachProfileProps {
   coachName: string;
   programType?: ProgramType | null;
   employeeId?: string | null;
+  userEmail?: string | null;
 }
 
-export default function CoachProfile({ sessions, coachName, programType, employeeId }: CoachProfileProps) {
+export default function CoachProfile({ sessions, coachName, programType, employeeId, userEmail }: CoachProfileProps) {
   const [coach, setCoach] = useState<Coach | null>(null);
   const [matchSummary, setMatchSummary] = useState<string | null>(null);
 
@@ -34,16 +35,16 @@ export default function CoachProfile({ sessions, coachName, programType, employe
     }
   }, [coachName]);
 
-  // Fetch match summary
+  // Fetch match summary with email fallback
   useEffect(() => {
     const loadMatchSummary = async () => {
       if (!employeeId) return;
-      const summary = await fetchMatchSummary(employeeId);
+      const summary = await fetchMatchSummary(employeeId, userEmail || undefined);
       setMatchSummary(summary);
     };
 
     loadMatchSummary();
-  }, [employeeId]);
+  }, [employeeId, userEmail]);
 
   // Get specialties - from coach data or fallback to session themes
   const specialties = coach?.special_services

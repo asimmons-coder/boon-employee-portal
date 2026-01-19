@@ -265,6 +265,7 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, we
           coachName={lastSession.coach_name}
           programType={programType}
           employeeId={profile?.id || null}
+          userEmail={userEmail}
         />
       )}
 

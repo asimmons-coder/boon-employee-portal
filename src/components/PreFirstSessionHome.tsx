@@ -57,16 +57,16 @@ export default function PreFirstSessionHome({
     loadCoachDetails();
   }, [profile?.coach_id, sessions, upcomingSession?.coach_name]);
 
-  // Fetch match summary using employee_id
+  // Fetch match summary using employee_id with email fallback
   useEffect(() => {
     const loadMatchSummary = async () => {
       if (!profile?.id) return;
-      const summary = await fetchMatchSummary(profile.id);
+      const summary = await fetchMatchSummary(profile.id, userEmail);
       setMatchSummary(summary);
     };
 
     loadMatchSummary();
-  }, [profile?.id]);
+  }, [profile?.id, userEmail]);
 
   const coachFirstName = coachName.split(' ')[0];
 

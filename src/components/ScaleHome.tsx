@@ -220,6 +220,7 @@ export default function ScaleHome({
           coachName={lastSession.coach_name}
           programType="SCALE"
           employeeId={profile?.id || null}
+          userEmail={userEmail}
         />
       )}
 
