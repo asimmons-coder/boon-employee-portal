@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, Session, ActionItem, Checkpoint } from '../lib/types';
+import type { SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, Session, ActionItem, Checkpoint, WelcomeSurveyScale } from '../lib/types';
+import { SCALE_FOCUS_AREA_LABELS } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import { isAlumniState, isPreFirstSession, isPendingReflectionState } from '../lib/coachingState';
 import GrowthTimeline from './GrowthTimeline';
@@ -23,6 +24,7 @@ import {
 interface ProgressPageProps {
   progress: SurveyResponse[];
   baseline: BaselineSurvey | null;
+  welcomeSurveyScale: WelcomeSurveyScale | null;
   competencyScores: CompetencyScore[];
   sessions: Session[];
   actionItems: ActionItem[];
@@ -72,9 +74,17 @@ function getBarColor(score: number): string {
   return '#EF4444'; // red
 }
 
+// Boon benchmark averages for SCALE users (1-10 scale)
+const BOON_BENCHMARKS = {
+  satisfaction: 6.8,
+  productivity: 6.9,
+  work_life_balance: 6.2,
+};
+
 export default function ProgressPage({
   progress,
   baseline,
+  welcomeSurveyScale,
   competencyScores,
   sessions,
   actionItems,
@@ -100,8 +110,156 @@ export default function ProgressPage({
   const upcomingSession = sessions.find(s => s.status === 'Upcoming');
   const coachFirstName = upcomingSession?.coach_name?.split(' ')[0] || 'your coach';
 
-  // Pre-first-session: Show anticipation-focused empty state
+  // Pre-first-session: Show different content for SCALE vs GROW
   if (isPreFirst) {
+    // SCALE pre-first-session: Show "Your Coaching Journey" with baseline metrics
+    if (isScale && welcomeSurveyScale) {
+      // Calculate % vs Boon average for each metric
+      const calculateVsBenchmark = (value: number | null | undefined, benchmark: number) => {
+        if (!value) return null;
+        const diff = ((value - benchmark) / benchmark) * 100;
+        return Math.round(diff);
+      };
+
+      const wellbeingMetrics = [
+        {
+          key: 'satisfaction',
+          label: 'Satisfaction',
+          value: welcomeSurveyScale.satisfaction,
+          benchmark: BOON_BENCHMARKS.satisfaction,
+          icon: '😊',
+        },
+        {
+          key: 'productivity',
+          label: 'Productivity',
+          value: welcomeSurveyScale.productivity,
+          benchmark: BOON_BENCHMARKS.productivity,
+          icon: '⚡',
+        },
+        {
+          key: 'work_life_balance',
+          label: 'Work/Life Balance',
+          value: welcomeSurveyScale.work_life_balance,
+          benchmark: BOON_BENCHMARKS.work_life_balance,
+          icon: '⚖️',
+        },
+      ];
+
+      // Get selected focus areas from boolean fields
+      const selectedFocusAreas = Object.entries(SCALE_FOCUS_AREA_LABELS)
+        .filter(([key]) => welcomeSurveyScale[key as keyof WelcomeSurveyScale] === true)
+        .map(([, label]) => label);
+
+      return (
+        <div className="space-y-8 animate-fade-in">
+          <header className="text-center sm:text-left">
+            <h1 className="text-3xl font-extrabold text-boon-text tracking-tight">Your Coaching Journey</h1>
+            <p className="text-gray-500 mt-2 font-medium">Where you're starting from.</p>
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">
+              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+              SCALE Program
+            </div>
+          </header>
+
+          {/* Your Starting Point */}
+          <section className="bg-white rounded-[2rem] p-8 border border-gray-100">
+            <h2 className="text-lg font-extrabold text-boon-text mb-6">Your Starting Point</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Metric</th>
+                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Your Score</th>
+                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Boon Avg</th>
+                    <th className="text-right py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">vs Average</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wellbeingMetrics.map(metric => {
+                    const vsBenchmark = calculateVsBenchmark(metric.value, metric.benchmark);
+                    return (
+                      <tr key={metric.key} className="border-b border-gray-50 last:border-0">
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{metric.icon}</span>
+                            <span className="font-bold text-boon-text">{metric.label}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className="text-2xl font-black text-boon-text">
+                            {metric.value ?? '—'}
+                          </span>
+                          <span className="text-gray-400 text-sm">/10</span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className="text-gray-500 font-medium">{metric.benchmark}</span>
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          {vsBenchmark !== null ? (
+                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold ${
+                              vsBenchmark >= 0
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-600'
+                            }`}>
+                              {vsBenchmark >= 0 ? '+' : ''}{vsBenchmark}%
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* What You Want to Work On */}
+          <section className="bg-gradient-to-br from-purple-50 to-boon-lightBlue/20 rounded-[2rem] p-8 border border-purple-100">
+            <h2 className="text-lg font-extrabold text-boon-text mb-4">What You Want to Work On</h2>
+
+            {/* Show additional_topics if present */}
+            {welcomeSurveyScale.additional_topics ? (
+              <div className="bg-white/60 p-6 rounded-2xl border border-white">
+                <p className="text-gray-700 italic leading-relaxed">
+                  "{welcomeSurveyScale.additional_topics}"
+                </p>
+              </div>
+            ) : selectedFocusAreas.length > 0 ? (
+              // Fall back to showing focus areas as tags
+              <div className="flex flex-wrap gap-2">
+                {selectedFocusAreas.map(area => (
+                  <span
+                    key={area}
+                    className="px-4 py-2 bg-white/70 text-purple-700 rounded-full text-sm font-medium border border-purple-200/50"
+                  >
+                    {area}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">Your focus areas will be defined in your first session with {coachFirstName}.</p>
+            )}
+          </section>
+
+          {/* What's Next */}
+          <section className="bg-white rounded-[2rem] p-8 border border-gray-100 text-center">
+            <div className="w-14 h-14 bg-boon-lightBlue rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-extrabold text-boon-text mb-2">What's Next</h3>
+            <p className="text-gray-500 max-w-md mx-auto">
+              After your first session, you'll track your progress through regular check-ins that measure how these metrics evolve over time.
+            </p>
+          </section>
+        </div>
+      );
+    }
+
+    // GROW/EXEC pre-first-session: Show the existing anticipation state
     return (
       <div className="space-y-8 animate-fade-in">
         <header className="text-center sm:text-left">
