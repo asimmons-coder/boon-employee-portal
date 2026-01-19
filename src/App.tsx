@@ -369,7 +369,7 @@ function ProtectedApp() {
         return <Resources />;
       case 'coach':
         const currentCoachName = sessions.length > 0 ? sessions[0].coach_name : "Your Coach";
-        return <CoachPage coachName={currentCoachName} sessions={sessions} bookingLink={employee?.booking_link || null} />;
+        return <CoachPage coachName={currentCoachName} sessions={sessions} bookingLink={employee?.booking_link || null} programType={programType} employeeId={employee?.id || null} />;
       case 'settings':
         return <Settings />;
       default:

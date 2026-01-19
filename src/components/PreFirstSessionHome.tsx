@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Employee, Session, BaselineSurvey, WelcomeSurveyScale, ProgramType, View, Coach } from '../lib/types';
 import { SCALE_FOCUS_AREA_LABELS } from '../lib/types';
 import { supabase } from '../lib/supabase';
-import { fetchCoachByName, fetchCoachById, parseCoachSpecialties, getCoachTitleLine, getCoachBackgroundLine } from '../lib/dataFetcher';
+import { fetchCoachByName, fetchCoachById, parseCoachSpecialties, getCoachTitleLine, getCoachBackgroundLine, fetchMatchSummary } from '../lib/dataFetcher';
 
 interface PreFirstSessionHomeProps {
   profile: Employee | null;
@@ -30,6 +30,7 @@ export default function PreFirstSessionHome({
   const [coachName, setCoachName] = useState<string>(
     upcomingSession?.coach_name || sessions[0]?.coach_name || 'Your Coach'
   );
+  const [matchSummary, setMatchSummary] = useState<string | null>(null);
 
   // Fetch coach details
   useEffect(() => {
@@ -56,6 +57,17 @@ export default function PreFirstSessionHome({
     loadCoachDetails();
   }, [profile?.coach_id, sessions, upcomingSession?.coach_name]);
 
+  // Fetch match summary using employee_id
+  useEffect(() => {
+    const loadMatchSummary = async () => {
+      if (!profile?.id) return;
+      const summary = await fetchMatchSummary(profile.id);
+      setMatchSummary(summary);
+    };
+
+    loadMatchSummary();
+  }, [profile?.id]);
+
   const coachFirstName = coachName.split(' ')[0];
 
   // Coach display data
@@ -66,6 +78,7 @@ export default function PreFirstSessionHome({
     : ['Leadership', 'Communication', 'Well-being'];
   const coachBio = coach?.bio || null;
   const coachPhotoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;
+  const displayMatchSummary = matchSummary || 'Your coach is here to help you achieve your goals.';
 
   // Pre-session note state
   const [preSessionNote, setPreSessionNote] = useState('');
@@ -340,6 +353,11 @@ export default function PreFirstSessionHome({
                 {coachBackgroundLine}
               </p>
             )}
+
+            {/* Match Summary */}
+            <p className="text-sm text-gray-700 mt-3 bg-boon-bg/50 px-4 py-3 rounded-xl border border-gray-100">
+              {displayMatchSummary}
+            </p>
 
             <p className="text-sm text-gray-600 mt-4 leading-relaxed">
               {coachBio || `${coachFirstName} specializes in leadership development and emotional intelligence, helping professionals unlock their full potential through personalized coaching.`}

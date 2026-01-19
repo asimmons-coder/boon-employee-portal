@@ -218,6 +218,8 @@ export default function ScaleHome({
         <CoachProfile
           sessions={sessions}
           coachName={lastSession.coach_name}
+          programType="SCALE"
+          employeeId={profile?.id || null}
         />
       )}
 

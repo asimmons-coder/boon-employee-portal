@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import type { Session, Coach, ProgramType } from '../lib/types';
-import { fetchCoachByName, parseCoachSpecialties, getCoachTitleLine, getCoachBackgroundLine } from '../lib/dataFetcher';
+import { fetchCoachByName, parseCoachSpecialties, getCoachTitleLine, getCoachBackgroundLine, fetchMatchSummary } from '../lib/dataFetcher';
 
 interface CoachPageProps {
   coachName: string;
   sessions: Session[];
   bookingLink: string | null;
   programType?: ProgramType | null;
+  employeeId?: string | null;
 }
 
-export default function CoachPage({ coachName, sessions, bookingLink, programType }: CoachPageProps) {
+export default function CoachPage({ coachName, sessions, bookingLink, programType, employeeId }: CoachPageProps) {
   const [coach, setCoach] = useState<Coach | null>(null);
+  const [matchSummary, setMatchSummary] = useState<string | null>(null);
 
   const historyWithCoach = sessions.filter(s => s.coach_name === coachName);
   const completedWithCoach = historyWithCoach.filter(s => s.status === 'Completed');
@@ -30,6 +32,17 @@ export default function CoachPage({ coachName, sessions, bookingLink, programTyp
     }
   }, [coachName]);
 
+  // Fetch match summary
+  useEffect(() => {
+    const loadMatchSummary = async () => {
+      if (!employeeId) return;
+      const summary = await fetchMatchSummary(employeeId);
+      setMatchSummary(summary);
+    };
+
+    loadMatchSummary();
+  }, [employeeId]);
+
   // Coach title line (product type + ICF level)
   const titleLine = getCoachTitleLine(coach, programType);
 
@@ -46,6 +59,9 @@ export default function CoachPage({ coachName, sessions, bookingLink, programTyp
 
   // Coach bio
   const coachBio = coach?.bio || `${coachFirstName} specializes in leadership development and emotional intelligence. With experience helping professionals at all levels, ${coachFirstName} helps individuals unlock their potential by balancing performance with sustainable wellbeing.`;
+
+  // Match summary or default text
+  const displayMatchSummary = matchSummary || 'Your coach is here to help you achieve your goals.';
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -75,6 +91,11 @@ export default function CoachPage({ coachName, sessions, bookingLink, programTyp
                 {backgroundLine}
               </p>
             )}
+
+            {/* Match Summary */}
+            <p className="text-sm text-gray-700 mt-4 bg-boon-bg/50 px-4 py-3 rounded-xl border border-gray-100">
+              {displayMatchSummary}
+            </p>
 
             <div className="mt-6 pt-6 border-t border-gray-100">
               <div className="grid grid-cols-2 gap-4 text-center">

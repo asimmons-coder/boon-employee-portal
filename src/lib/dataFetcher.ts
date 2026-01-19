@@ -460,6 +460,39 @@ export function getCoachBackgroundLine(coach: Coach | null): string | null {
   return `Former ${industryLabel} · ${companiesStr}`;
 }
 
+/**
+ * Fetch match summary for a coach-employee pairing
+ * Tries welcome_survey_scale first, then welcome_survey_baseline
+ * Uses employee_id for lookup
+ */
+export async function fetchMatchSummary(employeeId: string): Promise<string | null> {
+  // Try welcome_survey_scale first
+  const { data: scaleData, error: scaleError } = await supabase
+    .from('welcome_survey_scale')
+    .select('match_summary')
+    .eq('employee_id', employeeId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (!scaleError && scaleData && scaleData.length > 0 && scaleData[0].match_summary) {
+    return scaleData[0].match_summary;
+  }
+
+  // Fallback to welcome_survey_baseline
+  const { data: baselineData, error: baselineError } = await supabase
+    .from('welcome_survey_baseline')
+    .select('match_summary')
+    .eq('employee_id', employeeId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (!baselineError && baselineData && baselineData.length > 0 && baselineData[0].match_summary) {
+    return baselineData[0].match_summary;
+  }
+
+  return null;
+}
+
 // ============================================
 // SLACK INTEGRATION
 // ============================================

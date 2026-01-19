@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import type { Session, Coach, ProgramType } from '../lib/types';
-import { fetchCoachByName, parseCoachSpecialties, getCoachTitleLine, getCoachBackgroundLine } from '../lib/dataFetcher';
+import { fetchCoachByName, parseCoachSpecialties, getCoachTitleLine, getCoachBackgroundLine, fetchMatchSummary } from '../lib/dataFetcher';
 
 interface CoachProfileProps {
   sessions: Session[];
   coachName: string;
   programType?: ProgramType | null;
+  employeeId?: string | null;
 }
 
-export default function CoachProfile({ sessions, coachName, programType }: CoachProfileProps) {
+export default function CoachProfile({ sessions, coachName, programType, employeeId }: CoachProfileProps) {
   const [coach, setCoach] = useState<Coach | null>(null);
+  const [matchSummary, setMatchSummary] = useState<string | null>(null);
 
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const coachFirstName = coachName.split(' ')[0];
@@ -31,6 +33,17 @@ export default function CoachProfile({ sessions, coachName, programType }: Coach
       loadCoach();
     }
   }, [coachName]);
+
+  // Fetch match summary
+  useEffect(() => {
+    const loadMatchSummary = async () => {
+      if (!employeeId) return;
+      const summary = await fetchMatchSummary(employeeId);
+      setMatchSummary(summary);
+    };
+
+    loadMatchSummary();
+  }, [employeeId]);
 
   // Get specialties - from coach data or fallback to session themes
   const specialties = coach?.special_services
@@ -54,6 +67,9 @@ export default function CoachProfile({ sessions, coachName, programType }: Coach
 
   // Background line for Industry Practitioners
   const backgroundLine = getCoachBackgroundLine(coach);
+
+  // Match summary or default text
+  const displayMatchSummary = matchSummary || 'Your coach is here to help you achieve your goals.';
 
   // Coach bio
   const coachBio = coach?.bio || `${coachFirstName} specializes in leadership development and emotional intelligence, helping professionals unlock their full potential through personalized coaching.`;
@@ -86,6 +102,11 @@ export default function CoachProfile({ sessions, coachName, programType }: Coach
               {backgroundLine}
             </p>
           )}
+
+          {/* Match Summary */}
+          <p className="text-sm text-gray-700 mt-3 bg-boon-bg/50 px-4 py-3 rounded-xl border border-gray-100">
+            {displayMatchSummary}
+          </p>
 
           {/* Bio */}
           <p className="text-sm text-gray-600 mt-4 leading-relaxed">

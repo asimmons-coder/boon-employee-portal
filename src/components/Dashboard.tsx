@@ -263,6 +263,8 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, we
         <CoachProfile
           sessions={sessions}
           coachName={lastSession.coach_name}
+          programType={programType}
+          employeeId={profile?.id || null}
         />
       )}
 
