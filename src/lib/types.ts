@@ -103,6 +103,12 @@ export interface WelcomeSurveyScale {
   coaching_goals: string | null;
   // Match summary - AI-generated description of why coach was matched
   match_summary?: string | null;
+  // Additional topics - free text about what they want to work on
+  additional_topics?: string | null;
+  // Wellbeing baseline metrics (1-10 scale)
+  satisfaction?: number | null;
+  productivity?: number | null;
+  work_life_balance?: number | null;
   // 18 Focus area boolean fields
   focus_work_relationships: boolean;
   focus_work_life_balance: boolean;
