@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Employee, Session, ActionItem, BaselineSurvey, View } from '../lib/types';
+import type { Employee, Session, ActionItem, BaselineSurvey, View, Coach } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import { supabase } from '../lib/supabase';
+import { fetchCoachByName } from '../lib/dataFetcher';
 
 interface ActiveGrowHomeProps {
   profile: Employee | null;
@@ -32,57 +33,86 @@ export default function ActiveGrowHome({
   const completedSessions = sortedSessions.filter(s => s.status === 'Completed');
   const upcomingSession = sortedSessions.find(s => s.status === 'Upcoming');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
-  void actionItems; // Reserved for potential future use
 
   const coachName = lastSession?.coach_name || upcomingSession?.coach_name || 'Your Coach';
   const coachFirstName = coachName.split(' ')[0];
 
-  // Extract plans from recent sessions for "Things You're Working On"
-  const sessionPlans = completedSessions
-    .filter(s => s.plan && s.plan.trim().length > 0)
-    .slice(0, 5) // Last 5 sessions with plans
-    .map(s => ({
-      id: s.id,
-      plan: s.plan!,
-      sessionDate: s.session_date,
-      coachName: s.coach_name,
-    }));
+  // Coach profile state
+  const [coachProfile, setCoachProfile] = useState<Coach | null>(null);
 
-  // State for notes on plan items
-  const [planNotes, setPlanNotes] = useState<Record<string, string>>({});
+  // Fetch coach profile from coaches table
+  useEffect(() => {
+    const loadCoachProfile = async () => {
+      if (!coachName || coachName === 'Your Coach') return;
+
+      const coach = await fetchCoachByName(coachName);
+      if (coach) {
+        setCoachProfile(coach as Coach);
+      }
+    };
+
+    loadCoachProfile();
+  }, [coachName]);
+
+  // Count sessions with this specific coach
+  const sessionsWithCoach = completedSessions.filter(s => s.coach_name === coachName);
+  const sessionCountWithCoach = sessionsWithCoach.length;
+
+  // Helper: Get coach photo URL or generate initials placeholder
+  const getCoachPhotoUrl = (size: number = 100) => {
+    if (coachProfile?.photo_url) {
+      return coachProfile.photo_url;
+    }
+    // Fallback to initials-based placeholder
+    const initials = coachName
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+    // Use a simple SVG data URL for initials
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect fill="%23466FF6" width="${size}" height="${size}"/><text x="50%" y="50%" dy=".35em" fill="white" font-family="system-ui" font-size="${size * 0.4}" font-weight="600" text-anchor="middle">${initials}</text></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  };
+
+  // Action items for "Things You're Working On" - from action_items table
+  const pendingActions = actionItems.filter(a => a.status === 'pending');
+
+  // State for notes on action items
+  const [actionNotes, setActionNotes] = useState<Record<string, string>>({});
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
 
   // Load existing notes from localStorage
   useEffect(() => {
     if (!userEmail) return;
-    const savedNotes = localStorage.getItem(`plan_notes_${userEmail}`);
+    const savedNotes = localStorage.getItem(`action_notes_${userEmail}`);
     if (savedNotes) {
       try {
-        setPlanNotes(JSON.parse(savedNotes));
+        setActionNotes(JSON.parse(savedNotes));
       } catch {
         // Invalid JSON, ignore
       }
     }
   }, [userEmail]);
 
-  // Save note for a plan item
-  const saveNote = async (sessionId: string, note: string) => {
-    setSavingNoteId(sessionId);
-    const updatedNotes = { ...planNotes, [sessionId]: note };
-    setPlanNotes(updatedNotes);
-    localStorage.setItem(`plan_notes_${userEmail}`, JSON.stringify(updatedNotes));
+  // Save note for an action item
+  const saveNote = async (actionId: string, note: string) => {
+    setSavingNoteId(actionId);
+    const updatedNotes = { ...actionNotes, [actionId]: note };
+    setActionNotes(updatedNotes);
+    localStorage.setItem(`action_notes_${userEmail}`, JSON.stringify(updatedNotes));
 
     // Optionally save to Supabase
     try {
       await supabase
-        .from('session_plan_notes')
+        .from('action_item_notes')
         .upsert({
           email: userEmail.toLowerCase(),
-          session_id: sessionId,
+          action_id: actionId,
           note: note,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'email,session_id' });
+        }, { onConflict: 'email,action_id' });
     } catch {
       // localStorage saved as fallback
     }
@@ -256,7 +286,7 @@ export default function ActiveGrowHome({
                 key={i}
                 className="group"
               >
-                <h3 className="font-serif text-xl text-boon-text leading-relaxed">{area!.label}</h3>
+                <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text leading-relaxed">{area!.label}</h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs text-boon-amber font-medium">
                     {area!.count} {area!.count === 1 ? 'session' : 'sessions'}
@@ -306,7 +336,7 @@ export default function ActiveGrowHome({
 
               <div className="flex items-center gap-4">
                 <img
-                  src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/100/100`}
+                  src={getCoachPhotoUrl(100)}
                   alt={coachName}
                   className="w-14 h-14 rounded-xl object-cover ring-2 ring-gray-100"
                 />
@@ -467,19 +497,23 @@ export default function ActiveGrowHome({
             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Your Coach</h2>
             <div className="flex flex-col sm:flex-row gap-6">
               <img
-                src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`}
+                src={getCoachPhotoUrl(200)}
                 alt={coachName}
                 className="w-24 h-24 rounded-2xl object-cover ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
               />
               <div className="flex-1 text-center sm:text-left">
                 <h3 className="text-xl font-bold text-boon-text">{coachName}</h3>
                 <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">Executive Coach</p>
-                <p className="text-sm text-gray-600 mt-4 leading-relaxed">
-                  {coachFirstName} specializes in leadership development and emotional intelligence,
-                  helping professionals unlock their full potential through personalized coaching.
-                </p>
+                {coachProfile?.bio ? (
+                  <p className="text-sm text-gray-600 mt-4 leading-relaxed">{coachProfile.bio}</p>
+                ) : (
+                  <p className="text-sm text-gray-600 mt-4 leading-relaxed">
+                    {coachFirstName} specializes in leadership development and emotional intelligence,
+                    helping professionals unlock their full potential through personalized coaching.
+                  </p>
+                )}
                 <p className="text-sm text-gray-500 mt-3">
-                  <span className="font-semibold text-boon-text">{completedSessions.length} sessions</span> together
+                  <span className="font-semibold text-boon-text">{sessionCountWithCoach} {sessionCountWithCoach === 1 ? 'session' : 'sessions'}</span> together
                 </p>
               </div>
             </div>
@@ -488,10 +522,10 @@ export default function ActiveGrowHome({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          THINGS YOU'RE WORKING ON - From session plans
+          THINGS YOU'RE WORKING ON - From action_items table
           Uses Georgia, amber accents, no strikethrough, with "Add note" option
           ═══════════════════════════════════════════════════════════════════ */}
-      {sessionPlans.length > 0 && (
+      {pendingActions.length > 0 && (
         <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-boon-amber/20 flex items-center justify-center">
@@ -502,40 +536,41 @@ export default function ActiveGrowHome({
             <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Things You're Working On</h2>
           </div>
           <div className="space-y-4">
-            {sessionPlans.map((item) => (
+            {pendingActions.map((action) => (
               <div
-                key={item.id}
+                key={action.id}
                 className="p-5 bg-white/60 rounded-xl border border-boon-amber/10 hover:border-boon-amber/30 transition-all"
               >
-                <p className="font-serif text-gray-700 leading-relaxed">{item.plan}</p>
+                <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-gray-700 leading-relaxed">{action.action_text}</p>
 
                 {/* Existing note display */}
-                {planNotes[item.id] && expandedNoteId !== item.id && (
+                {actionNotes[action.id] && expandedNoteId !== action.id && (
                   <div className="mt-3 p-3 bg-boon-amberLight/30 rounded-lg border border-boon-amber/10">
                     <p className="text-xs font-bold text-boon-amber uppercase tracking-widest mb-1">Your note</p>
-                    <p className="font-serif text-sm text-gray-600 italic">{planNotes[item.id]}</p>
+                    <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-sm text-gray-600 italic">{actionNotes[action.id]}</p>
                   </div>
                 )}
 
                 {/* Add/Edit note form */}
-                {expandedNoteId === item.id ? (
+                {expandedNoteId === action.id ? (
                   <div className="mt-4 space-y-3">
                     <textarea
-                      defaultValue={planNotes[item.id] || ''}
+                      defaultValue={actionNotes[action.id] || ''}
                       placeholder="How's this going? Any progress to note..."
-                      className="w-full p-3 rounded-lg border border-boon-amber/20 focus:border-boon-amber focus:ring-0 focus:outline-none font-serif text-sm min-h-[80px] resize-none bg-white placeholder-gray-400"
-                      id={`note-${item.id}`}
+                      style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}
+                      className="w-full p-3 rounded-lg border border-boon-amber/20 focus:border-boon-amber focus:ring-0 focus:outline-none text-sm min-h-[80px] resize-none bg-white placeholder-gray-400"
+                      id={`note-${action.id}`}
                     />
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
-                          const textarea = document.getElementById(`note-${item.id}`) as HTMLTextAreaElement;
-                          saveNote(item.id, textarea.value);
+                          const textarea = document.getElementById(`note-${action.id}`) as HTMLTextAreaElement;
+                          saveNote(action.id, textarea.value);
                         }}
-                        disabled={savingNoteId === item.id}
+                        disabled={savingNoteId === action.id}
                         className="px-4 py-2 text-xs font-bold text-white bg-boon-amber rounded-lg hover:bg-boon-amberDark transition-colors disabled:opacity-50"
                       >
-                        {savingNoteId === item.id ? 'Saving...' : 'Save note'}
+                        {savingNoteId === action.id ? 'Saving...' : 'Save note'}
                       </button>
                       <button
                         onClick={() => setExpandedNoteId(null)}
@@ -548,16 +583,16 @@ export default function ActiveGrowHome({
                 ) : (
                   <div className="flex items-center gap-3 mt-3">
                     <span className="text-xs text-gray-400">
-                      From session on {new Date(item.sessionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      From {new Date(action.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                     <button
-                      onClick={() => setExpandedNoteId(item.id)}
+                      onClick={() => setExpandedNoteId(action.id)}
                       className="ml-auto text-xs text-boon-amber font-medium hover:underline flex items-center gap-1"
                     >
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
-                      {planNotes[item.id] ? 'Edit note' : 'Add note'}
+                      {actionNotes[action.id] ? 'Edit note' : 'Add note'}
                     </button>
                   </div>
                 )}
@@ -576,7 +611,7 @@ export default function ActiveGrowHome({
           {/* Coach */}
           <div className="flex items-center gap-3">
             <img
-              src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/100/100`}
+              src={getCoachPhotoUrl(100)}
               alt="Coach"
               className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100"
             />
@@ -629,13 +664,13 @@ export default function ActiveGrowHome({
         <section className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
           <div className="flex items-center gap-4">
             <img
-              src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/100/100`}
+              src={getCoachPhotoUrl(100)}
               alt={coachName}
               className="w-14 h-14 rounded-xl object-cover ring-2 ring-boon-bg shadow-sm"
             />
             <div className="flex-1">
               <h3 className="font-bold text-boon-text">{coachName}</h3>
-              <p className="text-xs text-gray-500">{completedSessions.length} sessions together</p>
+              <p className="text-xs text-gray-500">{sessionCountWithCoach} {sessionCountWithCoach === 1 ? 'session' : 'sessions'} together</p>
             </div>
             <button className="px-4 py-2 text-sm font-bold text-boon-blue border border-boon-blue/30 rounded-xl hover:bg-boon-blue/5 transition-colors">
               Message
@@ -654,7 +689,7 @@ export default function ActiveGrowHome({
           </p>
           <div className="mt-6 flex items-center gap-3 relative z-10">
             <img
-              src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/100/100`}
+              src={getCoachPhotoUrl(100)}
               alt="Coach"
               className="w-9 h-9 rounded-full object-cover ring-2 ring-boon-bg"
             />

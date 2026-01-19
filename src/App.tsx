@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/AuthContext';
-import { fetchSessions, fetchProgressData, fetchBaseline, fetchWelcomeSurveyScale, fetchCompetencyScores, fetchProgramType, fetchActionItems, fetchReflection, fetchCheckpoints } from './lib/dataFetcher';
+import { fetchSessions, fetchProgressData, fetchBaseline, fetchWelcomeSurveyScale, fetchCompetencyScores, fetchProgramType, fetchActionItems, fetchReflection, fetchCheckpoints, fetchPendingSurvey } from './lib/dataFetcher';
 import { getCoachingState, type CoachingStateData, type CoachingState } from './lib/coachingState';
-import type { View, Session, SurveyResponse, BaselineSurvey, WelcomeSurveyScale, CompetencyScore, ProgramType, ActionItem, ReflectionResponse, Checkpoint } from './lib/types';
+import type { View, Session, SurveyResponse, BaselineSurvey, WelcomeSurveyScale, CompetencyScore, ProgramType, ActionItem, ReflectionResponse, Checkpoint, PendingSurvey } from './lib/types';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -11,6 +11,7 @@ import AuthCallback from './pages/AuthCallback';
 import NoEmployeeFound from './pages/NoEmployeeFound';
 import WelcomePage from './pages/WelcomePage';
 import MatchingPage from './pages/MatchingPage';
+import FeedbackPage from './pages/FeedbackPage';
 
 // Components
 import Layout from './components/Layout';
@@ -24,6 +25,7 @@ import Settings from './components/Settings';
 import ReflectionFlow from './components/ReflectionFlow';
 import CheckpointFlow from './components/CheckpointFlow';
 import AdminStatePreview from './components/AdminStatePreview';
+import SurveyModal from './components/SurveyModal';
 
 // Configuration - Replace with actual survey URL
 const WELCOME_SURVEY_URL = 'https://boon.typeform.com/welcome'; // TODO: Update with actual URL
@@ -45,6 +47,10 @@ function ProtectedApp() {
   const [showCheckpointFlow, setShowCheckpointFlow] = useState(false);
   const [stateOverride, setStateOverride] = useState<CoachingState | null>(null);
   const [programTypeOverride, setProgramTypeOverride] = useState<string | null>(null);
+
+  // Native survey system state
+  const [pendingSurvey, setPendingSurvey] = useState<PendingSurvey | null>(null);
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -73,6 +79,14 @@ function ProtectedApp() {
         setActionItems(actionItemsData);
         setReflection(reflectionData);
         setCheckpoints(checkpointsData);
+
+        // Check for pending survey after data loads
+        // Pass program type to help detect GROW vs SCALE surveys
+        const pending = await fetchPendingSurvey(employee.company_email, programTypeData);
+        if (pending) {
+          setPendingSurvey(pending);
+          setShowSurveyModal(true);
+        }
       } catch (err) {
         console.error('Error loading data:', err);
       } finally {
@@ -103,6 +117,13 @@ function ProtectedApp() {
     setShowCheckpointFlow(false);
     // Navigate to Progress to show the updated trendline
     setView('progress');
+  }
+
+  // Handle native survey completion
+  function handleSurveyComplete() {
+    setShowSurveyModal(false);
+    setPendingSurvey(null);
+    // Optionally refresh data or show a success message
   }
 
   if (loading) {
@@ -400,6 +421,18 @@ function ProtectedApp() {
           onClose={() => setShowCheckpointFlow(false)}
         />
       )}
+      {/* Native Survey Modal (for pending feedback surveys) */}
+      {showSurveyModal && pendingSurvey && (
+        <SurveyModal
+          isOpen={showSurveyModal}
+          surveyType={pendingSurvey.survey_type}
+          sessionId={pendingSurvey.session_id}
+          sessionNumber={pendingSurvey.session_number}
+          coachName={pendingSurvey.coach_name}
+          userEmail={employee?.company_email || ''}
+          onComplete={handleSurveyComplete}
+        />
+      )}
       {/* Admin State Preview Panel */}
       <AdminStatePreview
         currentState={actualCoachingState.state}
@@ -443,6 +476,14 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route
+        path="/feedback"
+        element={
+          <AuthGuard>
+            <FeedbackPage />
+          </AuthGuard>
+        }
+      />
       <Route
         path="/"
         element={

@@ -11,6 +11,7 @@ import PreFirstSessionHome from './PreFirstSessionHome';
 import PendingReflectionHome from './PendingReflectionHome';
 import ScaleHome from './ScaleHome';
 import ActiveGrowHome from './ActiveGrowHome';
+import GrowDashboard from './GrowDashboard';
 
 interface DashboardProps {
   profile: Employee | null;
@@ -87,7 +88,23 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, we
     );
   }
 
-  // Active GROW/EXEC users: Show ActiveGrowHome with sub-states
+  // Active GROW users: Show GrowDashboard with program progress and competency focus
+  // GROW gets a differentiated experience with fixed program structure
+  if (!isCompleted && coachingState.isGrowOrExec && programType === 'GROW') {
+    return (
+      <GrowDashboard
+        profile={profile}
+        sessions={sessions}
+        actionItems={actionItems}
+        coachingState={coachingState}
+        onActionUpdate={onActionUpdate}
+        userEmail={userEmail}
+        onNavigate={onNavigate}
+      />
+    );
+  }
+
+  // Active EXEC users (or GROW fallback): Show ActiveGrowHome with sub-states
   // (Session Scheduled vs No Session Scheduled)
   if (!isCompleted && coachingState.isGrowOrExec) {
     return (

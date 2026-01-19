@@ -525,3 +525,517 @@ export async function submitCheckpoint(
 
   return { success: true, data: data as Checkpoint };
 }
+
+// ============================================
+// NATIVE SURVEY SYSTEM
+// ============================================
+
+import type {
+  CoreCompetency,
+  PendingSurvey,
+  SurveyCompetencyScore,
+  CompetencyScoreLevel,
+  CoachQuality
+} from './types';
+
+/**
+ * Fetch all active core competencies
+ */
+export async function fetchCoreCompetencies(): Promise<CoreCompetency[]> {
+  const { data, error } = await supabase
+    .from('core_competencies')
+    .select('*')
+    .eq('is_active', true)
+    .order('display_order', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching competencies:', error);
+    return [];
+  }
+
+  return (data as CoreCompetency[]) || [];
+}
+
+// Program-specific milestone arrays
+const SCALE_MILESTONES = [1, 3, 6, 12, 18, 24, 30, 36];
+const GROW_MILESTONES = [1, 6];
+
+/**
+ * Check for pending survey after login
+ * Returns the OLDEST session that needs a survey (so users complete in order)
+ * Handles GROW vs SCALE program types with different milestone arrays
+ */
+export async function fetchPendingSurvey(email: string, programType?: string | null): Promise<PendingSurvey | null> {
+  // First, try the RPC function (uses the comprehensive pending_surveys view)
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc('get_pending_survey', { user_email: email });
+
+  if (!rpcError && rpcData && rpcData.length > 0) {
+    return rpcData[0] as PendingSurvey;
+  }
+
+  // Fallback: manual query for pending surveys
+  // Determine program type first
+  const normalizedProgram = programType?.toUpperCase() || '';
+  const isGrow = normalizedProgram === 'GROW' || normalizedProgram.startsWith('GROW');
+  const milestones = isGrow ? GROW_MILESTONES : SCALE_MILESTONES;
+
+  // Get completed sessions count for end-of-program detection
+  const { data: completedCount } = await supabase
+    .from('session_tracking')
+    .select('id', { count: 'exact' })
+    .ilike('employee_email', email)
+    .eq('status', 'Completed');
+
+  const totalCompleted = completedCount?.length || 0;
+
+  // Check for end-of-program survey first
+  // Default sessions_per_employee is 6 for GROW, 36 for SCALE
+  const sessionsPerEmployee = isGrow ? 6 : 36;
+
+  if (totalCompleted >= sessionsPerEmployee) {
+    // Check if they've already submitted an end survey
+    const { data: existingEndSurvey } = await supabase
+      .from('survey_submissions')
+      .select('id')
+      .ilike('email', email)
+      .in('survey_type', ['scale_end', 'grow_end'])
+      .limit(1);
+
+    if (!existingEndSurvey || existingEndSurvey.length === 0) {
+      // Get the most recent session for context
+      const { data: latestSession } = await supabase
+        .from('session_tracking')
+        .select('id, session_date, appointment_number, coach_name')
+        .ilike('employee_email', email)
+        .eq('status', 'Completed')
+        .order('session_date', { ascending: false })
+        .limit(1);
+
+      if (latestSession && latestSession.length > 0) {
+        return {
+          session_id: latestSession[0].id,
+          session_number: latestSession[0].appointment_number,
+          session_date: latestSession[0].session_date,
+          coach_name: latestSession[0].coach_name || 'Your Coach',
+          survey_type: isGrow ? 'grow_end' : 'scale_end',
+        };
+      }
+    }
+  }
+
+  // Get completed sessions at survey milestones without matching survey
+  // Order by ascending (oldest first) so users complete surveys in order
+  const { data: sessions, error: sessionsError } = await supabase
+    .from('session_tracking')
+    .select('id, employee_email, session_date, appointment_number, coach_name, program_name')
+    .ilike('employee_email', email)
+    .eq('status', 'Completed')
+    .in('appointment_number', milestones)
+    .order('session_date', { ascending: true });
+
+  if (sessionsError || !sessions || sessions.length === 0) {
+    return null;
+  }
+
+  // Check which sessions don't have a survey yet
+  for (const session of sessions) {
+    const { data: existingSurvey } = await supabase
+      .from('survey_submissions')
+      .select('id')
+      .ilike('email', email)
+      .eq('session_id', session.id)
+      .limit(1);
+
+    if (!existingSurvey || existingSurvey.length === 0) {
+      // All milestone surveys use scale_feedback for now
+      // (GROW and SCALE use same questions for regular feedback)
+      return {
+        session_id: session.id,
+        session_number: session.appointment_number,
+        session_date: session.session_date,
+        coach_name: session.coach_name || 'Your Coach',
+        survey_type: 'scale_feedback',
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Fetch survey by session ID (for /feedback?session_id=xxx route)
+ */
+export async function fetchSurveyContext(sessionId: string): Promise<{
+  session_id: string;
+  session_number: number;
+  session_date: string;
+  coach_name: string;
+  employee_email: string;
+} | null> {
+  const { data, error } = await supabase
+    .from('session_tracking')
+    .select('id, appointment_number, session_date, coach_name, employee_email')
+    .eq('id', sessionId)
+    .single();
+
+  if (error || !data) {
+    console.error('Error fetching survey context:', error);
+    return null;
+  }
+
+  return {
+    session_id: data.id,
+    session_number: data.appointment_number,
+    session_date: data.session_date,
+    coach_name: data.coach_name || 'Your Coach',
+    employee_email: data.employee_email,
+  };
+}
+
+/**
+ * Submit a SCALE feedback survey
+ */
+export async function submitScaleFeedbackSurvey(
+  email: string,
+  sessionId: string,
+  sessionNumber: number,
+  coachName: string,
+  data: {
+    coach_satisfaction: number;
+    wants_rematch?: boolean;
+    rematch_reason?: string;
+    coach_qualities: CoachQuality[];
+    has_booked_next_session: boolean;
+    nps: number;
+    feedback_text?: string;
+    // Extra fields for SCALE_END
+    outcomes?: string;
+    open_to_testimonial?: boolean;
+  },
+  surveyType: 'scale_feedback' | 'scale_end' = 'scale_feedback'
+): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('survey_submissions')
+    .insert({
+      email: email.toLowerCase(),
+      survey_type: surveyType,
+      session_id: sessionId,
+      session_number: sessionNumber,
+      coach_name: coachName,
+      coach_satisfaction: data.coach_satisfaction,
+      wants_rematch: data.wants_rematch || false,
+      rematch_reason: data.rematch_reason || null,
+      coach_qualities: data.coach_qualities,
+      has_booked_next_session: data.has_booked_next_session,
+      nps: data.nps,
+      feedback_text: data.feedback_text || null,
+      outcomes: data.outcomes || null,
+      open_to_testimonial: data.open_to_testimonial || false,
+      submitted_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    console.error('Error submitting survey:', error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Submit a GROW baseline survey (pre-program competency assessment)
+ */
+export async function submitGrowBaselineSurvey(
+  email: string,
+  competencyScores: Record<string, CompetencyScoreLevel>,
+  focusAreas: string[]
+): Promise<{ success: boolean; error?: string }> {
+  // Insert the main survey submission
+  const { data: submission, error: submissionError } = await supabase
+    .from('survey_submissions')
+    .insert({
+      email: email.toLowerCase(),
+      survey_type: 'grow_baseline',
+      focus_areas: focusAreas,
+      submitted_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (submissionError || !submission) {
+    console.error('Error submitting baseline survey:', submissionError);
+    return { success: false, error: submissionError?.message || 'Failed to create survey' };
+  }
+
+  // Insert competency scores
+  const competencyRecords = Object.entries(competencyScores).map(([name, score]) => ({
+    survey_submission_id: submission.id,
+    email: email.toLowerCase(),
+    competency_name: name,
+    score,
+    score_type: 'pre',
+  }));
+
+  const { error: scoresError } = await supabase
+    .from('survey_competency_scores')
+    .insert(competencyRecords);
+
+  if (scoresError) {
+    console.error('Error submitting competency scores:', scoresError);
+    return { success: false, error: scoresError.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Submit a GROW end survey (post-program competency assessment + NPS)
+ */
+export async function submitGrowEndSurvey(
+  email: string,
+  competencyScores: Record<string, CompetencyScoreLevel>,
+  data: {
+    nps: number;
+    outcomes: string;
+    open_to_testimonial: boolean;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  // Insert the main survey submission
+  const { data: submission, error: submissionError } = await supabase
+    .from('survey_submissions')
+    .insert({
+      email: email.toLowerCase(),
+      survey_type: 'grow_end',
+      nps: data.nps,
+      outcomes: data.outcomes,
+      open_to_testimonial: data.open_to_testimonial,
+      submitted_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (submissionError || !submission) {
+    console.error('Error submitting end survey:', submissionError);
+    return { success: false, error: submissionError?.message || 'Failed to create survey' };
+  }
+
+  // Insert competency scores (post-program)
+  const competencyRecords = Object.entries(competencyScores).map(([name, score]) => ({
+    survey_submission_id: submission.id,
+    email: email.toLowerCase(),
+    competency_name: name,
+    score,
+    score_type: 'post',
+  }));
+
+  const { error: scoresError } = await supabase
+    .from('survey_competency_scores')
+    .insert(competencyRecords);
+
+  if (scoresError) {
+    console.error('Error submitting competency scores:', scoresError);
+    return { success: false, error: scoresError.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Fetch user's competency scores (for progress comparison)
+ */
+export async function fetchUserCompetencyScores(email: string): Promise<SurveyCompetencyScore[]> {
+  const { data, error } = await supabase
+    .from('survey_competency_scores')
+    .select('*')
+    .ilike('email', email)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching competency scores:', error);
+    return [];
+  }
+
+  return (data as SurveyCompetencyScore[]) || [];
+}
+
+/**
+ * Check if user has completed baseline survey (for GROW program)
+ */
+export async function hasCompletedBaselineSurvey(email: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('survey_submissions')
+    .select('id')
+    .ilike('email', email)
+    .eq('survey_type', 'grow_baseline')
+    .limit(1);
+
+  if (error) {
+    console.error('Error checking baseline survey:', error);
+    return false;
+  }
+
+  return data && data.length > 0;
+}
+
+// ============================================
+// GROW DASHBOARD DATA FETCHERS
+// ============================================
+
+export interface ProgramInfo {
+  program_title: string | null;
+  program_type: string;
+  sessions_per_employee: number;
+  program_start_date: string | null;
+  program_end_date: string | null;
+}
+
+/**
+ * Fetch program configuration for a participant
+ * Looks up via employee's program field -> programs table
+ */
+export async function fetchProgramInfo(programId: string | null): Promise<ProgramInfo | null> {
+  if (!programId) return null;
+
+  const upperProgram = programId.toUpperCase();
+
+  // Determine program type from name pattern first
+  let programType = 'SCALE';
+  if (upperProgram === 'GROW' || upperProgram.startsWith('GROW ') || upperProgram.startsWith('GROW-')) {
+    programType = 'GROW';
+  } else if (upperProgram === 'EXEC' || upperProgram.startsWith('EXEC ') || upperProgram.startsWith('EXEC-')) {
+    programType = 'EXEC';
+  }
+
+  // Try to look up by ID first (if it looks like a UUID)
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(programId);
+
+  if (isUuid) {
+    const { data, error } = await supabase
+      .from('programs')
+      .select('name, program_type, sessions_per_employee, program_end_date')
+      .eq('id', programId)
+      .single();
+
+    if (!error && data) {
+      return {
+        program_title: data.name || programId,
+        program_type: data.program_type || programType,
+        sessions_per_employee: data.sessions_per_employee || (programType === 'GROW' ? 6 : 36),
+        program_start_date: null,
+        program_end_date: data.program_end_date || null,
+      };
+    }
+  }
+
+  // Try to look up by name/title
+  const { data: byName, error: nameError } = await supabase
+    .from('programs')
+    .select('name, program_type, sessions_per_employee, program_end_date')
+    .ilike('name', `%${programId}%`)
+    .limit(1)
+    .single();
+
+  if (!nameError && byName) {
+    return {
+      program_title: byName.name || programId,
+      program_type: byName.program_type || programType,
+      sessions_per_employee: byName.sessions_per_employee || (programType === 'GROW' ? 6 : 36),
+      program_start_date: null,
+      program_end_date: byName.program_end_date || null,
+    };
+  }
+
+  // Return defaults based on inferred program type
+  return {
+    program_title: programId,
+    program_type: programType,
+    sessions_per_employee: programType === 'GROW' ? 6 : 36,
+    program_start_date: null,
+    program_end_date: null,
+  };
+}
+
+export interface GrowFocusArea {
+  competency_name: string;
+  baseline_score: CompetencyScoreLevel;
+}
+
+/**
+ * Fetch participant's GROW focus areas and baseline scores
+ * Gets the 3 focus areas they selected plus their baseline scores
+ */
+export async function fetchGrowFocusAreas(email: string): Promise<GrowFocusArea[]> {
+  // First, try to get focus areas from survey_submissions (native survey)
+  const { data: surveyData } = await supabase
+    .from('survey_submissions')
+    .select('focus_areas')
+    .ilike('email', email)
+    .eq('survey_type', 'grow_baseline')
+    .order('submitted_at', { ascending: false })
+    .limit(1);
+
+  let focusAreas: string[] = [];
+
+  if (surveyData && surveyData.length > 0 && surveyData[0].focus_areas) {
+    focusAreas = surveyData[0].focus_areas;
+  } else {
+    // Fallback: Try to get from welcome_survey_baseline coaching_priorities
+    const { data: baselineData } = await supabase
+      .from('welcome_survey_baseline')
+      .select('coaching_priorities')
+      .ilike('email', email)
+      .limit(1);
+
+    if (baselineData && baselineData.length > 0 && baselineData[0].coaching_priorities) {
+      // coaching_priorities might be a string or array
+      const priorities = baselineData[0].coaching_priorities;
+      if (Array.isArray(priorities)) {
+        focusAreas = priorities.slice(0, 3);
+      } else if (typeof priorities === 'string') {
+        focusAreas = priorities.split(',').map((p: string) => p.trim()).slice(0, 3);
+      }
+    }
+  }
+
+  if (focusAreas.length === 0) {
+    return [];
+  }
+
+  // Get baseline scores for focus areas from survey_competency_scores
+  const { data: scores } = await supabase
+    .from('survey_competency_scores')
+    .select('competency_name, score')
+    .ilike('email', email)
+    .eq('score_type', 'pre')
+    .in('competency_name', focusAreas);
+
+  // Build result with scores (default to 3 if no score found)
+  return focusAreas.map(competency => {
+    const scoreData = scores?.find(s => s.competency_name === competency);
+    return {
+      competency_name: competency,
+      baseline_score: (scoreData?.score || 3) as CompetencyScoreLevel,
+    };
+  });
+}
+
+/**
+ * Fetch all baseline competency scores for a participant
+ * Used to display full competency profile on GROW dashboard
+ */
+export async function fetchAllBaselineScores(email: string): Promise<SurveyCompetencyScore[]> {
+  const { data, error } = await supabase
+    .from('survey_competency_scores')
+    .select('*')
+    .ilike('email', email)
+    .eq('score_type', 'pre')
+    .order('competency_name', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching baseline scores:', error);
+    return [];
+  }
+
+  return (data as SurveyCompetencyScore[]) || [];
+}
