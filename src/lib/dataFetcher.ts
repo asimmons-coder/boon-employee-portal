@@ -466,6 +466,8 @@ export function getCoachBackgroundLine(coach: Coach | null): string | null {
  * Uses employee_id for lookup
  */
 export async function fetchMatchSummary(employeeId: string): Promise<string | null> {
+  console.log('[fetchMatchSummary] Looking up match_summary for employee_id:', employeeId);
+
   // Try welcome_survey_scale first
   const { data: scaleData, error: scaleError } = await supabase
     .from('welcome_survey_scale')
@@ -474,7 +476,10 @@ export async function fetchMatchSummary(employeeId: string): Promise<string | nu
     .order('created_at', { ascending: false })
     .limit(1);
 
+  console.log('[fetchMatchSummary] welcome_survey_scale result:', { scaleData, scaleError });
+
   if (!scaleError && scaleData && scaleData.length > 0 && scaleData[0].match_summary) {
+    console.log('[fetchMatchSummary] Found in welcome_survey_scale:', scaleData[0].match_summary);
     return scaleData[0].match_summary;
   }
 
@@ -486,10 +491,14 @@ export async function fetchMatchSummary(employeeId: string): Promise<string | nu
     .order('created_at', { ascending: false })
     .limit(1);
 
+  console.log('[fetchMatchSummary] welcome_survey_baseline result:', { baselineData, baselineError });
+
   if (!baselineError && baselineData && baselineData.length > 0 && baselineData[0].match_summary) {
+    console.log('[fetchMatchSummary] Found in welcome_survey_baseline:', baselineData[0].match_summary);
     return baselineData[0].match_summary;
   }
 
+  console.log('[fetchMatchSummary] No match_summary found for employee_id:', employeeId);
   return null;
 }
 
