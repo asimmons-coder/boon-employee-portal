@@ -1,11 +1,16 @@
-import type { Session } from '../lib/types';
+import { useState, useEffect } from 'react';
+import type { Session, Coach, ProgramType } from '../lib/types';
+import { fetchCoachByName, parseCoachSpecialties, getCoachTitleLine, getCoachBackgroundLine } from '../lib/dataFetcher';
 
 interface CoachProfileProps {
   sessions: Session[];
   coachName: string;
+  programType?: ProgramType | null;
 }
 
-export default function CoachProfile({ sessions, coachName }: CoachProfileProps) {
+export default function CoachProfile({ sessions, coachName, programType }: CoachProfileProps) {
+  const [coach, setCoach] = useState<Coach | null>(null);
+
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const coachFirstName = coachName.split(' ')[0];
 
@@ -15,22 +20,46 @@ export default function CoachProfile({ sessions, coachName }: CoachProfileProps)
     ? Math.max(1, Math.ceil((Date.now() - new Date(firstSession.session_date).getTime()) / (1000 * 60 * 60 * 24 * 30)))
     : 0;
 
-  // Determine coach specialties based on session themes
-  const themeCounts = {
-    leadership: completedSessions.filter(s => s.leadership_management_skills).length,
-    communication: completedSessions.filter(s => s.communication_skills).length,
-    wellbeing: completedSessions.filter(s => s.mental_well_being).length,
-  };
+  // Fetch coach details
+  useEffect(() => {
+    const loadCoach = async () => {
+      const coachData = await fetchCoachByName(coachName);
+      setCoach(coachData);
+    };
 
-  const specialties = [
-    themeCounts.leadership > 0 && 'Leadership',
-    themeCounts.communication > 0 && 'Communication',
-    themeCounts.wellbeing > 0 && 'Well-being',
-    'Executive Coaching',
-  ].filter(Boolean).slice(0, 4);
+    if (coachName && coachName !== 'Your Coach') {
+      loadCoach();
+    }
+  }, [coachName]);
 
-  // Placeholder coach bio - in production, this would come from coach table
-  const coachBio = `Specializing in leadership development and emotional intelligence, helping professionals unlock their full potential through personalized coaching.`;
+  // Get specialties - from coach data or fallback to session themes
+  const specialties = coach?.special_services
+    ? parseCoachSpecialties(coach.special_services, 4)
+    : (() => {
+        const themeCounts = {
+          leadership: completedSessions.filter(s => s.leadership_management_skills).length,
+          communication: completedSessions.filter(s => s.communication_skills).length,
+          wellbeing: completedSessions.filter(s => s.mental_well_being).length,
+        };
+        return [
+          themeCounts.leadership > 0 && 'Leadership',
+          themeCounts.communication > 0 && 'Communication',
+          themeCounts.wellbeing > 0 && 'Well-being',
+          'Executive Coaching',
+        ].filter(Boolean).slice(0, 4) as string[];
+      })();
+
+  // Coach title line (product type + ICF level)
+  const titleLine = getCoachTitleLine(coach, programType);
+
+  // Background line for Industry Practitioners
+  const backgroundLine = getCoachBackgroundLine(coach);
+
+  // Coach bio
+  const coachBio = coach?.bio || `${coachFirstName} specializes in leadership development and emotional intelligence, helping professionals unlock their full potential through personalized coaching.`;
+
+  // Photo URL - use real URL if available, otherwise placeholder
+  const photoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;
 
   return (
     <section className="bg-white rounded-[2rem] p-6 md:p-8 border border-gray-100 shadow-sm">
@@ -40,7 +69,7 @@ export default function CoachProfile({ sessions, coachName }: CoachProfileProps)
         {/* Coach Photo */}
         <div className="flex-shrink-0">
           <img
-            src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`}
+            src={photoUrl}
             alt={coachName}
             className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
           />
@@ -49,7 +78,14 @@ export default function CoachProfile({ sessions, coachName }: CoachProfileProps)
         {/* Coach Info */}
         <div className="flex-1 text-center sm:text-left">
           <h3 className="text-xl font-extrabold text-boon-text">{coachName}</h3>
-          <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">Executive Coach</p>
+          <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">{titleLine}</p>
+
+          {/* Background line for Industry Practitioners */}
+          {backgroundLine && (
+            <p className="text-sm text-gray-500 mt-2 italic">
+              {backgroundLine}
+            </p>
+          )}
 
           {/* Bio */}
           <p className="text-sm text-gray-600 mt-4 leading-relaxed">
@@ -76,7 +112,7 @@ export default function CoachProfile({ sessions, coachName }: CoachProfileProps)
 
           {/* Message Button */}
           <a
-            href={`mailto:${coachName.toLowerCase().replace(' ', '.')}@booncoaching.com`}
+            href={`mailto:${coach?.email || 'coaching@boon-health.com'}?subject=Message for ${coachName}`}
             className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 text-sm font-bold text-boon-blue bg-boon-lightBlue/30 rounded-xl hover:bg-boon-lightBlue transition-all"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

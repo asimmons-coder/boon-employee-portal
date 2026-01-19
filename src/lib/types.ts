@@ -162,6 +162,16 @@ export interface Coach {
   bio: string | null;
   photo_url: string | null;
   specialties: string[];
+  // New fields from coaches table
+  icf_level: 'PCC' | 'MCC' | 'ACC' | null;
+  practitioner_type: 'Industry Practitioner' | 'HR/L&D Career' | 'Mixed Background' | null;
+  industries: string[] | null;
+  companies: string[] | null;
+  special_services: string | null; // Semicolon-separated
+  seniority_score: number | null;
+  is_scale_coach: boolean;
+  is_grow_coach: boolean;
+  is_exec_coach: boolean;
 }
 
 export interface ActionItem {

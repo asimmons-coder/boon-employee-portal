@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Employee, Session, BaselineSurvey, WelcomeSurveyScale, ProgramType, View } from '../lib/types';
+import type { Employee, Session, BaselineSurvey, WelcomeSurveyScale, ProgramType, View, Coach } from '../lib/types';
 import { SCALE_FOCUS_AREA_LABELS } from '../lib/types';
 import { supabase } from '../lib/supabase';
+import { fetchCoachByName, fetchCoachById, parseCoachSpecialties, getCoachTitleLine, getCoachBackgroundLine } from '../lib/dataFetcher';
 
 interface PreFirstSessionHomeProps {
   profile: Employee | null;
@@ -23,8 +24,48 @@ export default function PreFirstSessionHome({
   onNavigate,
 }: PreFirstSessionHomeProps) {
   const upcomingSession = sessions.find(s => s.status === 'Upcoming');
-  const coachName = upcomingSession?.coach_name || sessions[0]?.coach_name || 'Your Coach';
+
+  // Coach state - full coach data from coaches table
+  const [coach, setCoach] = useState<Coach | null>(null);
+  const [coachName, setCoachName] = useState<string>(
+    upcomingSession?.coach_name || sessions[0]?.coach_name || 'Your Coach'
+  );
+
+  // Fetch coach details
+  useEffect(() => {
+    const loadCoachDetails = async () => {
+      // If we have coach name from sessions, fetch by name
+      const nameFromSession = sessions[0]?.coach_name || upcomingSession?.coach_name;
+      if (nameFromSession) {
+        setCoachName(nameFromSession);
+        const coachData = await fetchCoachByName(nameFromSession);
+        if (coachData) setCoach(coachData);
+        return;
+      }
+
+      // Otherwise try to fetch from coaches table using coach_id
+      if (profile?.coach_id) {
+        const coachData = await fetchCoachById(profile.coach_id);
+        if (coachData) {
+          setCoach(coachData);
+          setCoachName(coachData.name);
+        }
+      }
+    };
+
+    loadCoachDetails();
+  }, [profile?.coach_id, sessions, upcomingSession?.coach_name]);
+
   const coachFirstName = coachName.split(' ')[0];
+
+  // Coach display data
+  const coachTitleLine = getCoachTitleLine(coach, programType);
+  const coachBackgroundLine = getCoachBackgroundLine(coach);
+  const coachSpecialties = coach?.special_services
+    ? parseCoachSpecialties(coach.special_services, 4)
+    : ['Leadership', 'Communication', 'Well-being'];
+  const coachBio = coach?.bio || null;
+  const coachPhotoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;
 
   // Pre-session note state
   const [preSessionNote, setPreSessionNote] = useState('');
@@ -34,25 +75,32 @@ export default function PreFirstSessionHome({
   // Load existing pre-session note
   useEffect(() => {
     const loadNote = async () => {
-      if (!upcomingSession || !userEmail) return;
+      if (!userEmail) return;
+
+      // Use session ID if available, otherwise use 'first' as placeholder
+      const sessionKey = upcomingSession?.id || 'first';
 
       try {
+        // Try to load from database first
         const { data } = await supabase
           .from('session_prep')
           .select('intention')
           .eq('email', userEmail.toLowerCase())
-          .eq('session_id', upcomingSession.id)
-          .single();
+          .order('updated_at', { ascending: false })
+          .limit(1);
 
-        if (data?.intention) {
-          setPreSessionNote(data.intention);
+        if (data && data.length > 0 && data[0].intention) {
+          setPreSessionNote(data[0].intention);
+          return;
         }
       } catch {
-        // Try localStorage fallback
-        const key = `pre_session_note_${userEmail}_${upcomingSession.id}`;
-        const saved = localStorage.getItem(key);
-        if (saved) setPreSessionNote(saved);
+        // Ignore database errors
       }
+
+      // Try localStorage fallback
+      const key = `pre_session_note_${userEmail}_${sessionKey}`;
+      const saved = localStorage.getItem(key);
+      if (saved) setPreSessionNote(saved);
     };
 
     loadNote();
@@ -60,18 +108,20 @@ export default function PreFirstSessionHome({
 
   // Auto-save pre-session note
   const saveNote = useCallback(async (text: string) => {
-    if (!upcomingSession || !userEmail) return;
+    if (!userEmail) return;
 
     setIsSaving(true);
-    const key = `pre_session_note_${userEmail}_${upcomingSession.id}`;
+    const sessionKey = upcomingSession?.id || 'first';
+    const key = `pre_session_note_${userEmail}_${sessionKey}`;
     localStorage.setItem(key, text);
 
     try {
+      // Save to database - use session_id if available, otherwise save with null
       await supabase
         .from('session_prep')
         .upsert({
           email: userEmail.toLowerCase(),
-          session_id: upcomingSession.id,
+          session_id: upcomingSession?.id || null,
           intention: text,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'email,session_id' });
@@ -79,6 +129,7 @@ export default function PreFirstSessionHome({
       setLastSaved(new Date());
     } catch {
       // localStorage saved as fallback
+      setLastSaved(new Date());
     }
 
     setIsSaving(false);
@@ -158,8 +209,8 @@ export default function PreFirstSessionHome({
         </p>
       </header>
 
-      {/* First Session Card - Prominent */}
-      {upcomingSession && (
+      {/* First Session Card - Show scheduled session or Book CTA */}
+      {upcomingSession ? (
         <section className="bg-gradient-to-br from-boon-blue/5 via-white to-boon-lightBlue/20 rounded-[2.5rem] p-8 md:p-10 border-2 border-boon-blue/20 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
             <div className="w-10 h-10 rounded-xl bg-boon-blue flex items-center justify-center">
@@ -190,7 +241,7 @@ export default function PreFirstSessionHome({
 
             <div className="flex items-center gap-4">
               <img
-                src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/100/100`}
+                src={coachPhotoUrl}
                 alt={coachName}
                 className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white shadow-lg"
               />
@@ -221,7 +272,52 @@ export default function PreFirstSessionHome({
             )}
           </div>
         </section>
-      )}
+      ) : profile?.booking_link ? (
+        /* No upcoming session yet - show Book Your Session CTA */
+        <section className="bg-gradient-to-br from-boon-blue/5 via-white to-boon-lightBlue/20 rounded-[2.5rem] p-8 md:p-10 border-2 border-boon-blue/20 shadow-lg">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-boon-blue flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <span className="text-xs font-bold text-boon-blue uppercase tracking-widest">Book Your First Session</span>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div>
+              <p className="text-2xl font-extrabold text-boon-text mb-2">
+                Ready to meet {coachFirstName}?
+              </p>
+              <p className="text-gray-500 text-lg">
+                Schedule your first coaching session at a time that works for you
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <img
+                src={coachPhotoUrl}
+                alt={coachName}
+                className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white shadow-lg"
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-boon-blue/10">
+            <a
+              href={profile.booking_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold text-white bg-boon-blue rounded-xl hover:bg-boon-navy transition-all shadow-lg"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Book Your Session
+            </a>
+          </div>
+        </section>
+      ) : null}
 
       {/* Meet Your Coach */}
       <section className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
@@ -229,22 +325,28 @@ export default function PreFirstSessionHome({
 
         <div className="flex flex-col sm:flex-row gap-6">
           <img
-            src={`https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`}
+            src={coachPhotoUrl}
             alt={coachName}
             className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
           />
 
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-xl font-extrabold text-boon-text">{coachName}</h3>
-            <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">Executive Coach</p>
+            <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">{coachTitleLine}</p>
+
+            {/* Background line for Industry Practitioners */}
+            {coachBackgroundLine && (
+              <p className="text-sm text-gray-500 mt-2 italic">
+                {coachBackgroundLine}
+              </p>
+            )}
 
             <p className="text-sm text-gray-600 mt-4 leading-relaxed">
-              {coachFirstName} specializes in leadership development and emotional intelligence,
-              helping professionals unlock their full potential through personalized coaching.
+              {coachBio || `${coachFirstName} specializes in leadership development and emotional intelligence, helping professionals unlock their full potential through personalized coaching.`}
             </p>
 
             <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-4">
-              {['Leadership', 'Communication', 'Well-being'].map((tag) => (
+              {coachSpecialties.map((tag) => (
                 <span
                   key={tag}
                   className="px-3 py-1 text-xs font-bold bg-boon-lightBlue/50 text-boon-blue rounded-full"
@@ -319,51 +421,49 @@ export default function PreFirstSessionHome({
         </section>
       )}
 
-      {/* Pre-Session Note */}
-      {upcomingSession && (
-        <section className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
-          <h2 className="text-lg font-extrabold text-boon-text mb-2">
-            Before you meet {coachFirstName}
-          </h2>
-          <p className="text-sm text-gray-500 mb-6">
-            Anything specific (beyond your welcome survey) you want to make sure {coachFirstName} knows before your first conversation?
-          </p>
+      {/* Pre-Session Note - Always show */}
+      <section className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
+        <h2 className="text-lg font-extrabold text-boon-text mb-2">
+          Before you meet {coachFirstName}
+        </h2>
+        <p className="text-sm text-gray-500 mb-6">
+          Anything specific (beyond your welcome survey) you want to make sure {coachFirstName} knows before your first conversation?
+        </p>
 
-          <div className="relative">
-            <textarea
-              value={preSessionNote}
-              onChange={(e) => setPreSessionNote(e.target.value)}
-              placeholder="Optional—share anything that might be helpful"
-              className="w-full p-5 rounded-2xl border-2 border-gray-100 focus:border-boon-blue focus:ring-0 focus:outline-none text-sm min-h-[120px] resize-none bg-boon-bg placeholder-gray-400 transition-all"
-            />
-            <div className="absolute bottom-3 right-3 flex items-center gap-2">
-              {isSaving && (
-                <span className="text-xs text-gray-400 flex items-center gap-1">
-                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Saving...
-                </span>
-              )}
-              {!isSaving && lastSaved && (
-                <span className="text-xs text-green-600 flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Saved
-                </span>
-              )}
-            </div>
+        <div className="relative">
+          <textarea
+            value={preSessionNote}
+            onChange={(e) => setPreSessionNote(e.target.value)}
+            placeholder="Optional—share anything that might be helpful"
+            className="w-full p-5 rounded-2xl border-2 border-gray-100 focus:border-boon-blue focus:ring-0 focus:outline-none text-sm min-h-[120px] resize-none bg-boon-bg placeholder-gray-400 transition-all"
+          />
+          <div className="absolute bottom-3 right-3 flex items-center gap-2">
+            {isSaving && (
+              <span className="text-xs text-gray-400 flex items-center gap-1">
+                <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Saving...
+              </span>
+            )}
+            {!isSaving && lastSaved && (
+              <span className="text-xs text-green-600 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Saved
+              </span>
+            )}
           </div>
-          <p className="text-xs text-gray-400 mt-3 flex items-center gap-1.5">
-            <svg className="w-3.5 h-3.5 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            {coachFirstName} will see this before your session
-          </p>
-        </section>
-      )}
+        </div>
+        <p className="text-xs text-gray-400 mt-3 flex items-center gap-1.5">
+          <svg className="w-3.5 h-3.5 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          {coachFirstName} will see this before your session
+        </p>
+      </section>
 
       {/* Explore Your Toolkit */}
       <section className="bg-gradient-to-br from-boon-bg via-white to-purple-50/30 rounded-[2rem] p-8 border border-gray-100 text-center">
