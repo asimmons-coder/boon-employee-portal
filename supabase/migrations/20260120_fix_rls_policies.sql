@@ -8,7 +8,8 @@
 -- FIX 1: session_tracking RLS policy
 -- ============================================
 -- The original policy only matched by auth_user_id which fails for new users
--- whose auth_user_id hasn't been linked yet. Adding email-based fallback.
+-- whose auth_user_id hasn't been linked yet. Adding email-based fallback
+-- by joining through employee_manager table.
 
 DROP POLICY IF EXISTS "employees_view_own_sessions" ON session_tracking;
 
@@ -23,8 +24,13 @@ USING (
     WHERE auth_user_id = auth.uid()
   )
   OR
-  -- Fallback: by employee_email matching JWT email (for new users before auth_user_id is linked)
-  lower(employee_email) = lower(auth.jwt() ->> 'email')
+  -- Fallback: by employee_id matching employee_manager record found via JWT email
+  -- (for new users before auth_user_id is linked)
+  employee_id = (
+    SELECT id
+    FROM employee_manager
+    WHERE lower(company_email) = lower(auth.jwt() ->> 'email')
+  )
 );
 
 -- ============================================
