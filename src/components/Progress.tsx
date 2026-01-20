@@ -112,6 +112,12 @@ export default function ProgressPage({
 
   // Pre-first-session: Show different content for SCALE vs GROW
   if (isPreFirst) {
+    console.log('[Progress] Pre-first-session state detected', {
+      programType,
+      isScale,
+      hasWelcomeSurveyScale: !!welcomeSurveyScale,
+      welcomeSurveyScale
+    });
     // SCALE pre-first-session: Show "Your Coaching Journey" with baseline metrics
     if (isScale && welcomeSurveyScale) {
       // Calculate % vs Boon average for each metric
