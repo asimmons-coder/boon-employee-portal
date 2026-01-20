@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Session, Coach, ProgramType } from '../lib/types';
-import { fetchCoachByName, parseCoachSpecialties, getCoachTitleLine, getCoachBackgroundLine, fetchMatchSummary } from '../lib/dataFetcher';
+import { fetchCoachByName, parseCoachSpecialties, fetchMatchSummary } from '../lib/dataFetcher';
 
 interface CoachProfileProps {
   sessions: Session[];
@@ -10,7 +10,8 @@ interface CoachProfileProps {
   userEmail?: string | null;
 }
 
-export default function CoachProfile({ sessions, coachName, programType, employeeId, userEmail }: CoachProfileProps) {
+export default function CoachProfile({ sessions, coachName, programType: _programType, employeeId, userEmail }: CoachProfileProps) {
+  void _programType; // Unused but kept for API compatibility
   const [coach, setCoach] = useState<Coach | null>(null);
   const [matchSummary, setMatchSummary] = useState<string | null>(null);
 
@@ -63,12 +64,6 @@ export default function CoachProfile({ sessions, coachName, programType, employe
         ].filter(Boolean).slice(0, 4) as string[];
       })();
 
-  // Coach title line (product type + ICF level)
-  const titleLine = getCoachTitleLine(coach, programType);
-
-  // Background line for Industry Practitioners
-  const backgroundLine = getCoachBackgroundLine(coach);
-
   // Match summary or default text
   const displayMatchSummary = matchSummary || 'Your coach is here to help you achieve your goals.';
 
@@ -95,12 +90,18 @@ export default function CoachProfile({ sessions, coachName, programType, employe
         {/* Coach Info */}
         <div className="flex-1 text-center sm:text-left">
           <h3 className="text-xl font-extrabold text-boon-text">{coachName}</h3>
-          <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">{titleLine}</p>
 
-          {/* Background line for Industry Practitioners */}
-          {backgroundLine && (
-            <p className="text-sm text-gray-500 mt-2 italic">
-              {backgroundLine}
+          {/* Headline - former corporate experience */}
+          {coach?.headline && (
+            <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">
+              {coach.headline}
+            </p>
+          )}
+
+          {/* Notable Credentials - certifications */}
+          {coach?.notable_credentials && (
+            <p className="text-sm text-gray-500 mt-1">
+              {coach.notable_credentials}
             </p>
           )}
 

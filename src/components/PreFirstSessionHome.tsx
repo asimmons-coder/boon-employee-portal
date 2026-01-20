@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Employee, Session, BaselineSurvey, WelcomeSurveyScale, ProgramType, View, Coach } from '../lib/types';
 import { SCALE_FOCUS_AREA_LABELS } from '../lib/types';
 import { supabase } from '../lib/supabase';
-import { fetchCoachByName, fetchCoachById, getCoachTitleLine, getCoachBackgroundLine, fetchMatchSummary } from '../lib/dataFetcher';
+import { fetchCoachByName, fetchCoachById, fetchMatchSummary } from '../lib/dataFetcher';
 
 interface PreFirstSessionHomeProps {
   profile: Employee | null;
@@ -71,8 +71,6 @@ export default function PreFirstSessionHome({
   const coachFirstName = coachName.split(' ')[0];
 
   // Coach display data
-  const coachTitleLine = getCoachTitleLine(coach, programType);
-  const coachBackgroundLine = getCoachBackgroundLine(coach);
   const coachPhotoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;
   const displayMatchSummary = matchSummary || 'Your coach is here to help you achieve your goals.';
 
@@ -341,12 +339,18 @@ export default function PreFirstSessionHome({
 
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-xl font-extrabold text-boon-text">{coachName}</h3>
-            <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">{coachTitleLine}</p>
 
-            {/* Background line for Industry Practitioners */}
-            {coachBackgroundLine && (
-              <p className="text-sm text-gray-500 mt-2 italic">
-                {coachBackgroundLine}
+            {/* Headline - former corporate experience */}
+            {coach?.headline && (
+              <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">
+                {coach.headline}
+              </p>
+            )}
+
+            {/* Notable Credentials - certifications */}
+            {coach?.notable_credentials && (
+              <p className="text-sm text-gray-500 mt-1">
+                {coach.notable_credentials}
               </p>
             )}
 

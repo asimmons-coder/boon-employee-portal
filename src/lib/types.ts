@@ -184,6 +184,9 @@ export interface Coach {
   is_scale_coach: boolean;
   is_grow_coach: boolean;
   is_exec_coach: boolean;
+  // Display fields
+  headline: string | null; // Former corporate experience e.g. "Former SVP/GM at Sephora, Gap, Old Navy"
+  notable_credentials: string | null; // Certifications e.g. "ICF PCC, Executive Coach"
 }
 
 export interface ActionItem {
