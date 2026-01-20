@@ -101,7 +101,8 @@ export default function ProgressPage({
   const completedActions = actionItems.filter(a => a.status === 'completed');
 
   const isGrowOrExec = programType === 'GROW' || programType === 'EXEC';
-  const isScale = programType === 'SCALE';
+  // SCALE detection: either explicit programType OR has welcomeSurveyScale data
+  const isScale = programType === 'SCALE' || (programType === null && !!welcomeSurveyScale);
   const isCompleted = isAlumniState(coachingState.state);
   const isPreFirst = isPreFirstSession(coachingState.state);
   const isPendingReflection = isPendingReflectionState(coachingState.state);

@@ -250,7 +250,7 @@ export default function PreFirstSessionHome({
               <img
                 src={coachPhotoUrl}
                 alt={coachName}
-                className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white shadow-lg"
+                className="w-16 h-16 rounded-2xl object-cover object-top ring-4 ring-white shadow-lg"
               />
             </div>
           </div>
@@ -305,7 +305,7 @@ export default function PreFirstSessionHome({
               <img
                 src={coachPhotoUrl}
                 alt={coachName}
-                className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white shadow-lg"
+                className="w-16 h-16 rounded-2xl object-cover object-top ring-4 ring-white shadow-lg"
               />
             </div>
           </div>
@@ -334,7 +334,7 @@ export default function PreFirstSessionHome({
           <img
             src={coachPhotoUrl}
             alt={coachName}
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
+            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover object-top ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
           />
 
           <div className="flex-1 text-center sm:text-left">
