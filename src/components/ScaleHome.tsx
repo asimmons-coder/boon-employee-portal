@@ -337,54 +337,6 @@ export default function ScaleHome({
         coachName={lastSession?.coach_name || 'Your Coach'}
         userEmail={userEmail}
       />
-
-      {/* What's Next */}
-      <div className="grid md:grid-cols-2 gap-8 md:gap-10 pb-8">
-        <section className="space-y-5">
-          <h2 className="text-xl font-extrabold text-boon-text">What's Next</h2>
-          <div className="p-8 rounded-[2rem] border shadow-sm flex flex-col justify-between min-h-[160px] bg-boon-lightBlue/20 border-boon-lightBlue/30">
-            <p className="text-boon-text font-bold text-lg leading-snug">
-              {upcomingSession ? (
-                <>
-                  Next session:{' '}
-                  <span className="text-boon-blue underline decoration-2 underline-offset-4">
-                    {new Date(upcomingSession.session_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                  </span>
-                </>
-              ) : "Ready for your next step?"}
-            </p>
-            {!checkpointStatus.isCheckpointDue && (
-              <p className="text-sm text-gray-500 mt-4">
-                Next check-in after session {checkpointStatus.nextCheckpointDueAtSession}
-              </p>
-            )}
-          </div>
-        </section>
-
-        <section className="space-y-5">
-          <h2 className="text-xl font-extrabold text-boon-text">Your Evolution</h2>
-          <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-            <div className="flex flex-col h-full justify-between">
-              <div>
-                <p className="text-[11px] font-black text-purple-600 uppercase tracking-widest mb-1">
-                  Progress
-                </p>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  {checkpointStatus.checkpoints.length > 0
-                    ? `${checkpointStatus.checkpoints.length} check-in${checkpointStatus.checkpoints.length > 1 ? 's' : ''} recorded. See how you're evolving.`
-                    : 'Complete your first check-in to start tracking your growth.'}
-                </p>
-              </div>
-              <button
-                onClick={() => onNavigate?.('progress')}
-                className="mt-6 text-sm font-black text-boon-blue hover:underline uppercase tracking-widest text-left"
-              >
-                View Progress →
-              </button>
-            </div>
-          </div>
-        </section>
-      </div>
     </div>
   );
 }
