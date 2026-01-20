@@ -204,7 +204,6 @@ export interface ActionItem {
 export interface CoachingWin {
   id: string;
   employee_id: number;
-  email: string;
   coach_id: string | null;
   session_number: number | null;
   win_text: string;
