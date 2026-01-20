@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, Session, ActionItem, Checkpoint, WelcomeSurveyScale } from '../lib/types';
-import { SCALE_FOCUS_AREA_LABELS } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import { isAlumniState, isPreFirstSession, isPendingReflectionState } from '../lib/coachingState';
 import GrowthTimeline from './GrowthTimeline';
@@ -141,134 +140,216 @@ export default function ProgressPage({
           label: 'Satisfaction',
           value: welcomeSurveyScale.satisfaction,
           benchmark: BOON_BENCHMARKS.satisfaction,
-          icon: '😊',
         },
         {
           key: 'productivity',
           label: 'Productivity',
           value: welcomeSurveyScale.productivity,
           benchmark: BOON_BENCHMARKS.productivity,
-          icon: '⚡',
         },
         {
           key: 'work_life_balance',
           label: 'Work/Life Balance',
           value: welcomeSurveyScale.work_life_balance,
           benchmark: BOON_BENCHMARKS.work_life_balance,
-          icon: '⚖️',
         },
       ];
 
-      // Get selected focus areas from boolean fields
-      const selectedFocusAreas = Object.entries(SCALE_FOCUS_AREA_LABELS)
-        .filter(([key]) => welcomeSurveyScale[key as keyof WelcomeSurveyScale] === true)
-        .map(([, label]) => label);
+      // Get coaching goals from welcomeSurveyScale
+      const coachingGoal = welcomeSurveyScale.coaching_goals || welcomeSurveyScale.additional_topics;
+
+      // Format session date for display
+      const sessionDate = upcomingSession?.session_date
+        ? new Date(upcomingSession.session_date).toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'short',
+            day: 'numeric',
+          }) + ' at ' + new Date(upcomingSession.session_date).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+          })
+        : null;
+
+      // Coach info for timeline
+      const coachInfo = upcomingSession?.coach_name
+        ? `${upcomingSession.coach_name}${coachFirstName !== upcomingSession.coach_name ? '' : ''}`
+        : coachFirstName;
 
       return (
-        <div className="space-y-8 animate-fade-in">
-          <header className="text-center sm:text-left">
+        <div className="space-y-6 animate-fade-in">
+          {/* Header */}
+          <header className="text-center">
             <h1 className="text-3xl font-extrabold text-boon-text tracking-tight">Your Coaching Journey</h1>
-            <p className="text-gray-500 mt-2 font-medium">Where you're starting from.</p>
-            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">
-              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+            <p className="text-gray-500 mt-2 font-medium">Here's what you're working toward</p>
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-medium border border-green-200">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
               SCALE Program
             </div>
           </header>
 
-          {/* Your Starting Point */}
-          <section className="bg-white rounded-[2rem] p-8 border border-gray-100">
-            <h2 className="text-lg font-extrabold text-boon-text mb-6">Your Starting Point</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Metric</th>
-                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Your Score</th>
-                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Boon Avg</th>
-                    <th className="text-right py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">vs Average</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {wellbeingMetrics.map(metric => {
-                    const vsBenchmark = calculateVsBenchmark(metric.value, metric.benchmark);
-                    return (
-                      <tr key={metric.key} className="border-b border-gray-50 last:border-0">
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl">{metric.icon}</span>
-                            <span className="font-bold text-boon-text">{metric.label}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          <span className="text-2xl font-black text-boon-text">
-                            {metric.value ?? '—'}
-                          </span>
-                          <span className="text-gray-400 text-sm">/10</span>
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          <span className="text-gray-500 font-medium">{metric.benchmark}</span>
-                        </td>
-                        <td className="py-4 px-4 text-right">
-                          {vsBenchmark !== null ? (
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold ${
-                              vsBenchmark >= 0
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-600'
-                            }`}>
-                              {vsBenchmark >= 0 ? '+' : ''}{vsBenchmark}%
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {/* What You Want to Work On - Dark card */}
+          <section className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2rem] p-8 text-white">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4">What You Want to Work On</p>
+            <div className="mb-4">
+              <span className="text-2xl">🎯</span>
             </div>
-          </section>
-
-          {/* What You Want to Work On */}
-          <section className="bg-gradient-to-br from-purple-50 to-boon-lightBlue/20 rounded-[2rem] p-8 border border-purple-100">
-            <h2 className="text-lg font-extrabold text-boon-text mb-4">What You Want to Work On</h2>
-
-            {/* Show additional_topics if present */}
-            {welcomeSurveyScale.additional_topics ? (
-              <div className="bg-white/60 p-6 rounded-2xl border border-white">
-                <p className="text-gray-700 italic leading-relaxed">
-                  "{welcomeSurveyScale.additional_topics}"
+            {coachingGoal ? (
+              <>
+                <p className="text-xl font-bold leading-relaxed mb-4">
+                  "{coachingGoal}"
                 </p>
-              </div>
-            ) : selectedFocusAreas.length > 0 ? (
-              // Fall back to showing focus areas as tags
-              <div className="flex flex-wrap gap-2">
-                {selectedFocusAreas.map(area => (
-                  <span
-                    key={area}
-                    className="px-4 py-2 bg-white/70 text-purple-700 rounded-full text-sm font-medium border border-purple-200/50"
-                  >
-                    {area}
-                  </span>
-                ))}
-              </div>
+                <p className="text-gray-400 text-sm">
+                  You'll refine this with your coach in your first session
+                </p>
+              </>
             ) : (
-              <p className="text-gray-500">Your focus areas will be defined in your first session with {coachFirstName}.</p>
+              <p className="text-gray-400">
+                You'll define your goals in your first session with {coachFirstName}
+              </p>
             )}
           </section>
 
-          {/* What's Next */}
-          <section className="bg-white rounded-[2rem] p-8 border border-gray-100 text-center">
-            <div className="w-14 h-14 bg-boon-lightBlue rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
+          {/* Your Journey - Timeline */}
+          <section className="bg-white rounded-[2rem] p-8 border border-gray-100">
+            <h2 className="text-lg font-extrabold text-boon-text mb-6">Your Journey</h2>
+
+            <div className="space-y-0">
+              {/* Welcome Survey - Completed */}
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div className="w-0.5 h-12 bg-green-500"></div>
+                </div>
+                <div className="pb-8">
+                  <h3 className="font-bold text-boon-text">Welcome Survey</h3>
+                  <p className="text-sm text-gray-500">Shared your goals and baseline</p>
+                </div>
+              </div>
+
+              {/* Matched with Coach - Completed */}
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div className="w-0.5 h-12 bg-green-500"></div>
+                </div>
+                <div className="pb-8">
+                  <h3 className="font-bold text-boon-text">Matched with Your Coach</h3>
+                  <p className="text-sm text-gray-500">{coachInfo}</p>
+                </div>
+              </div>
+
+              {/* First Session - Current */}
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-boon-blue flex items-center justify-center">
+                    <div className="w-3 h-3 rounded-full bg-white"></div>
+                  </div>
+                  <div className="w-0.5 h-12 bg-gray-200"></div>
+                </div>
+                <div className="pb-8">
+                  <h3 className="font-bold text-boon-blue">First Session</h3>
+                  <p className="text-sm text-gray-500">Dive deeper into your goals and build your plan</p>
+                  <span className="inline-block mt-2 px-3 py-1 bg-boon-lightBlue text-boon-blue text-xs font-bold rounded-full">
+                    You're here
+                  </span>
+                </div>
+              </div>
+
+              {/* Ongoing Coaching - Future */}
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                    <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                  </div>
+                  <div className="w-0.5 h-12 bg-gray-200"></div>
+                </div>
+                <div className="pb-8">
+                  <h3 className="font-bold text-gray-400">Ongoing Coaching</h3>
+                  <p className="text-sm text-gray-400">Regular sessions + check-ins on your progress</p>
+                </div>
+              </div>
+
+              {/* Wins & Breakthroughs - Future */}
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                    <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-400">Wins & Breakthroughs</h3>
+                  <p className="text-sm text-gray-400">Celebrate what you've accomplished</p>
+                </div>
+              </div>
             </div>
-            <h3 className="text-lg font-extrabold text-boon-text mb-2">What's Next</h3>
-            <p className="text-gray-500 max-w-md mx-auto">
-              After your first session, you'll track your progress through regular check-ins that measure how these metrics evolve over time.
+          </section>
+
+          {/* Your Wins - Empty state */}
+          <section className="bg-white rounded-[2rem] p-8 border-2 border-dashed border-gray-200 text-center">
+            <div className="text-4xl mb-4">🏆</div>
+            <h2 className="text-lg font-extrabold text-boon-text mb-2">Your Wins</h2>
+            <p className="text-gray-500 max-w-md mx-auto text-sm">
+              This is where you'll track breakthroughs and accomplishments as you progress through coaching.
             </p>
           </section>
+
+          {/* Your Starting Point - Metric cards */}
+          <section className="bg-white rounded-[2rem] p-8 border border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-extrabold text-boon-text">Your Starting Point</h2>
+              <span className="text-xs text-gray-400">From welcome survey</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              {wellbeingMetrics.map(metric => {
+                const vsBenchmark = calculateVsBenchmark(metric.value, metric.benchmark);
+                return (
+                  <div key={metric.key} className="text-center p-4 bg-gray-50 rounded-2xl">
+                    <div className="text-3xl font-black text-boon-text">
+                      {metric.value ?? '—'}
+                      <span className="text-base font-normal text-gray-400">/10</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{metric.label}</p>
+                    {vsBenchmark !== null && (
+                      <p className={`text-xs font-bold mt-1 ${vsBenchmark >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        {vsBenchmark >= 0 ? '+' : ''}{vsBenchmark}% vs avg
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-center text-sm text-gray-400 border-t border-gray-100 pt-4">
+              We'll check in on these periodically to see how things evolve
+            </p>
+          </section>
+
+          {/* You're all set - CTA */}
+          {upcomingSession && (
+            <section className="bg-boon-blue rounded-[2rem] p-8 text-center text-white">
+              <h2 className="text-xl font-extrabold mb-2">You're all set</h2>
+              <p className="text-blue-100 mb-6">
+                Your first session is scheduled — the real work begins soon
+              </p>
+              {sessionDate && (
+                <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/20 rounded-xl">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="font-bold">{sessionDate}</span>
+                </div>
+              )}
+            </section>
+          )}
         </div>
       );
     }

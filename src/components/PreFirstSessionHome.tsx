@@ -75,12 +75,10 @@ export default function PreFirstSessionHome({
   const displayMatchSummary = matchSummary || 'Your coach is here to help you achieve your goals.';
 
   // Debug: Log coach data to verify headline and notable_credentials
-  console.log('[PreFirstSessionHome] Coach data:', {
-    name: coach?.name,
-    headline: coach?.headline,
-    notable_credentials: coach?.notable_credentials,
-    photo_url: coach?.photo_url,
-  });
+  console.log('[PreFirstSessionHome] Coach name:', coach?.name);
+  console.log('[PreFirstSessionHome] Coach headline:', coach?.headline);
+  console.log('[PreFirstSessionHome] Coach notable_credentials:', coach?.notable_credentials);
+  console.log('[PreFirstSessionHome] Coach photo_url:', coach?.photo_url ? 'EXISTS' : 'NULL');
 
   // Pre-session note state
   const [preSessionNote, setPreSessionNote] = useState('');
@@ -255,11 +253,14 @@ export default function PreFirstSessionHome({
             </div>
 
             <div className="flex items-center gap-4">
-              <img
-                src={coachPhotoUrl}
-                alt={coachName}
-                className="w-16 h-16 rounded-2xl object-cover object-top ring-4 ring-white shadow-lg"
-              />
+              <div className="w-16 h-20 rounded-2xl overflow-hidden ring-4 ring-white shadow-lg bg-gray-100">
+                <img
+                  src={coachPhotoUrl}
+                  alt={coachName}
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: 'center 15%' }}
+                />
+              </div>
             </div>
           </div>
 
@@ -310,11 +311,14 @@ export default function PreFirstSessionHome({
             </div>
 
             <div className="flex items-center gap-4">
-              <img
-                src={coachPhotoUrl}
-                alt={coachName}
-                className="w-16 h-16 rounded-2xl object-cover object-top ring-4 ring-white shadow-lg"
-              />
+              <div className="w-16 h-20 rounded-2xl overflow-hidden ring-4 ring-white shadow-lg bg-gray-100">
+                <img
+                  src={coachPhotoUrl}
+                  alt={coachName}
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: 'center 15%' }}
+                />
+              </div>
             </div>
           </div>
 
@@ -339,11 +343,17 @@ export default function PreFirstSessionHome({
         <h2 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-6">Meet Your Coach</h2>
 
         <div className="flex flex-col sm:flex-row gap-6">
-          <img
-            src={coachPhotoUrl}
-            alt={coachName}
-            className="w-28 h-36 sm:w-32 sm:h-40 rounded-2xl object-cover object-top ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
-          />
+          {/* Coach headshot - using aspect-ratio container with object-position to show face */}
+          <div className="w-28 sm:w-32 mx-auto sm:mx-0 flex-shrink-0">
+            <div className="aspect-[3/4] rounded-2xl overflow-hidden ring-4 ring-boon-bg shadow-lg bg-gray-100">
+              <img
+                src={coachPhotoUrl}
+                alt={coachName}
+                className="w-full h-full object-cover"
+                style={{ objectPosition: 'center 15%' }}
+              />
+            </div>
+          </div>
 
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-xl font-extrabold text-boon-text">{coachName}</h3>
