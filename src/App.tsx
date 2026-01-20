@@ -109,7 +109,24 @@ function ProtectedApp() {
         setBaseline(baselineData);
         setWelcomeSurveyScale(welcomeSurveyScaleData);
         setCompetencyScores(competencyData);
-        setProgramType(programTypeData);
+
+        // Derive program type from sessions if employee.program is null
+        let finalProgramType = programTypeData;
+        if (!finalProgramType && sessionsData.length > 0) {
+          const sessionProgramName = sessionsData[0]?.program_name?.toUpperCase() || '';
+          console.log('[App.loadData] Fallback: checking session program_name:', sessionProgramName);
+          if (sessionProgramName.includes('SCALE') || sessionProgramName.includes('SLX')) {
+            finalProgramType = 'SCALE';
+            console.log('[App.loadData] Derived SCALE from session program_name');
+          } else if (sessionProgramName.includes('GROW')) {
+            finalProgramType = 'GROW';
+            console.log('[App.loadData] Derived GROW from session program_name');
+          } else if (sessionProgramName.includes('EXEC')) {
+            finalProgramType = 'EXEC';
+            console.log('[App.loadData] Derived EXEC from session program_name');
+          }
+        }
+        setProgramType(finalProgramType);
         setActionItems(actionItemsData);
         setReflection(reflectionData);
         setCheckpoints(checkpointsData);
