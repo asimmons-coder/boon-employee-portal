@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/AuthContext';
-import { fetchSessions, fetchProgressData, fetchBaseline, fetchWelcomeSurveyScale, fetchCompetencyScores, fetchProgramType, fetchActionItems, fetchReflection, fetchCheckpoints, fetchPendingSurvey } from './lib/dataFetcher';
+import { fetchSessions, fetchProgressData, fetchBaseline, fetchWelcomeSurveyScale, fetchCompetencyScores, fetchProgramType, fetchActionItems, fetchReflection, fetchCheckpoints, fetchPendingSurvey, fetchCoachingWins } from './lib/dataFetcher';
 import { getCoachingState, type CoachingStateData, type CoachingState } from './lib/coachingState';
-import type { View, Session, SurveyResponse, BaselineSurvey, WelcomeSurveyScale, CompetencyScore, ProgramType, ActionItem, ReflectionResponse, Checkpoint, PendingSurvey } from './lib/types';
+import type { View, Session, SurveyResponse, BaselineSurvey, WelcomeSurveyScale, CompetencyScore, ProgramType, ActionItem, ReflectionResponse, Checkpoint, PendingSurvey, CoachingWin } from './lib/types';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -43,6 +43,7 @@ function ProtectedApp() {
   const [reflection, setReflection] = useState<ReflectionResponse | null>(null);
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [welcomeSurveyScale, setWelcomeSurveyScale] = useState<WelcomeSurveyScale | null>(null);
+  const [coachingWins, setCoachingWins] = useState<CoachingWin[]>([]);
   const [showReflectionFlow, setShowReflectionFlow] = useState(false);
   const [showCheckpointFlow, setShowCheckpointFlow] = useState(false);
   const [stateOverride, setStateOverride] = useState<CoachingState | null>(null);
@@ -68,7 +69,7 @@ function ProtectedApp() {
 
       setDataLoading(true);
       try {
-        const [sessionsData, progressData, baselineData, welcomeSurveyScaleData, competencyData, programTypeData, actionItemsData, reflectionData, checkpointsData] = await Promise.all([
+        const [sessionsData, progressData, baselineData, welcomeSurveyScaleData, competencyData, programTypeData, actionItemsData, reflectionData, checkpointsData, winsData] = await Promise.all([
           fetchSessions(employee.id, employee.company_email),
           fetchProgressData(employee.company_email),
           fetchBaseline(employee.company_email),
@@ -78,6 +79,7 @@ function ProtectedApp() {
           fetchActionItems(employee.company_email),
           fetchReflection(employee.company_email),
           fetchCheckpoints(employee.company_email),
+          fetchCoachingWins(employee.company_email),
         ]);
 
         // Debug: Log sessions loaded
@@ -99,6 +101,7 @@ function ProtectedApp() {
           actionItemsCount: actionItemsData.length,
           hasReflection: !!reflectionData,
           checkpointsCount: checkpointsData.length,
+          winsCount: winsData.length,
         });
 
         setSessions(sessionsData);
@@ -110,6 +113,7 @@ function ProtectedApp() {
         setActionItems(actionItemsData);
         setReflection(reflectionData);
         setCheckpoints(checkpointsData);
+        setCoachingWins(winsData);
 
         // Check for pending survey after data loads
         // Pass program type to help detect GROW vs SCALE surveys
@@ -415,7 +419,7 @@ function ProtectedApp() {
       case 'sessions':
         return <SessionsPage sessions={sessions} coachingState={coachingState} />;
       case 'progress':
-        return <ProgressPage progress={progress} baseline={baseline} welcomeSurveyScale={welcomeSurveyScale} competencyScores={competencyScores} sessions={sessions} actionItems={effectiveActionItems} programType={programType} coachingState={coachingState} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} />;
+        return <ProgressPage progress={progress} baseline={baseline} welcomeSurveyScale={welcomeSurveyScale} competencyScores={competencyScores} sessions={sessions} actionItems={effectiveActionItems} programType={programType} coachingState={coachingState} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} coachingWins={coachingWins} />;
       case 'practice':
         const practiceCoachName = sessions.length > 0 ? sessions[0].coach_name : "Your Coach";
         return <Practice sessions={sessions} coachName={practiceCoachName} userEmail={employee?.company_email || ''} coachingState={coachingState} competencyScores={competencyScores} />;

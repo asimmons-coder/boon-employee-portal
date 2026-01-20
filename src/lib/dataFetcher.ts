@@ -1324,3 +1324,63 @@ export async function fetchAllBaselineScores(email: string): Promise<SurveyCompe
 
   return (data as SurveyCompetencyScore[]) || [];
 }
+
+// ============================================
+// COACHING WINS
+// ============================================
+
+import type { CoachingWin } from './types';
+
+/**
+ * Fetch coaching wins for an employee
+ * Returns wins ordered by most recent first
+ */
+export async function fetchCoachingWins(email: string): Promise<CoachingWin[]> {
+  const { data, error } = await supabase
+    .from('coaching_wins')
+    .select('*')
+    .ilike('email', email)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    // Table might not exist yet
+    if (error.code !== '42P01' && error.code !== 'PGRST116') {
+      console.error('Error fetching coaching wins:', error);
+    }
+    return [];
+  }
+
+  return (data as CoachingWin[]) || [];
+}
+
+/**
+ * Add a new coaching win (manual entry from progress page)
+ */
+export async function addCoachingWin(
+  email: string,
+  employeeId: number,
+  winText: string,
+  sessionNumber?: number,
+  isPrivate: boolean = false
+): Promise<{ success: boolean; data?: CoachingWin; error?: string }> {
+  const { data, error } = await supabase
+    .from('coaching_wins')
+    .insert({
+      email: email.toLowerCase(),
+      employee_id: employeeId,
+      win_text: winText.trim(),
+      session_number: sessionNumber || null,
+      source: 'manual',
+      is_private: isPrivate,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding coaching win:', error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, data: data as CoachingWin };
+}

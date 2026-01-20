@@ -201,6 +201,20 @@ export interface ActionItem {
   completed_at: string | null;
 }
 
+export interface CoachingWin {
+  id: string;
+  employee_id: number;
+  email: string;
+  coach_id: string | null;
+  session_number: number | null;
+  win_text: string;
+  source: 'check_in_survey' | 'manual' | 'coach_logged';
+  is_private: boolean;
+  survey_response_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CheckIn {
   id: string;
   employee_email: string;
