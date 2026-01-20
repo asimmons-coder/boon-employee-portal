@@ -84,6 +84,35 @@ export default function ScaleHome({
         </div>
       </header>
 
+      {/* Book Next Session CTA - when no upcoming session */}
+      {!upcomingSession && profile?.booking_link && (
+        <a
+          href={profile.booking_link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block bg-gradient-to-br from-boon-lightBlue/30 to-white rounded-[2rem] p-6 border-2 border-boon-blue/20 hover:border-boon-blue/40 transition-all group"
+        >
+          <div className="flex items-center gap-5">
+            <div className="w-14 h-14 bg-boon-lightBlue rounded-2xl flex items-center justify-center flex-shrink-0">
+              <svg className="w-7 h-7 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl font-extrabold text-boon-text group-hover:text-boon-blue transition-colors">
+                Ready for your next session?
+              </h2>
+              <p className="text-gray-500 mt-1">
+                Continue your coaching journey with {lastSession?.coach_name?.split(' ')[0] || 'your coach'}.
+              </p>
+            </div>
+            <svg className="w-6 h-6 text-boon-blue opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </a>
+      )}
+
       {/* Checkpoint Prompt - Prominent when due */}
       {checkpointStatus.isCheckpointDue && onStartCheckpoint && (
         <section className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-[2.5rem] p-8 border-2 border-purple-200 shadow-lg relative overflow-hidden">
