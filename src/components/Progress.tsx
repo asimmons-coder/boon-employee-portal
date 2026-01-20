@@ -104,13 +104,23 @@ export default function ProgressPage({
   const [isSubmittingWin, setIsSubmittingWin] = useState(false);
 
   const handleAddWin = async () => {
-    if (!newWinText.trim() || !onAddWin) return;
+    console.log('[Progress] handleAddWin called', { newWinText: newWinText.trim(), hasOnAddWin: !!onAddWin });
+    if (!newWinText.trim() || !onAddWin) {
+      console.log('[Progress] handleAddWin early return - text empty or no onAddWin');
+      return;
+    }
     setIsSubmittingWin(true);
-    const success = await onAddWin(newWinText.trim());
-    setIsSubmittingWin(false);
-    if (success) {
-      setNewWinText('');
-      setShowAddWinModal(false);
+    try {
+      const success = await onAddWin(newWinText.trim());
+      console.log('[Progress] onAddWin result:', success);
+      if (success) {
+        setNewWinText('');
+        setShowAddWinModal(false);
+      }
+    } catch (err) {
+      console.error('[Progress] handleAddWin error:', err);
+    } finally {
+      setIsSubmittingWin(false);
     }
   };
 
@@ -125,8 +135,11 @@ export default function ProgressPage({
   const isPendingReflection = isPendingReflectionState(coachingState.state);
 
   // Get coach name for pre-first-session messaging
+  // Try upcoming session first, then any session with a coach name
   const upcomingSession = sessions.find(s => s.status === 'Upcoming');
-  const coachFirstName = upcomingSession?.coach_name?.split(' ')[0] || 'your coach';
+  const anySessionWithCoach = sessions.find(s => s.coach_name);
+  const coachName = upcomingSession?.coach_name || anySessionWithCoach?.coach_name;
+  const coachFirstName = coachName?.split(' ')[0] || 'your coach';
 
   // Pre-first-session: Show different content for SCALE vs GROW
   if (isPreFirst) {
@@ -188,8 +201,8 @@ export default function ProgressPage({
           })
         : null;
 
-      // Coach info for timeline - use full name, not just first name
-      const coachFullName = upcomingSession?.coach_name || 'Your Coach';
+      // Coach info for timeline - use full name from any session
+      const coachFullName = coachName || 'Your Coach';
 
       return (
         <div className="space-y-6 animate-fade-in">
