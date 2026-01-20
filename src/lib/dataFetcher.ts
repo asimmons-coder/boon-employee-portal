@@ -229,17 +229,22 @@ export async function fetchProgramType(programId: string | null): Promise<Progra
   console.log('[fetchProgramType] Checking upperProgram:', upperProgram);
 
   // Check if it starts with a known program type (e.g., "GROW - Cohort 1")
-  if (upperProgram === 'SCALE' || upperProgram.startsWith('SCALE ') || upperProgram.startsWith('SCALE-')) {
+  if (upperProgram === 'SCALE' || upperProgram.startsWith('SCALE ') || upperProgram.startsWith('SCALE-') || upperProgram.includes(' SCALE')) {
     console.log('[fetchProgramType] Matched SCALE pattern');
     return 'SCALE';
   }
-  if (upperProgram === 'GROW' || upperProgram.startsWith('GROW ') || upperProgram.startsWith('GROW-')) {
+  if (upperProgram === 'GROW' || upperProgram.startsWith('GROW ') || upperProgram.startsWith('GROW-') || upperProgram.includes(' GROW')) {
     console.log('[fetchProgramType] Matched GROW pattern');
     return 'GROW';
   }
-  if (upperProgram === 'EXEC' || upperProgram.startsWith('EXEC ') || upperProgram.startsWith('EXEC-')) {
+  if (upperProgram === 'EXEC' || upperProgram.startsWith('EXEC ') || upperProgram.startsWith('EXEC-') || upperProgram.includes(' EXEC')) {
     console.log('[fetchProgramType] Matched EXEC pattern');
     return 'EXEC';
+  }
+  // Check for SLX which is SCALE
+  if (upperProgram.includes('SLX')) {
+    console.log('[fetchProgramType] Matched SLX -> SCALE');
+    return 'SCALE';
   }
 
   // Try to look up by ID first (if it looks like a UUID)

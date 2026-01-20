@@ -122,13 +122,17 @@ function extractProgramType(program: string | null): string | null {
   if (!program) return null;
 
   const upper = program.toUpperCase();
-  if (upper === 'GROW' || upper.startsWith('GROW ') || upper.startsWith('GROW-')) {
+  if (upper === 'GROW' || upper.startsWith('GROW ') || upper.startsWith('GROW-') || upper.includes(' GROW')) {
     return 'GROW';
   }
-  if (upper === 'EXEC' || upper.startsWith('EXEC ') || upper.startsWith('EXEC-')) {
+  if (upper === 'EXEC' || upper.startsWith('EXEC ') || upper.startsWith('EXEC-') || upper.includes(' EXEC')) {
     return 'EXEC';
   }
-  if (upper === 'SCALE' || upper.startsWith('SCALE ') || upper.startsWith('SCALE-')) {
+  if (upper === 'SCALE' || upper.startsWith('SCALE ') || upper.startsWith('SCALE-') || upper.includes(' SCALE')) {
+    return 'SCALE';
+  }
+  // SLX is SCALE program
+  if (upper.includes('SLX')) {
     return 'SCALE';
   }
 
