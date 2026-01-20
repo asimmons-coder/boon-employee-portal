@@ -386,8 +386,8 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, we
         <ActionItems items={actionItems} onUpdate={onActionUpdate} />
       )}
 
-      {/* What's Next - different for completed vs active */}
-      {isCompleted ? (
+      {/* What's Next - for completed users only */}
+      {isCompleted && (
         <div className="space-y-8 pb-8">
           {/* Soft Practice Space Prompt */}
           <section className="bg-gradient-to-br from-boon-bg via-white to-purple-50/30 rounded-[2rem] p-8 border border-gray-100">
