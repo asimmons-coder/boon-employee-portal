@@ -86,6 +86,21 @@ function ProtectedApp() {
           sessions: sessionsData.map(s => ({ id: s.id, employee_id: s.employee_id, status: s.status, coach_name: s.coach_name }))
         });
 
+        // Debug: Log all data loaded
+        console.log('[App.loadData] Data loaded:', {
+          sessionsCount: sessionsData.length,
+          progressCount: progressData.length,
+          hasBaseline: !!baselineData,
+          hasWelcomeSurveyScale: !!welcomeSurveyScaleData,
+          welcomeSurveyScaleData: welcomeSurveyScaleData,
+          competencyCount: competencyData.length,
+          programType: programTypeData,
+          employeeProgram: employee.program,
+          actionItemsCount: actionItemsData.length,
+          hasReflection: !!reflectionData,
+          checkpointsCount: checkpointsData.length,
+        });
+
         setSessions(sessionsData);
         setProgress(progressData);
         setBaseline(baselineData);

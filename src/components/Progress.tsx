@@ -112,12 +112,19 @@ export default function ProgressPage({
 
   // Pre-first-session: Show different content for SCALE vs GROW
   if (isPreFirst) {
-    console.log('[Progress] Pre-first-session state detected', {
-      programType,
-      isScale,
-      hasWelcomeSurveyScale: !!welcomeSurveyScale,
-      welcomeSurveyScale
-    });
+    console.log('[Progress] 🔍 Pre-first-session state detected');
+    console.log('[Progress] programType:', programType, '| isScale:', isScale);
+    console.log('[Progress] welcomeSurveyScale:', welcomeSurveyScale ? 'EXISTS' : 'NULL');
+    if (welcomeSurveyScale) {
+      console.log('[Progress] welcomeSurveyScale data:', {
+        satisfaction: welcomeSurveyScale.satisfaction,
+        productivity: welcomeSurveyScale.productivity,
+        work_life_balance: welcomeSurveyScale.work_life_balance,
+        additional_topics: welcomeSurveyScale.additional_topics,
+      });
+    }
+    console.log('[Progress] Will show SCALE view?', isScale && !!welcomeSurveyScale);
+
     // SCALE pre-first-session: Show "Your Coaching Journey" with baseline metrics
     if (isScale && welcomeSurveyScale) {
       // Calculate % vs Boon average for each metric

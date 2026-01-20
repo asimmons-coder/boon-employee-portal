@@ -157,6 +157,8 @@ export async function fetchBaseline(email: string): Promise<BaselineSurvey | nul
  * Contains coaching goals and focus area selections
  */
 export async function fetchWelcomeSurveyScale(email: string): Promise<WelcomeSurveyScale | null> {
+  console.log('[fetchWelcomeSurveyScale] Looking up for email:', email);
+
   const { data, error } = await supabase
     .from('welcome_survey_scale')
     .select('*')
@@ -164,12 +166,27 @@ export async function fetchWelcomeSurveyScale(email: string): Promise<WelcomeSur
     .order('id', { ascending: false })
     .limit(1);
 
+  console.log('[fetchWelcomeSurveyScale] Result:', {
+    found: data?.length || 0,
+    error: error?.message || 'none',
+    errorCode: error?.code || 'none',
+  });
+
   if (error) {
     // Table might not exist yet
     if (error.code !== '42P01' && error.code !== 'PGRST116') {
       console.error('Error fetching SCALE welcome survey:', error);
     }
     return null;
+  }
+
+  if (data && data.length > 0) {
+    console.log('[fetchWelcomeSurveyScale] Found data:', {
+      email: data[0].email,
+      satisfaction: data[0].satisfaction,
+      productivity: data[0].productivity,
+      work_life_balance: data[0].work_life_balance,
+    });
   }
 
   return (data && data.length > 0) ? data[0] as WelcomeSurveyScale : null;
@@ -201,18 +218,27 @@ export async function fetchCompetencyScores(email: string): Promise<CompetencySc
  * Examples: "GROW", "GROW - Cohort 1", "TWC SLX Program 2025", UUID
  */
 export async function fetchProgramType(programId: string | null): Promise<ProgramType | null> {
-  if (!programId) return null;
+  console.log('[fetchProgramType] Input programId:', programId);
+
+  if (!programId) {
+    console.log('[fetchProgramType] No programId, returning null');
+    return null;
+  }
 
   const upperProgram = programId.toUpperCase();
+  console.log('[fetchProgramType] Checking upperProgram:', upperProgram);
 
   // Check if it starts with a known program type (e.g., "GROW - Cohort 1")
   if (upperProgram === 'SCALE' || upperProgram.startsWith('SCALE ') || upperProgram.startsWith('SCALE-')) {
+    console.log('[fetchProgramType] Matched SCALE pattern');
     return 'SCALE';
   }
   if (upperProgram === 'GROW' || upperProgram.startsWith('GROW ') || upperProgram.startsWith('GROW-')) {
+    console.log('[fetchProgramType] Matched GROW pattern');
     return 'GROW';
   }
   if (upperProgram === 'EXEC' || upperProgram.startsWith('EXEC ') || upperProgram.startsWith('EXEC-')) {
+    console.log('[fetchProgramType] Matched EXEC pattern');
     return 'EXEC';
   }
 
