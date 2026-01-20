@@ -74,6 +74,14 @@ export default function PreFirstSessionHome({
   const coachPhotoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;
   const displayMatchSummary = matchSummary || 'Your coach is here to help you achieve your goals.';
 
+  // Debug: Log coach data to verify headline and notable_credentials
+  console.log('[PreFirstSessionHome] Coach data:', {
+    name: coach?.name,
+    headline: coach?.headline,
+    notable_credentials: coach?.notable_credentials,
+    photo_url: coach?.photo_url,
+  });
+
   // Pre-session note state
   const [preSessionNote, setPreSessionNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -334,15 +342,15 @@ export default function PreFirstSessionHome({
           <img
             src={coachPhotoUrl}
             alt={coachName}
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover object-top ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
+            className="w-28 h-36 sm:w-32 sm:h-40 rounded-2xl object-cover object-top ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
           />
 
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-xl font-extrabold text-boon-text">{coachName}</h3>
 
-            {/* Headline - former corporate experience */}
+            {/* Headline - former corporate experience (title case) */}
             {coach?.headline && (
-              <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">
+              <p className="text-sm font-bold text-boon-blue mt-1">
                 {coach.headline}
               </p>
             )}
