@@ -36,31 +36,13 @@ export default function ScaleHome({
   const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
 
-  // Calculate time in program
-  const firstSession = completedSessions.length > 0 ? completedSessions[completedSessions.length - 1] : null;
-  const monthsInProgram = firstSession
-    ? Math.max(1, Math.floor((Date.now() - new Date(firstSession.session_date).getTime()) / (1000 * 60 * 60 * 24 * 30)))
-    : 0;
-
   // Get current focus from latest checkpoint
   const currentFocus = checkpointStatus.latestCheckpoint?.focus_area;
-
-  // Get themes from sessions
-  const themes = [
-    { key: 'leadership_management_skills', label: 'Leading with empathy and clarity' },
-    { key: 'communication_skills', label: 'Communicating with impact and intention' },
-    { key: 'mental_well_being', label: 'Cultivating sustainable mental energy' },
-  ];
-
-  const focusAreas = themes.map(theme => {
-    const sessionsWithTheme = completedSessions.filter(s => (s as any)[theme.key]);
-    if (sessionsWithTheme.length === 0) return null;
-    return { label: theme.label, count: sessionsWithTheme.length };
-  }).filter(Boolean);
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 md:space-y-12 animate-fade-in">
 
+      {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pt-2">
         <div className="text-center sm:text-left">
           <h1 className="text-3xl md:text-5xl font-extrabold text-boon-text tracking-tight">
@@ -72,7 +54,7 @@ export default function ScaleHome({
         </div>
       </header>
 
-      {/* Book Next Session CTA - when no upcoming session */}
+      {/* 1. Ready for your next session - Book CTA when no upcoming session */}
       {!upcomingSession && profile?.booking_link && (
         <a
           href={profile.booking_link}
@@ -104,12 +86,10 @@ export default function ScaleHome({
       {/* Checkpoint Prompt - Prominent when due */}
       {checkpointStatus.isCheckpointDue && onStartCheckpoint && (
         <section className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-[2.5rem] p-8 border-2 border-purple-200 shadow-lg relative overflow-hidden">
-          {/* Background pattern */}
           <div className="absolute inset-0 opacity-5">
             <div className="absolute -right-16 -top-16 w-64 h-64 bg-purple-600 rounded-full" />
             <div className="absolute -left-8 -bottom-8 w-48 h-48 bg-purple-600 rounded-full" />
           </div>
-
           <div className="relative z-10">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
@@ -123,7 +103,6 @@ export default function ScaleHome({
                     {checkpointStatus.currentCheckpointNumber === 1 ? 'First check-in' : `Check-in ${checkpointStatus.currentCheckpointNumber}`}
                   </span>
                 </div>
-
                 <h2 className="text-2xl font-extrabold text-boon-text mb-2">
                   {checkpointStatus.currentCheckpointNumber === 1
                     ? 'Time for your first check-in'
@@ -134,7 +113,6 @@ export default function ScaleHome({
                     ? 'Establish your baseline and start tracking your evolution over time.'
                     : 'Take 2 minutes to reflect on your progress and set your focus for the next 6 sessions.'}
                 </p>
-
                 <button
                   onClick={onStartCheckpoint}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-purple-600 text-white font-bold rounded-2xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/30 active:scale-95"
@@ -145,8 +123,6 @@ export default function ScaleHome({
                   </svg>
                 </button>
               </div>
-
-              {/* Dismiss button */}
               {onDismissCheckpoint && (
                 <button
                   onClick={onDismissCheckpoint}
@@ -159,85 +135,12 @@ export default function ScaleHome({
                 </button>
               )}
             </div>
-
-            {/* What they'll get */}
-            <div className="mt-6 pt-6 border-t border-purple-200/50">
-              <p className="text-xs font-bold text-purple-600 uppercase tracking-widest mb-3">
-                What you'll see
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <span className="px-3 py-1.5 bg-white/70 rounded-lg text-xs font-medium text-gray-700">
-                  How you've grown
-                </span>
-                <span className="px-3 py-1.5 bg-white/70 rounded-lg text-xs font-medium text-gray-700">
-                  Competency trends
-                </span>
-                <span className="px-3 py-1.5 bg-white/70 rounded-lg text-xs font-medium text-gray-700">
-                  Your focus for next 6 sessions
-                </span>
-              </div>
-            </div>
           </div>
         </section>
       )}
 
-      {/* Coaching at a Glance - only show after 3+ sessions when stats are meaningful */}
-      {completedSessions.length >= 3 && (
-        <section className="bg-white rounded-[2.5rem] p-7 md:p-10 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] border border-gray-100">
-          <h2 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-8">
-            Your Coaching at a Glance
-          </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Coach - no image, full profile shown below */}
-            <div>
-              <p className="text-lg font-black text-boon-text tracking-tight truncate">
-                {lastSession?.coach_name?.split(' ')[0] || '—'}
-              </p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest">Coach</p>
-            </div>
-
-            {/* Sessions Completed */}
-            <div>
-              <p className="text-lg font-black text-boon-blue tracking-tight">
-                {completedSessions.length}
-              </p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest">Sessions</p>
-            </div>
-
-            {/* Time in Program */}
-            <div>
-              <p className="text-lg font-black text-boon-text tracking-tight">
-                {monthsInProgram > 0 ? `${monthsInProgram} mo` : '—'}
-              </p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest">
-                {lastSession ? `with ${lastSession.coach_name?.split(' ')[0]}` : 'Duration'}
-              </p>
-            </div>
-
-            {/* Checkpoints */}
-            <div>
-              <p className="text-lg font-black text-purple-600 tracking-tight">
-                {checkpointStatus.checkpoints.length}
-              </p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest">Check-ins</p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Your Coach Profile */}
-      {lastSession && (
-        <CoachProfile
-          sessions={sessions}
-          coachName={lastSession.coach_name}
-          programType="SCALE"
-          employeeId={profile?.id || null}
-          userEmail={userEmail}
-        />
-      )}
-
-      {/* Current Focus - from latest checkpoint */}
-      {currentFocus && (
+      {/* 2. Where You Left Off - from most recent session (or Current Focus if available) */}
+      {currentFocus ? (
         <section className="bg-gradient-to-br from-purple-50/50 to-boon-lightBlue/20 rounded-[2rem] p-8 border border-purple-100/50">
           <div className="flex items-start justify-between mb-4">
             <h2 className="text-xl font-extrabold text-boon-text">Current Focus</h2>
@@ -251,10 +154,7 @@ export default function ScaleHome({
             </div>
           </div>
         </section>
-      )}
-
-      {/* Where You Left Off - from most recent session, amber styling like GROW */}
-      {lastSession?.goals && !currentFocus && (
+      ) : lastSession?.goals ? (
         <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
           <div className="flex items-start justify-between mb-4">
             <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Where You Left Off</h2>
@@ -264,77 +164,23 @@ export default function ScaleHome({
           </div>
           <p className="font-serif text-gray-700 leading-relaxed whitespace-pre-line">{lastSession.goals}</p>
         </section>
+      ) : null}
+
+      {/* 3. Coach Card */}
+      {lastSession && (
+        <CoachProfile
+          sessions={sessions}
+          coachName={lastSession.coach_name}
+          programType="SCALE"
+          employeeId={profile?.id || null}
+          userEmail={userEmail}
+        />
       )}
 
-      {/* Themes and From Your Coach - only show grid if either has content */}
-      {(focusAreas.length > 0 || lastSession?.summary) && (
-        <div className="grid md:grid-cols-2 gap-8 md:gap-10">
-          {/* Themes - only show if there are focus areas */}
-          {focusAreas.length > 0 && (
-            <section className="space-y-5">
-              <h2 className="text-xl font-extrabold text-boon-text">Themes</h2>
-              <div className="space-y-3">
-                {focusAreas.map((area, i) => (
-                  <div
-                    key={i}
-                    className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:border-boon-blue/20 transition-all cursor-pointer group active:scale-[0.98]"
-                  >
-                    <h3 className="font-bold text-boon-text group-hover:text-boon-blue transition-colors leading-snug">
-                      {area!.label}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                        {area!.count} {area!.count === 1 ? 'session' : 'sessions'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* From Your Coach - only show if there's a real summary */}
-          {lastSession?.summary && (
-            <section className="space-y-5">
-              <h2 className="text-xl font-extrabold text-boon-text">From your coach</h2>
-              <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm relative">
-                <div className="absolute top-4 left-6 text-5xl text-boon-blue opacity-10 font-serif">"</div>
-                <p className="text-gray-600 leading-relaxed italic relative z-10 text-[15px]">
-                  {lastSession.summary}
-                </p>
-                <div className="mt-8 flex items-center gap-4 relative z-10">
-                  <img
-                    src={`https://picsum.photos/seed/${lastSession.coach_name || 'coach'}/100/100`}
-                    alt="Coach"
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-boon-bg shadow-sm"
-                  />
-                  <div>
-                    <p className="text-[13px] font-bold text-boon-text leading-none">
-                      {lastSession.coach_name || 'Your Coach'}
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-1 uppercase tracking-widest font-bold">
-                      Executive Coach
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-        </div>
-      )}
-
-      {/* Action Items */}
+      {/* Action Items - shows if there are any */}
       <ActionItems items={actionItems} onUpdate={onActionUpdate} />
 
-      {/* Session Prep */}
-      <SessionPrep
-        sessions={sessions}
-        actionItems={actionItems}
-        coachName={lastSession?.coach_name || 'Your Coach'}
-        userEmail={userEmail}
-      />
-
-      {/* Practice Space */}
+      {/* 4. Practice Space */}
       <section className="bg-gradient-to-br from-purple-50 to-boon-bg rounded-[2rem] p-8 border border-purple-100/50 text-center">
         <div className="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center mx-auto mb-4">
           <svg className="w-7 h-7 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -355,6 +201,14 @@ export default function ScaleHome({
           </svg>
         </button>
       </section>
+
+      {/* 5. No upcoming session / Session Prep */}
+      <SessionPrep
+        sessions={sessions}
+        actionItems={actionItems}
+        coachName={lastSession?.coach_name || 'Your Coach'}
+        userEmail={userEmail}
+      />
     </div>
   );
 }
