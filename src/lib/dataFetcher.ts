@@ -1334,27 +1334,52 @@ import type { CoachingWin } from './types';
 /**
  * Fetch coaching wins for an employee
  * Returns wins ordered by most recent first
+ * Uses RPC function as fallback if direct query fails due to RLS
  */
 export async function fetchCoachingWins(email: string): Promise<CoachingWin[]> {
+  console.log('[fetchCoachingWins] Fetching wins for email:', email);
+
+  // Try direct query first
   const { data, error } = await supabase
     .from('coaching_wins')
     .select('*')
     .ilike('email', email)
     .order('created_at', { ascending: false });
 
-  if (error) {
-    // Table might not exist yet
-    if (error.code !== '42P01' && error.code !== 'PGRST116') {
-      console.error('Error fetching coaching wins:', error);
-    }
-    return [];
+  if (!error && data) {
+    console.log('[fetchCoachingWins] Direct query succeeded, found:', data.length);
+    return (data as CoachingWin[]) || [];
   }
 
-  return (data as CoachingWin[]) || [];
+  // Log the error for debugging
+  console.log('[fetchCoachingWins] Direct query failed:', {
+    code: error?.code,
+    message: error?.message,
+  });
+
+  // Fallback to RPC function which uses SECURITY DEFINER
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc('get_coaching_wins_for_user', { user_email: email });
+
+  if (!rpcError && rpcData) {
+    console.log('[fetchCoachingWins] RPC fallback succeeded, found:', rpcData.length);
+    return (rpcData as CoachingWin[]) || [];
+  }
+
+  // Log RPC error
+  if (rpcError) {
+    // Only log if not a "function doesn't exist" error
+    if (rpcError.code !== '42883' && rpcError.code !== 'PGRST202') {
+      console.error('[fetchCoachingWins] RPC fallback failed:', rpcError);
+    }
+  }
+
+  return [];
 }
 
 /**
  * Add a new coaching win (manual entry from progress page or survey)
+ * Uses RPC function as fallback if direct insert fails due to RLS
  */
 export async function addCoachingWin(
   email: string,
@@ -1367,6 +1392,9 @@ export async function addCoachingWin(
   // Convert employeeId to number (Supabase returns BIGINT as string sometimes)
   const numericEmployeeId = typeof employeeId === 'string' ? parseInt(employeeId, 10) : employeeId;
 
+  console.log('[addCoachingWin] Adding win for:', { email, employeeId: numericEmployeeId, winText: winText.substring(0, 50) });
+
+  // Try direct insert first
   const { data, error } = await supabase
     .from('coaching_wins')
     .insert({
@@ -1381,10 +1409,38 @@ export async function addCoachingWin(
     .select()
     .single();
 
-  if (error) {
-    console.error('Error adding coaching win:', error);
-    return { success: false, error: error.message };
+  if (!error && data) {
+    console.log('[addCoachingWin] Direct insert succeeded');
+    return { success: true, data: data as CoachingWin };
   }
 
-  return { success: true, data: data as CoachingWin };
+  // Log the error for debugging
+  console.log('[addCoachingWin] Direct insert failed:', {
+    code: error?.code,
+    message: error?.message,
+  });
+
+  // Fallback to RPC function which uses SECURITY DEFINER
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc('add_coaching_win_for_user', {
+      user_email: email,
+      user_employee_id: numericEmployeeId,
+      win_text_value: winText.trim(),
+      session_num: sessionNumber || null,
+      is_private_value: isPrivate,
+      source_value: source,
+    });
+
+  if (!rpcError && rpcData) {
+    console.log('[addCoachingWin] RPC fallback succeeded');
+    return { success: true, data: rpcData as CoachingWin };
+  }
+
+  // Log RPC error
+  if (rpcError) {
+    console.error('[addCoachingWin] RPC fallback failed:', rpcError);
+    return { success: false, error: rpcError.message };
+  }
+
+  return { success: false, error: 'Failed to add coaching win' };
 }
