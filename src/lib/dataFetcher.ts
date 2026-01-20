@@ -1354,23 +1354,27 @@ export async function fetchCoachingWins(email: string): Promise<CoachingWin[]> {
 }
 
 /**
- * Add a new coaching win (manual entry from progress page)
+ * Add a new coaching win (manual entry from progress page or survey)
  */
 export async function addCoachingWin(
   email: string,
-  employeeId: number,
+  employeeId: string | number,
   winText: string,
   sessionNumber?: number,
-  isPrivate: boolean = false
+  isPrivate: boolean = false,
+  source: 'manual' | 'check_in_survey' = 'manual'
 ): Promise<{ success: boolean; data?: CoachingWin; error?: string }> {
+  // Convert employeeId to number (Supabase returns BIGINT as string sometimes)
+  const numericEmployeeId = typeof employeeId === 'string' ? parseInt(employeeId, 10) : employeeId;
+
   const { data, error } = await supabase
     .from('coaching_wins')
     .insert({
       email: email.toLowerCase(),
-      employee_id: employeeId,
+      employee_id: numericEmployeeId,
       win_text: winText.trim(),
       session_number: sessionNumber || null,
-      source: 'manual',
+      source,
       is_private: isPrivate,
       created_at: new Date().toISOString(),
     })

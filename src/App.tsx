@@ -155,10 +155,14 @@ function ProtectedApp() {
   }
 
   // Handle native survey completion
-  function handleSurveyComplete() {
+  async function handleSurveyComplete() {
     setShowSurveyModal(false);
     setPendingSurvey(null);
-    // Optionally refresh data or show a success message
+    // Refresh coaching wins in case user added one during the survey
+    if (employee?.company_email) {
+      const updatedWins = await fetchCoachingWins(employee.company_email);
+      setCoachingWins(updatedWins);
+    }
   }
 
   if (loading) {
@@ -484,6 +488,7 @@ function ProtectedApp() {
           sessionNumber={pendingSurvey.session_number}
           coachName={pendingSurvey.coach_name}
           userEmail={employee?.company_email || ''}
+          employeeId={employee?.id}
           onComplete={handleSurveyComplete}
         />
       )}

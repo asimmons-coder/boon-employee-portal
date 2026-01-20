@@ -10,6 +10,7 @@ import {
   submitScaleFeedbackSurvey,
   submitGrowBaselineSurvey,
   submitGrowEndSurvey,
+  addCoachingWin,
 } from '../lib/dataFetcher';
 
 interface SurveyModalProps {
@@ -19,6 +20,7 @@ interface SurveyModalProps {
   sessionNumber?: number;
   coachName?: string;
   userEmail: string;
+  employeeId?: string | number; // Required for saving coaching wins
   onComplete: () => void;
   onClose?: () => void; // Optional - some surveys can't be dismissed
 }
@@ -47,6 +49,7 @@ export default function SurveyModal({
   sessionNumber,
   coachName = 'Your Coach',
   userEmail,
+  employeeId,
   onComplete,
   onClose,
 }: SurveyModalProps) {
@@ -66,6 +69,7 @@ export default function SurveyModal({
   const [hasBookedNext, setHasBookedNext] = useState<boolean | null>(null);
   const [nps, setNps] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
+  const [winText, setWinText] = useState(''); // For capturing coaching wins/breakthroughs
   const [outcomes, setOutcomes] = useState('');
   const [openToTestimonial, setOpenToTestimonial] = useState<boolean | null>(null);
 
@@ -92,6 +96,7 @@ export default function SurveyModal({
       setHasBookedNext(null);
       setNps(null);
       setFeedbackText('');
+      setWinText('');
       setOutcomes('');
       setOpenToTestimonial(null);
       setCompetencyScores({});
@@ -222,6 +227,19 @@ export default function SurveyModal({
 
         if (!result.success) {
           throw new Error(result.error || 'Failed to submit survey');
+        }
+
+        // Save coaching win if user entered one
+        if (winText.trim() && employeeId) {
+          await addCoachingWin(
+            userEmail,
+            employeeId,
+            winText.trim(),
+            sessionNumber,
+            false, // is_private - defaults to false
+            'check_in_survey' // source
+          );
+          // Note: We don't throw on win save failure since survey is already saved
         }
       } else if (surveyType === 'grow_baseline') {
         const result = await submitGrowBaselineSurvey(
@@ -463,6 +481,23 @@ export default function SurveyModal({
                 placeholder="We'd love to hear your thoughts..."
                 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}
                 className="w-full p-4 rounded-xl border border-gray-200 focus:border-boon-amber focus:ring-0 focus:outline-none text-sm min-h-[100px] resize-none"
+              />
+            </div>
+
+            {/* Coaching Wins Field */}
+            <div className="pt-6 border-t border-gray-100">
+              <label className="text-sm text-gray-700 font-medium block mb-2">
+                Any wins or breakthroughs from this session? (optional)
+              </label>
+              <p className="text-xs text-gray-500 mb-3">
+                Capture any personal wins, insights, or breakthroughs you experienced. These will be saved to your journey.
+              </p>
+              <textarea
+                value={winText}
+                onChange={e => setWinText(e.target.value)}
+                placeholder="e.g., I had a breakthrough about my communication style..."
+                style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}
+                className="w-full p-4 rounded-xl border border-orange-200 bg-orange-50/50 focus:border-boon-amber focus:ring-0 focus:outline-none text-sm min-h-[100px] resize-none"
               />
             </div>
           </div>
