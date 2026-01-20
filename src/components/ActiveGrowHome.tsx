@@ -31,7 +31,7 @@ export default function ActiveGrowHome({
     new Date(b.session_date).getTime() - new Date(a.session_date).getTime()
   );
   const completedSessions = sortedSessions.filter(s => s.status === 'Completed');
-  const upcomingSession = sortedSessions.find(s => s.status === 'Upcoming');
+  const upcomingSession = sortedSessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
 
   const coachName = lastSession?.coach_name || upcomingSession?.coach_name || 'Your Coach';

@@ -35,7 +35,7 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, we
   void _checkpoints;
   const [showCompletionAck, setShowCompletionAck] = useState(true);
   const completedSessions = sessions.filter(s => s.status === 'Completed');
-  const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
 
   const isCompleted = isAlumniState(coachingState.state);

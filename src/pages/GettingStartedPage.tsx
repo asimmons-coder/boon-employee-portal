@@ -8,7 +8,7 @@ interface GettingStartedPageProps {
 export default function GettingStartedPage({ sessions }: GettingStartedPageProps) {
   const { employee, signOut } = useAuth();
 
-  const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const coachName = upcomingSession?.coach_name || sessions[0]?.coach_name || 'Your Coach';
 
   return (

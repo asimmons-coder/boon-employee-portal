@@ -23,7 +23,7 @@ export interface Session {
   employee_email: string;
   employee_name: string;
   session_date: string;
-  status: 'Completed' | 'Upcoming' | 'Cancelled' | 'No Show';
+  status: 'Completed' | 'Upcoming' | 'Scheduled' | 'Cancelled' | 'No Show';
   coach_name: string;
   leadership_management_skills: boolean;
   communication_skills: boolean;

@@ -29,7 +29,7 @@ export default function GrowDashboard({
   void _onActionUpdate;
 
   const completedSessions = sessions.filter(s => s.status === 'Completed');
-  const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
 
   const coachName = lastSession?.coach_name || upcomingSession?.coach_name || 'Your Coach';

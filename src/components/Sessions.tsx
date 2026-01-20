@@ -100,7 +100,7 @@ export default function SessionsPage({ sessions, coachingState }: SessionsPagePr
 
   // Pre-first-session: Show anticipation-focused empty state
   if (isPreFirst) {
-    const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+    const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
     const coachName = upcomingSession?.coach_name || 'your coach';
 
     return (

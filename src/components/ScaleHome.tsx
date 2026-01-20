@@ -33,7 +33,7 @@ export default function ScaleHome({
   void _baseline;
 
   const completedSessions = sessions.filter(s => s.status === 'Completed');
-  const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
 
   // Calculate time in program

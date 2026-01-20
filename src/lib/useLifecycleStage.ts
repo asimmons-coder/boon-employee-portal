@@ -22,7 +22,7 @@ export function determineLifecycleStage(
   baseline: BaselineSurvey | null
 ): LifecycleData {
   const completedSessions = sessions.filter(s => s.status === 'Completed');
-  const upcomingSession = sessions.find(s => s.status === 'Upcoming') || null;
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled') || null;
 
   const hasBaseline = !!baseline;
   const hasCoach = !!employee?.coach_id || sessions.length > 0;

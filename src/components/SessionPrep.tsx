@@ -11,7 +11,7 @@ interface SessionPrepProps {
 
 export default function SessionPrep({ sessions, actionItems, coachName, userEmail }: SessionPrepProps) {
   const completedSessions = sessions.filter(s => s.status === 'Completed');
-  const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const pendingActions = actionItems.filter(a => a.status === 'pending');
   const lastSession = completedSessions[0];
 

@@ -136,7 +136,7 @@ export default function ProgressPage({
 
   // Get coach name for pre-first-session messaging
   // Try upcoming session first, then any session with a coach name
-  const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const anySessionWithCoach = sessions.find(s => s.coach_name);
   const coachName = upcomingSession?.coach_name || anySessionWithCoach?.coach_name;
   const coachFirstName = coachName?.split(' ')[0] || 'your coach';

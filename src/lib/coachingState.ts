@@ -57,7 +57,7 @@ function areAllSessionsDone(
   programType: string | null
 ): boolean {
   const completedSessions = sessions.filter(s => s.status === 'Completed');
-  const upcomingSessions = sessions.filter(s => s.status === 'Upcoming');
+  const upcomingSessions = sessions.filter(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const expectedSessions = programType ? PROGRAM_SESSION_COUNTS[programType] || 12 : 12;
 
   return completedSessions.length >= expectedSessions && upcomingSessions.length === 0;
@@ -196,7 +196,7 @@ export function getCoachingState(
   welcomeSurveyScale: WelcomeSurveyScale | null = null
 ): CoachingStateData {
   const completedSessions = sessions.filter(s => s.status === 'Completed');
-  const upcomingSession = sessions.find(s => s.status === 'Upcoming') || null;
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled') || null;
   const lastSession = completedSessions.length > 0
     ? completedSessions.sort((a, b) =>
         new Date(b.session_date).getTime() - new Date(a.session_date).getTime()

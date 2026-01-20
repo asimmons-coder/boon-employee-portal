@@ -23,7 +23,7 @@ export default function PreFirstSessionHome({
   userEmail,
   onNavigate,
 }: PreFirstSessionHomeProps) {
-  const upcomingSession = sessions.find(s => s.status === 'Upcoming');
+  const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
 
   // Coach state - full coach data from coaches table
   const [coach, setCoach] = useState<Coach | null>(null);
