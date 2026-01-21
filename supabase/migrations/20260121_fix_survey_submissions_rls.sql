@@ -28,6 +28,10 @@ FOR INSERT WITH CHECK (
 -- ============================================
 -- Bypasses RLS for cases where the policy still fails
 
+-- Drop any existing versions of the function first
+DROP FUNCTION IF EXISTS submit_survey_for_user(TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, INTEGER, BOOLEAN, BOOLEAN, TEXT, TEXT[], BOOLEAN);
+DROP FUNCTION IF EXISTS submit_survey_for_user(TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, INTEGER, BOOLEAN);
+
 CREATE OR REPLACE FUNCTION submit_survey_for_user(
   user_email TEXT,
   p_survey_type TEXT,
