@@ -505,6 +505,7 @@ function ProtectedApp() {
         return (
           <CheckpointFlow
             userEmail={employee?.company_email || ''}
+            employeeId={employee?.id || ''}
             sessionId={lastSession?.id || ''}
             sessionNumber={lastSession?.appointment_number || coachingState.completedSessionCount}
             coachName={lastSession?.coach_name || sessions[0]?.coach_name || 'your coach'}

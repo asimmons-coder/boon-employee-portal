@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { Checkpoint } from '../lib/types';
-import { submitCheckpoint, type ScaleCheckinData } from '../lib/dataFetcher';
+import { submitCheckpoint, addCoachingWin, type ScaleCheckinData } from '../lib/dataFetcher';
 
 interface CheckpointFlowProps {
   userEmail: string;
+  employeeId: string | number;
   sessionId: string;
   sessionNumber: number;
   coachName: string;
@@ -15,6 +16,7 @@ type Step = 'session_rating' | 'coach_match' | 'low_score_feedback' | 'wins' | '
 
 export default function CheckpointFlow({
   userEmail,
+  employeeId,
   sessionId,
   sessionNumber,
   coachName,
@@ -76,6 +78,18 @@ export default function CheckpointFlow({
     const result = await submitCheckpoint(userEmail, checkinData);
 
     if (result.success && result.data) {
+      // Store win in coaching_wins table if user entered one
+      if (winsText.trim()) {
+        await addCoachingWin(
+          userEmail,
+          employeeId,
+          winsText.trim(),
+          sessionNumber,
+          false, // isPrivate
+          'check_in_survey'
+        );
+      }
+
       setStep('complete');
       setTimeout(() => {
         onComplete(result.data!);

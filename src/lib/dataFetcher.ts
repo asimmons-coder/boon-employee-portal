@@ -1135,6 +1135,8 @@ export async function submitScaleFeedbackSurvey(
   if (data.outcomes) outcomesParts.push(data.outcomes);
 
   // Use RPC function to bypass RLS issues
+  // Note: wants_rematch, rematch_reason, coach_qualities, has_booked_next_session
+  // columns don't exist in the database - store important info in outcomes instead
   const { error } = await supabase
     .rpc('submit_survey_for_user', {
       user_email: email.toLowerCase(),
@@ -1145,10 +1147,6 @@ export async function submitScaleFeedbackSurvey(
       p_feedback_suggestions: data.feedback_suggestions || null,
       p_nps: data.nps,
       p_open_to_testimonial: data.open_to_testimonial || false,
-      p_wants_rematch: data.wants_rematch || false,
-      p_rematch_reason: data.rematch_reason || null,
-      p_coach_qualities: data.coach_qualities,
-      p_has_booked_next_session: data.has_booked_next_session,
     });
 
   if (error) {

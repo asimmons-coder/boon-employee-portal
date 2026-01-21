@@ -36,11 +36,7 @@ CREATE OR REPLACE FUNCTION submit_survey_for_user(
   p_outcomes TEXT DEFAULT NULL,
   p_feedback_suggestions TEXT DEFAULT NULL,
   p_nps INTEGER DEFAULT NULL,
-  p_open_to_testimonial BOOLEAN DEFAULT FALSE,
-  p_wants_rematch BOOLEAN DEFAULT FALSE,
-  p_rematch_reason TEXT DEFAULT NULL,
-  p_coach_qualities TEXT[] DEFAULT NULL,
-  p_has_booked_next_session BOOLEAN DEFAULT NULL
+  p_open_to_testimonial BOOLEAN DEFAULT FALSE
 )
 RETURNS survey_submissions
 LANGUAGE plpgsql
@@ -59,10 +55,6 @@ BEGIN
     feedback_suggestions,
     nps,
     open_to_testimonial,
-    wants_rematch,
-    rematch_reason,
-    coach_qualities,
-    has_booked_next_session,
     submitted_at
   ) VALUES (
     lower(user_email),
@@ -73,10 +65,6 @@ BEGIN
     p_feedback_suggestions,
     p_nps,
     p_open_to_testimonial,
-    p_wants_rematch,
-    p_rematch_reason,
-    p_coach_qualities,
-    p_has_booked_next_session,
     NOW()
   )
   RETURNING * INTO result;
