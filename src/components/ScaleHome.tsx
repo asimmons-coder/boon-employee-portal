@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { Employee, Session, ActionItem, BaselineSurvey, View } from '../lib/types';
 import type { ScaleCheckpointStatus } from '../lib/types';
+import { updateActionItemStatus } from '../lib/dataFetcher';
 import ActionItems from './ActionItems';
 import SessionPrep from './SessionPrep';
 import CoachProfile from './CoachProfile';
@@ -32,12 +34,25 @@ export default function ScaleHome({
   // Unused props reserved for future use
   void _baseline;
 
+  const [updatingItem, setUpdatingItem] = useState<string | null>(null);
+
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
 
   // Get current focus from latest checkpoint
   const currentFocus = checkpointStatus.latestCheckpoint?.focus_area;
+
+  // Toggle action item status
+  async function handleToggleAction(itemId: string, currentStatus: string) {
+    setUpdatingItem(itemId);
+    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+    const success = await updateActionItemStatus(itemId, newStatus);
+    if (success) {
+      onActionUpdate();
+    }
+    setUpdatingItem(null);
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 md:space-y-12 animate-fade-in">
@@ -154,15 +169,71 @@ export default function ScaleHome({
             </div>
           </div>
         </section>
-      ) : lastSession?.goals ? (
+      ) : (lastSession?.goals || lastSession?.plan) ? (
         <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between mb-6">
             <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Where You Left Off</h2>
             <span className="text-xs font-medium text-gray-400">
               {new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
           </div>
-          <p className="font-serif text-gray-700 leading-relaxed whitespace-pre-line">{lastSession.goals}</p>
+
+          {/* Goals */}
+          {lastSession.goals && (
+            <div className="mb-6">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Goals</h3>
+              <p className="font-serif text-gray-700 leading-relaxed whitespace-pre-line">{lastSession.goals}</p>
+            </div>
+          )}
+
+          {/* Action Items from plan - with checkboxes */}
+          {lastSession.plan && (
+            <div>
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Action Items</h3>
+              <div className="space-y-2">
+                {lastSession.plan.split('\n').filter(line => line.trim()).map((item, idx) => {
+                  // Clean up the item text (remove leading bullets, dashes, numbers)
+                  const cleanText = item.trim().replace(/^[\s•\-\*\d\.:\)]+/, '').trim();
+                  if (!cleanText || cleanText.length < 5) return null;
+
+                  // Check if this item exists in actionItems and get its status
+                  const matchingAction = actionItems.find(ai =>
+                    ai.action_text.toLowerCase().includes(cleanText.toLowerCase().slice(0, 30)) ||
+                    cleanText.toLowerCase().includes(ai.action_text.toLowerCase().slice(0, 30))
+                  );
+                  const isCompleted = matchingAction?.status === 'completed';
+
+                  const isUpdating = matchingAction && updatingItem === matchingAction.id;
+
+                  return (
+                    <label
+                      key={idx}
+                      className={`flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all ${
+                        isCompleted
+                          ? 'bg-green-50/50 text-gray-400'
+                          : 'bg-white/60 hover:bg-white text-gray-700'
+                      } ${isUpdating ? 'opacity-50' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isCompleted}
+                        disabled={!matchingAction || isUpdating}
+                        onChange={() => {
+                          if (matchingAction) {
+                            handleToggleAction(matchingAction.id, matchingAction.status);
+                          }
+                        }}
+                        className="mt-0.5 w-4 h-4 rounded border-gray-300 text-boon-amber focus:ring-boon-amber disabled:opacity-50"
+                      />
+                      <span className={`text-sm leading-relaxed ${isCompleted ? 'line-through' : ''}`}>
+                        {cleanText}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </section>
       ) : null}
 
