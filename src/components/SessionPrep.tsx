@@ -9,7 +9,7 @@ interface SessionPrepProps {
   userEmail: string;
 }
 
-export default function SessionPrep({ sessions, actionItems, coachName, userEmail }: SessionPrepProps) {
+export default function SessionPrep({ sessions, actionItems, coachName, userEmail: _userEmail }: SessionPrepProps) {
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const pendingActions = actionItems.filter(a => a.status === 'pending');

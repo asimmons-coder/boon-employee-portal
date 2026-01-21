@@ -265,6 +265,7 @@ function ProtectedApp() {
     appointment_number: 7,
     created_at: new Date().toISOString(),
     zoom_join_link: 'https://zoom.us/j/123456789',
+    employee_pre_session_note: null,
   };
 
   // Mock completed sessions (for Active Program preview)
@@ -296,6 +297,7 @@ function ProtectedApp() {
     appointment_number: i + 1,
     created_at: new Date().toISOString(),
     zoom_join_link: null,
+    employee_pre_session_note: null,
   }));
 
   const mockBaseline: BaselineSurvey = {
