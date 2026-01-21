@@ -39,79 +39,36 @@ export default function SessionPrep({ sessions, actionItems, coachName, userEmai
     return { dayName, monthDay, time, full: `${dayName}, ${monthDay}` };
   };
 
-  // Load existing intention for upcoming session
+  // Load existing note from session_tracking
   useEffect(() => {
-    const loadIntention = async () => {
-      if (!upcomingSession || !userEmail) return;
+    if (upcomingSession?.employee_pre_session_note) {
+      setIntention(upcomingSession.employee_pre_session_note);
+    }
+  }, [upcomingSession]);
 
-      try {
-        const { data, error } = await supabase
-          .from('session_prep')
-          .select('intention')
-          .eq('email', userEmail.toLowerCase())
-          .eq('session_id', upcomingSession.id)
-          .single();
-
-        if (!error && data) {
-          setIntention(data.intention || '');
-        }
-      } catch (e) {
-        // Try localStorage fallback
-        const key = `session_prep_${userEmail}_${upcomingSession.id}`;
-        const saved = localStorage.getItem(key);
-        if (saved) {
-          setIntention(saved);
-        }
-      }
-    };
-
-    loadIntention();
-  }, [upcomingSession, userEmail]);
-
-  // Auto-save intention with debounce
-  const saveIntention = useCallback(async (text: string) => {
-    if (!upcomingSession || !userEmail) return;
+  // Save intention to session_tracking.employee_pre_session_note
+  const saveIntention = useCallback(async () => {
+    if (!upcomingSession) return;
 
     setIsSaving(true);
 
-    // Save to localStorage immediately
-    const key = `session_prep_${userEmail}_${upcomingSession.id}`;
-    localStorage.setItem(key, text);
-
     try {
-      // Try to save to Supabase
       const { error } = await supabase
-        .from('session_prep')
-        .upsert({
-          email: userEmail.toLowerCase(),
-          session_id: upcomingSession.id,
-          intention: text,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'email,session_id'
-        });
+        .from('session_tracking')
+        .update({ employee_pre_session_note: intention })
+        .eq('id', upcomingSession.id);
 
       if (!error) {
         setLastSaved(new Date());
+      } else {
+        console.error('Error saving pre-session note:', error);
       }
     } catch (e) {
-      // Supabase save failed, localStorage is still saved
-      console.log('Session prep saved locally');
+      console.error('Failed to save pre-session note:', e);
     }
 
     setIsSaving(false);
-  }, [upcomingSession, userEmail]);
-
-  // Debounced auto-save
-  useEffect(() => {
-    if (!intention) return;
-
-    const timer = setTimeout(() => {
-      saveIntention(intention);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [intention, saveIntention]);
+  }, [upcomingSession, intention]);
 
   // If no upcoming session, show a different message
   if (!upcomingSession) {
@@ -170,9 +127,9 @@ export default function SessionPrep({ sessions, actionItems, coachName, userEmai
           </div>
 
           {/* Join Session Button - appears 24h before */}
-          {isWithin24Hours && upcomingSession.video_link && (
+          {isWithin24Hours && upcomingSession.zoom_join_link && (
             <a
-              href={upcomingSession.video_link}
+              href={upcomingSession.zoom_join_link}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all shadow-lg shadow-green-600/30 animate-pulse hover:animate-none"
@@ -227,24 +184,22 @@ export default function SessionPrep({ sessions, actionItems, coachName, userEmai
             </span>
             <span className="text-xs text-gray-400 ml-2">(optional)</span>
           </label>
-          <div className="relative">
-            <textarea
-              value={intention}
-              onChange={(e) => setIntention(e.target.value)}
-              placeholder="Anything on your mind—big or small"
-              className="w-full p-5 rounded-2xl border-2 border-gray-100 focus:border-boon-blue focus:ring-0 focus:outline-none text-sm min-h-[120px] resize-none bg-white shadow-sm placeholder-gray-400 transition-all"
-            />
-            {/* Save status indicator */}
-            <div className="absolute bottom-3 right-3 flex items-center gap-2">
-              {isSaving && (
-                <span className="text-xs text-gray-400 flex items-center gap-1">
-                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Saving...
-                </span>
-              )}
-              {!isSaving && lastSaved && (
+          <textarea
+            value={intention}
+            onChange={(e) => setIntention(e.target.value)}
+            placeholder="Anything on your mind—big or small"
+            className="w-full p-5 rounded-2xl border-2 border-gray-100 focus:border-boon-blue focus:ring-0 focus:outline-none text-sm min-h-[120px] resize-none bg-white shadow-sm placeholder-gray-400 transition-all"
+          />
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-400 flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              {coachFirstName} will see this before your session
+            </p>
+            <div className="flex items-center gap-3">
+              {lastSaved && !isSaving && (
                 <span className="text-xs text-green-600 flex items-center gap-1">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -252,15 +207,24 @@ export default function SessionPrep({ sessions, actionItems, coachName, userEmai
                   Saved
                 </span>
               )}
+              <button
+                onClick={saveIntention}
+                disabled={isSaving || !intention.trim()}
+                className="px-4 py-2 bg-boon-blue text-white text-sm font-semibold rounded-xl hover:bg-boon-darkBlue transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </button>
             </div>
           </div>
-          <p className="text-xs text-gray-400 flex items-center gap-1.5">
-            <svg className="w-3.5 h-3.5 text-boon-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            {coachFirstName} will see this before your session
-          </p>
         </div>
       </div>
     </section>

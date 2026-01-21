@@ -41,6 +41,8 @@ export interface Session {
   created_at: string;
   // Zoom integration
   zoom_join_link: string | null;
+  // Pre-session note from employee
+  employee_pre_session_note: string | null;
 }
 
 export interface SurveyResponse {
