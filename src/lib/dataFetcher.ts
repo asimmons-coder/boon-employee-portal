@@ -782,7 +782,7 @@ export async function fetchCheckpoints(email: string): Promise<Checkpoint[]> {
       strategic_thinking: 0,
       time_management_and_productivity: 0,
     },
-    reflection_text: s.feedback_text as string | null,
+    reflection_text: s.feedback_suggestions as string | null,
     focus_area: null,
     nps_score: s.nps as number | null,
     testimonial_consent: s.open_to_testimonial as boolean || false,
@@ -831,7 +831,7 @@ export async function fetchLatestCheckpoint(email: string): Promise<Checkpoint |
       strategic_thinking: 0,
       time_management_and_productivity: 0,
     },
-    reflection_text: s.feedback_text,
+    reflection_text: s.feedback_suggestions,
     focus_area: null,
     nps_score: s.nps,
     testimonial_consent: s.open_to_testimonial || false,
@@ -879,7 +879,7 @@ export async function submitCheckpoint(
       coach_satisfaction: data.sessionRating,
       // Store coach match in outcomes field for now
       outcomes: data.coachMatchRating ? `Coach match: ${data.coachMatchRating}/10` : null,
-      feedback_text: data.feedbackText,
+      feedback_suggestions: data.feedbackText,
       nps: data.nps,
       open_to_testimonial: data.testimonialConsent,
       submitted_at: new Date().toISOString(),
@@ -912,7 +912,7 @@ export async function submitCheckpoint(
       strategic_thinking: 0,
       time_management_and_productivity: 0,
     },
-    reflection_text: result.feedback_text,
+    reflection_text: result.feedback_suggestions,
     focus_area: null,
     nps_score: result.nps,
     testimonial_consent: result.open_to_testimonial || false,
@@ -1104,7 +1104,7 @@ export async function submitScaleFeedbackSurvey(
     coach_qualities: CoachQuality[];
     has_booked_next_session: boolean;
     nps: number;
-    feedback_text?: string;
+    feedback_suggestions?: string;
     // Extra fields for SCALE_END
     outcomes?: string;
     open_to_testimonial?: boolean;
@@ -1125,7 +1125,7 @@ export async function submitScaleFeedbackSurvey(
       coach_qualities: data.coach_qualities,
       has_booked_next_session: data.has_booked_next_session,
       nps: data.nps,
-      feedback_text: data.feedback_text || null,
+      feedback_suggestions: data.feedback_suggestions || null,
       outcomes: data.outcomes || null,
       open_to_testimonial: data.open_to_testimonial || false,
       submitted_at: new Date().toISOString(),
