@@ -745,13 +745,14 @@ export async function submitReflection(
 
 /**
  * Fetch all checkpoints (check-ins) for a SCALE user from survey_submissions
+ * Includes first_session, feedback, and touchpoint survey types
  */
 export async function fetchCheckpoints(email: string): Promise<Checkpoint[]> {
   const { data, error } = await supabase
     .from('survey_submissions')
     .select('*')
     .ilike('email', email)
-    .eq('survey_type', 'checkin')
+    .in('survey_type', ['first_session', 'feedback', 'touchpoint'])
     .order('session_number', { ascending: true });
 
   if (error) {
@@ -797,7 +798,7 @@ export async function fetchLatestCheckpoint(email: string): Promise<Checkpoint |
     .from('survey_submissions')
     .select('*')
     .ilike('email', email)
-    .eq('survey_type', 'checkin')
+    .in('survey_type', ['first_session', 'feedback', 'touchpoint'])
     .order('session_number', { ascending: false })
     .limit(1);
 
@@ -856,11 +857,22 @@ export async function submitCheckpoint(
   email: string,
   data: ScaleCheckinData
 ): Promise<{ success: boolean; data?: Checkpoint; error?: string }> {
+  // Determine survey_type based on session number
+  // Session 1 → first_session, Session 3 → feedback, Session 6+ → touchpoint
+  let surveyType: string;
+  if (data.sessionNumber === 1) {
+    surveyType = 'first_session';
+  } else if (data.sessionNumber === 3) {
+    surveyType = 'feedback';
+  } else {
+    surveyType = 'touchpoint';
+  }
+
   const { data: result, error } = await supabase
     .from('survey_submissions')
     .insert({
       email: email.toLowerCase(),
-      survey_type: 'checkin',
+      survey_type: surveyType,
       session_id: data.sessionId,
       session_number: data.sessionNumber,
       coach_name: data.coachName,
