@@ -11,7 +11,7 @@ interface CheckpointFlowProps {
   onClose: () => void;
 }
 
-type Step = 'session_rating' | 'coach_match' | 'wins' | 'nps' | 'submitting' | 'complete';
+type Step = 'session_rating' | 'coach_match' | 'low_score_feedback' | 'wins' | 'anything_else' | 'nps' | 'submitting' | 'complete';
 
 export default function CheckpointFlow({
   userEmail,
@@ -24,21 +24,32 @@ export default function CheckpointFlow({
   const [step, setStep] = useState<Step>('session_rating');
   const [sessionRating, setSessionRating] = useState<number | null>(null);
   const [coachMatchRating, setCoachMatchRating] = useState<number | null>(null);
+  const [lowScoreFeedback, setLowScoreFeedback] = useState('');
   const [winsText, setWinsText] = useState('');
+  const [anythingElseText, setAnythingElseText] = useState('');
   const [npsScore, setNpsScore] = useState<number | null>(null);
   const [testimonialConsent, setTestimonialConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Check if we need the low score feedback step
+  const needsLowScoreFeedback = (sessionRating !== null && sessionRating <= 8) ||
+                                 (coachMatchRating !== null && coachMatchRating <= 8);
+
   const isFirstCheckpoint = checkpointNumber === 1;
   const coachFirstName = coachName?.split(' ')[0] || 'your coach';
 
-  // Calculate progress
-  const progressPercent =
-    step === 'session_rating' ? 20 :
-    step === 'coach_match' ? 40 :
-    step === 'wins' ? 60 :
-    step === 'nps' ? 80 :
-    100;
+  // Calculate progress (adjust based on whether low score feedback is needed)
+  const totalSteps = needsLowScoreFeedback ? 6 : 5;
+  const getStepNumber = () => {
+    if (step === 'session_rating') return 1;
+    if (step === 'coach_match') return 2;
+    if (step === 'low_score_feedback') return 3;
+    if (step === 'wins') return needsLowScoreFeedback ? 4 : 3;
+    if (step === 'anything_else') return needsLowScoreFeedback ? 5 : 4;
+    if (step === 'nps') return needsLowScoreFeedback ? 6 : 5;
+    return totalSteps;
+  };
+  const progressPercent = Math.round((getStepNumber() / totalSteps) * 100);
 
   const handleSubmit = async () => {
     setStep('submitting');
@@ -63,7 +74,12 @@ export default function CheckpointFlow({
         strategic_thinking: 0,
         time_management_and_productivity: 0,
       },
-      reflection_text: winsText || null,
+      // Combine all text feedback
+      reflection_text: [
+        lowScoreFeedback ? `Feedback: ${lowScoreFeedback}` : '',
+        winsText ? `Wins: ${winsText}` : '',
+        anythingElseText ? `Other: ${anythingElseText}` : '',
+      ].filter(Boolean).join('\n\n') || null,
       focus_area: null,
       nps_score: npsScore,
       testimonial_consent: testimonialConsent,
@@ -179,7 +195,28 @@ export default function CheckpointFlow({
             </div>
           )}
 
-          {/* Step 3: Wins */}
+          {/* Step 3: Low Score Feedback (conditional) */}
+          {step === 'low_score_feedback' && (
+            <div className="space-y-6 py-4">
+              <div>
+                <label className="block text-lg font-bold text-boon-text mb-3 text-center">
+                  We'd love to make this better. What's not working?
+                </label>
+                <p className="text-gray-500 text-sm text-center mb-4">
+                  Your honest feedback helps us improve
+                </p>
+                <textarea
+                  value={lowScoreFeedback}
+                  onChange={(e) => setLowScoreFeedback(e.target.value)}
+                  placeholder="Tell us what could be better..."
+                  className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-boon-blue outline-none resize-none h-32"
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Wins */}
           {step === 'wins' && (
             <div className="space-y-6 py-4">
               <div>
@@ -199,7 +236,27 @@ export default function CheckpointFlow({
             </div>
           )}
 
-          {/* Step 4: NPS */}
+          {/* Step 5: Anything Else */}
+          {step === 'anything_else' && (
+            <div className="space-y-6 py-4">
+              <div>
+                <label className="block text-lg font-bold text-boon-text mb-3 text-center">
+                  Anything else you'd like to share?
+                </label>
+                <textarea
+                  value={anythingElseText}
+                  onChange={(e) => setAnythingElseText(e.target.value)}
+                  placeholder="Any other thoughts... (optional)"
+                  className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-boon-blue outline-none resize-none h-32"
+                />
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  This is optional - skip if nothing comes to mind
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 6: NPS */}
           {step === 'nps' && (
             <div className="space-y-6 py-4">
               {error && (
@@ -288,8 +345,10 @@ export default function CheckpointFlow({
                 <button
                   onClick={() => {
                     if (step === 'coach_match') setStep('session_rating');
-                    if (step === 'wins') setStep('coach_match');
-                    if (step === 'nps') setStep('wins');
+                    if (step === 'low_score_feedback') setStep('coach_match');
+                    if (step === 'wins') setStep(needsLowScoreFeedback ? 'low_score_feedback' : 'coach_match');
+                    if (step === 'anything_else') setStep('wins');
+                    if (step === 'nps') setStep('anything_else');
                   }}
                   className="px-6 py-3 text-gray-500 font-bold hover:text-boon-text transition-colors"
                 >
@@ -311,8 +370,22 @@ export default function CheckpointFlow({
               )}
               {step === 'coach_match' && (
                 <button
-                  onClick={() => setStep('wins')}
+                  onClick={() => {
+                    // Check if low score feedback is needed (either rating ≤8)
+                    const needsFeedback = (sessionRating !== null && sessionRating <= 8) ||
+                                          (coachMatchRating !== null && coachMatchRating <= 8);
+                    setStep(needsFeedback ? 'low_score_feedback' : 'wins');
+                  }}
                   disabled={coachMatchRating === null}
+                  className="px-8 py-3 bg-boon-blue text-white font-bold rounded-xl disabled:bg-gray-200 disabled:text-gray-400 transition-all hover:bg-boon-darkBlue"
+                >
+                  Next
+                </button>
+              )}
+              {step === 'low_score_feedback' && (
+                <button
+                  onClick={() => setStep('wins')}
+                  disabled={!lowScoreFeedback.trim()}
                   className="px-8 py-3 bg-boon-blue text-white font-bold rounded-xl disabled:bg-gray-200 disabled:text-gray-400 transition-all hover:bg-boon-darkBlue"
                 >
                   Next
@@ -320,10 +393,18 @@ export default function CheckpointFlow({
               )}
               {step === 'wins' && (
                 <button
-                  onClick={() => setStep('nps')}
+                  onClick={() => setStep('anything_else')}
                   className="px-8 py-3 bg-boon-blue text-white font-bold rounded-xl transition-all hover:bg-boon-darkBlue"
                 >
                   {winsText ? 'Next' : 'Skip'}
+                </button>
+              )}
+              {step === 'anything_else' && (
+                <button
+                  onClick={() => setStep('nps')}
+                  className="px-8 py-3 bg-boon-blue text-white font-bold rounded-xl transition-all hover:bg-boon-darkBlue"
+                >
+                  {anythingElseText ? 'Next' : 'Skip'}
                 </button>
               )}
               {step === 'nps' && (
