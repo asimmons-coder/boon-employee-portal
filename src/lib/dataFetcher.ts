@@ -29,6 +29,19 @@ export async function fetchEmployeeProfile(email: string): Promise<Employee | nu
 export async function fetchSessions(employeeId: string, employeeEmail?: string): Promise<Session[]> {
   console.log('[fetchSessions] Starting lookup for:', { employeeId, employeeEmail });
 
+  // Helper to deduplicate sessions by ID
+  const deduplicateSessions = (sessions: Session[]): Session[] => {
+    const seen = new Set<string>();
+    return sessions.filter(s => {
+      if (seen.has(s.id)) {
+        console.log('[fetchSessions] Removing duplicate session:', s.id);
+        return false;
+      }
+      seen.add(s.id);
+      return true;
+    });
+  };
+
   // Try by employee_id first
   const { data: idData, error: idError } = await supabase
     .from('session_tracking')
@@ -42,7 +55,7 @@ export async function fetchSessions(employeeId: string, employeeEmail?: string):
   });
 
   if (!idError && idData && idData.length > 0) {
-    return idData as Session[];
+    return deduplicateSessions(idData as Session[]);
   }
 
   // Fallback 1: Try by employee_email (case-insensitive)

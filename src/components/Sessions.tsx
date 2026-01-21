@@ -71,19 +71,26 @@ export default function SessionsPage({ sessions, coachingState }: SessionsPagePr
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
+  // Helper to extract just the date part (YYYY-MM-DD) from a date string or timestamp
+  const getDateOnly = (dateStr: string): string => {
+    // Handle ISO timestamps like "2026-01-27T14:00:00.000Z"
+    // or date strings like "2026-01-27"
+    return dateStr.split('T')[0];
+  };
+
   const calendarDays = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const totalDays = daysInMonth(year, month);
     const startDay = firstDayOfMonth(year, month);
-    
+
     const days: { day: number | null; date: string | null; sessions?: Session[] }[] = [];
     for (let i = 0; i < startDay; i++) {
       days.push({ day: null, date: null });
     }
     for (let i = 1; i <= totalDays; i++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      const sessionsOnDay = sessions.filter(s => s.session_date === dateStr);
+      const sessionsOnDay = sessions.filter(s => getDateOnly(s.session_date) === dateStr);
       days.push({ day: i, date: dateStr, sessions: sessionsOnDay });
     }
     return days;
@@ -95,7 +102,8 @@ export default function SessionsPage({ sessions, coachingState }: SessionsPagePr
 
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const selectedDaySessions = useMemo(() => {
-    return sessions.filter(s => s.session_date === selectedCalendarDate);
+    if (!selectedCalendarDate) return [];
+    return sessions.filter(s => getDateOnly(s.session_date) === selectedCalendarDate);
   }, [selectedCalendarDate, sessions]);
 
   // Pre-first-session: Show anticipation-focused empty state
