@@ -68,7 +68,17 @@ export default function ScaleHome({
         </div>
       </header>
 
-      {/* 1. Ready for your next session - Book CTA when no upcoming session */}
+      {/* 1. Session Prep - FIRST when there's an upcoming session */}
+      {upcomingSession && (
+        <SessionPrep
+          sessions={sessions}
+          actionItems={actionItems}
+          coachName={lastSession?.coach_name || 'Your Coach'}
+          userEmail={userEmail}
+        />
+      )}
+
+      {/* 2. Ready for your next session - Book CTA when no upcoming session */}
       {!upcomingSession && profile?.booking_link && (
         <a
           href={profile.booking_link}
@@ -153,101 +163,92 @@ export default function ScaleHome({
         </section>
       )}
 
-      {/* 2. Where You Left Off - from most recent session (or Current Focus if available) */}
-      {currentFocus ? (
-        <section className="bg-gradient-to-br from-purple-50/50 to-boon-lightBlue/20 rounded-[2rem] p-8 border border-purple-100/50">
-          <div className="flex items-start justify-between mb-4">
-            <h2 className="text-xl font-extrabold text-boon-text">Current Focus</h2>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-              From check-in {checkpointStatus.latestCheckpoint?.checkpoint_number}
-            </span>
-          </div>
-          <div className="prose prose-sm max-w-none">
-            <div className="text-gray-700 leading-relaxed">
-              {currentFocus}
+      {/* 3. Where You Left Off - ONLY when no upcoming session (otherwise redundant with SessionPrep) */}
+      {!upcomingSession && (
+        currentFocus ? (
+          <section className="bg-gradient-to-br from-purple-50/50 to-boon-lightBlue/20 rounded-[2rem] p-8 border border-purple-100/50">
+            <div className="flex items-start justify-between mb-4">
+              <h2 className="text-xl font-extrabold text-boon-text">Current Focus</h2>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                From check-in {checkpointStatus.latestCheckpoint?.checkpoint_number}
+              </span>
             </div>
-          </div>
-        </section>
-      ) : (lastSession?.goals || lastSession?.plan) ? (
-        <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
-          <div className="flex items-start justify-between mb-6">
-            <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Where You Left Off</h2>
-            <span className="text-xs font-medium text-gray-400">
-              {new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </span>
-          </div>
-
-          {/* Goals */}
-          {lastSession.goals && (
-            <div className="mb-6">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Goals</h3>
-              <p className="font-serif text-gray-700 leading-relaxed whitespace-pre-line">{lastSession.goals}</p>
-            </div>
-          )}
-
-          {/* Action Items from plan - with checkboxes */}
-          {lastSession.plan && (
-            <div>
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Action Items</h3>
-              <div className="space-y-2">
-                {lastSession.plan.split('\n').filter(line => line.trim()).map((item, idx) => {
-                  // Clean up the item text (remove leading bullets, dashes, numbers)
-                  const cleanText = item.trim().replace(/^[\s•\-\*\d\.:\)]+/, '').trim();
-                  if (!cleanText || cleanText.length < 5) return null;
-
-                  // Check if this item exists in actionItems and get its status
-                  const matchingAction = actionItems.find(ai =>
-                    ai.action_text.toLowerCase().includes(cleanText.toLowerCase().slice(0, 30)) ||
-                    cleanText.toLowerCase().includes(ai.action_text.toLowerCase().slice(0, 30))
-                  );
-                  const isCompleted = matchingAction?.status === 'completed';
-
-                  const isUpdating = matchingAction && updatingItem === matchingAction.id;
-
-                  return (
-                    <label
-                      key={idx}
-                      className={`flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all ${
-                        isCompleted
-                          ? 'bg-green-50/50 text-gray-400'
-                          : 'bg-white/60 hover:bg-white text-gray-700'
-                      } ${isUpdating ? 'opacity-50' : ''}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isCompleted}
-                        disabled={!matchingAction || isUpdating}
-                        onChange={() => {
-                          if (matchingAction) {
-                            handleToggleAction(matchingAction.id, matchingAction.status);
-                          }
-                        }}
-                        className="mt-0.5 w-4 h-4 rounded border-gray-300 text-boon-amber focus:ring-boon-amber disabled:opacity-50"
-                      />
-                      <span className={`text-sm leading-relaxed ${isCompleted ? 'line-through' : ''}`}>
-                        {cleanText}
-                      </span>
-                    </label>
-                  );
-                })}
+            <div className="prose prose-sm max-w-none">
+              <div className="text-gray-700 leading-relaxed">
+                {currentFocus}
               </div>
             </div>
-          )}
-        </section>
-      ) : null}
+          </section>
+        ) : (lastSession?.goals || lastSession?.plan) ? (
+          <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
+            <div className="flex items-start justify-between mb-6">
+              <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Where You Left Off</h2>
+              <span className="text-xs font-medium text-gray-400">
+                {new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            </div>
 
-      {/* 3. Coach Card */}
-      {lastSession && (
-        <CoachProfile
-          sessions={sessions}
-          coachName={lastSession.coach_name}
-          programType="SCALE"
-          employeeId={profile?.id || null}
-          userEmail={userEmail}
-        />
+            {/* Goals */}
+            {lastSession.goals && (
+              <div className="mb-6">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Goals</h3>
+                <p className="font-serif text-gray-700 leading-relaxed whitespace-pre-line">{lastSession.goals}</p>
+              </div>
+            )}
+
+            {/* Action Items from plan - with checkboxes */}
+            {lastSession.plan && (
+              <div>
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Action Items</h3>
+                <div className="space-y-2">
+                  {lastSession.plan.split('\n').filter(line => line.trim()).map((item, idx) => {
+                    // Clean up the item text (remove leading bullets, dashes, numbers)
+                    const cleanText = item.trim().replace(/^[\s•\-\*\d\.:\)]+/, '').trim();
+                    if (!cleanText || cleanText.length < 5) return null;
+
+                    // Check if this item exists in actionItems and get its status
+                    const matchingAction = actionItems.find(ai =>
+                      ai.action_text.toLowerCase().includes(cleanText.toLowerCase().slice(0, 30)) ||
+                      cleanText.toLowerCase().includes(ai.action_text.toLowerCase().slice(0, 30))
+                    );
+                    const isCompleted = matchingAction?.status === 'completed';
+
+                    const isUpdating = matchingAction && updatingItem === matchingAction.id;
+
+                    return (
+                      <label
+                        key={idx}
+                        className={`flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all ${
+                          isCompleted
+                            ? 'bg-green-50/50 text-gray-400'
+                            : 'bg-white/60 hover:bg-white text-gray-700'
+                        } ${isUpdating ? 'opacity-50' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isCompleted}
+                          disabled={!matchingAction || isUpdating}
+                          onChange={() => {
+                            if (matchingAction) {
+                              handleToggleAction(matchingAction.id, matchingAction.status);
+                            }
+                          }}
+                          className="mt-0.5 w-4 h-4 rounded border-gray-300 text-boon-amber focus:ring-boon-amber disabled:opacity-50"
+                        />
+                        <span className={`text-sm leading-relaxed ${isCompleted ? 'line-through' : ''}`}>
+                          {cleanText}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
+        ) : null
       )}
 
-      {/* 4. Practice Space */}
+      {/* 4. Practice Space - above Coach */}
       <section className="bg-gradient-to-br from-purple-50 to-boon-bg rounded-[2rem] p-8 border border-purple-100/50 text-center">
         <div className="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center mx-auto mb-4">
           <svg className="w-7 h-7 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -269,13 +270,16 @@ export default function ScaleHome({
         </button>
       </section>
 
-      {/* 5. No upcoming session / Session Prep */}
-      <SessionPrep
-        sessions={sessions}
-        actionItems={actionItems}
-        coachName={lastSession?.coach_name || 'Your Coach'}
-        userEmail={userEmail}
-      />
+      {/* 5. Coach Card */}
+      {lastSession && (
+        <CoachProfile
+          sessions={sessions}
+          coachName={lastSession.coach_name}
+          programType="SCALE"
+          employeeId={profile?.id || null}
+          userEmail={userEmail}
+        />
+      )}
     </div>
   );
 }

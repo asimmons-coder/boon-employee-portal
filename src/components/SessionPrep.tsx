@@ -22,6 +22,23 @@ export default function SessionPrep({ sessions, actionItems, coachName, userEmai
 
   const coachFirstName = coachName.split(' ')[0];
 
+  // Check if session is within 24 hours
+  const isWithin24Hours = upcomingSession ? (() => {
+    const sessionTime = new Date(upcomingSession.session_date).getTime();
+    const now = Date.now();
+    const hoursUntilSession = (sessionTime - now) / (1000 * 60 * 60);
+    return hoursUntilSession <= 24 && hoursUntilSession > -1; // Show from 24h before until 1h after start
+  })() : false;
+
+  // Format session date/time nicely
+  const formatSessionDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    const monthDay = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return { dayName, monthDay, time, full: `${dayName}, ${monthDay}` };
+  };
+
   // Load existing intention for upcoming session
   useEffect(() => {
     const loadIntention = async () => {
@@ -127,6 +144,8 @@ export default function SessionPrep({ sessions, actionItems, coachName, userEmai
     );
   }
 
+  const sessionDateTime = upcomingSession ? formatSessionDateTime(upcomingSession.session_date) : null;
+
   return (
     <section className="relative bg-gradient-to-br from-boon-blue/5 via-white to-boon-lightBlue/20 rounded-[2.5rem] p-8 md:p-10 border-2 border-boon-blue/20 shadow-lg overflow-hidden">
       {/* Decorative element */}
@@ -134,28 +153,48 @@ export default function SessionPrep({ sessions, actionItems, coachName, userEmai
       <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-100/30 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
 
       <div className="relative z-10">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-boon-blue flex items-center justify-center flex-shrink-0 shadow-lg shadow-boon-blue/30">
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
+        {/* Header with prominent session info */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-boon-blue flex items-center justify-center flex-shrink-0 shadow-lg shadow-boon-blue/30">
+              <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-extrabold text-boon-text">Session with {coachFirstName}</h2>
+              <p className="text-sm text-gray-600 mt-0.5 font-medium">
+                {sessionDateTime?.dayName}, {sessionDateTime?.monthDay} at {sessionDateTime?.time}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-extrabold text-boon-text">Before you meet with {coachFirstName}</h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Session on {new Date(upcomingSession.session_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-          </div>
+
+          {/* Join Session Button - appears 24h before */}
+          {isWithin24Hours && upcomingSession.video_link && (
+            <a
+              href={upcomingSession.video_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all shadow-lg shadow-green-600/30 animate-pulse hover:animate-none"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Join Session
+            </a>
+          )}
         </div>
 
-        {/* Context Section - Collapsed by default */}
+        {/* Prepare for your session label */}
+        <p className="text-xs font-bold text-boon-blue uppercase tracking-widest mb-4">Prepare for your session</p>
+
+        {/* Context Section */}
         <div className="mb-8 space-y-4">
           {/* Current Goal - if exists */}
           {lastSession?.goals && (
             <div className="bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-gray-100">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Current Goal</p>
-              <p className="text-sm text-gray-700 line-clamp-2">{lastSession.goals}</p>
+              <p className="text-sm text-gray-700">{lastSession.goals}</p>
             </div>
           )}
 
