@@ -2,7 +2,6 @@ import { useState } from 'react';
 import type { Employee, Session, ActionItem, BaselineSurvey, View } from '../lib/types';
 import type { ScaleCheckpointStatus } from '../lib/types';
 import { updateActionItemStatus } from '../lib/dataFetcher';
-import ActionItems from './ActionItems';
 import SessionPrep from './SessionPrep';
 import CoachProfile from './CoachProfile';
 
@@ -247,9 +246,6 @@ export default function ScaleHome({
           userEmail={userEmail}
         />
       )}
-
-      {/* Action Items - shows if there are any */}
-      <ActionItems items={actionItems} onUpdate={onActionUpdate} />
 
       {/* 4. Practice Space */}
       <section className="bg-gradient-to-br from-purple-50 to-boon-bg rounded-[2rem] p-8 border border-purple-100/50 text-center">
