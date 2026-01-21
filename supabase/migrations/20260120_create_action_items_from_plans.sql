@@ -4,23 +4,25 @@
 
 -- Step 1: Get the most recent session per employee that has a plan
 WITH latest_sessions AS (
-  SELECT DISTINCT ON (employee_email)
-    id,
-    employee_email,
-    coach_name,
-    plan,
-    session_date
-  FROM session_tracking
-  WHERE status = 'Completed'
-    AND plan IS NOT NULL
-    AND trim(plan) != ''
-  ORDER BY employee_email, session_date DESC
+  SELECT DISTINCT ON (st.employee_id)
+    st.id,
+    st.employee_id,
+    e.company_email as email,
+    st.coach_name,
+    st.plan,
+    st.session_date
+  FROM session_tracking st
+  JOIN employee_manager e ON e.id = st.employee_id
+  WHERE st.status = 'Completed'
+    AND st.plan IS NOT NULL
+    AND trim(st.plan) != ''
+  ORDER BY st.employee_id, st.session_date DESC
 ),
 -- Step 2: Split plans into individual lines
 plan_lines AS (
   SELECT
     ls.id as session_id,
-    ls.employee_email,
+    ls.email,
     ls.coach_name,
     ls.session_date,
     -- Split by newline and clean up each line
@@ -32,7 +34,7 @@ plan_lines AS (
 -- Step 3: Insert as action_items (skip if already exists)
 INSERT INTO action_items (email, session_id, coach_name, action_text, status, created_at)
 SELECT
-  pl.employee_email,
+  pl.email,
   pl.session_id,
   pl.coach_name,
   pl.action_text,
@@ -44,6 +46,6 @@ WHERE pl.action_text != ''
   -- Don't create duplicates
   AND NOT EXISTS (
     SELECT 1 FROM action_items ai
-    WHERE ai.email = pl.employee_email
+    WHERE ai.email = pl.email
       AND ai.action_text = pl.action_text
   );
