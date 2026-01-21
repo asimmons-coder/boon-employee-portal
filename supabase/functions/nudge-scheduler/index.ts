@@ -1,11 +1,50 @@
-// Nudge Scheduler Edge Function
+// Nudge Scheduler Edge Function (Standalone)
 // Runs on a cron schedule to send coaching nudges via Slack
 //
 // Deploy with cron: supabase functions deploy nudge-scheduler --schedule "0 * * * *"
 // (Runs every hour to catch users in their preferred time windows)
 
-import { getSupabaseClient } from '../_shared/supabase.ts';
-import { sendSlackMessage, renderBlocks } from '../_shared/slack.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+
+// Inline helper: create Supabase client
+function getSupabaseClient() {
+  return createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  );
+}
+
+// Inline helper: send Slack message
+async function sendSlackMessage(
+  botToken: string,
+  options: { channel: string; blocks: unknown[]; text: string }
+): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  const response = await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${botToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      channel: options.channel,
+      blocks: options.blocks,
+      text: options.text,
+    }),
+  });
+  return response.json();
+}
+
+// Inline helper: render template blocks with variables
+function renderBlocks(
+  blocks: unknown[],
+  vars: Record<string, string | number | null | undefined>
+): unknown[] {
+  let json = JSON.stringify(blocks);
+  for (const [key, value] of Object.entries(vars)) {
+    json = json.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value ?? ''));
+  }
+  return JSON.parse(json);
+}
 
 interface PendingActionItem {
   id: string;
