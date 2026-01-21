@@ -75,6 +75,7 @@ export default function ScaleHome({
           actionItems={actionItems}
           coachName={lastSession?.coach_name || 'Your Coach'}
           userEmail={userEmail}
+          onActionUpdate={onActionUpdate}
         />
       )}
 

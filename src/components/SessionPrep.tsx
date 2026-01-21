@@ -1,24 +1,37 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Session, ActionItem } from '../lib/types';
 import { supabase } from '../lib/supabase';
+import { updateActionItemStatus } from '../lib/dataFetcher';
 
 interface SessionPrepProps {
   sessions: Session[];
   actionItems: ActionItem[];
   coachName: string;
   userEmail: string;
+  onActionUpdate?: () => void;
 }
 
-export default function SessionPrep({ sessions, actionItems, coachName, userEmail: _userEmail }: SessionPrepProps) {
+export default function SessionPrep({ sessions, actionItems, coachName, userEmail: _userEmail, onActionUpdate }: SessionPrepProps) {
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
-  const pendingActions = actionItems.filter(a => a.status === 'pending');
   const lastSession = completedSessions[0];
 
   // Session prep intention state
   const [intention, setIntention] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [updatingItem, setUpdatingItem] = useState<string | null>(null);
+
+  // Toggle action item status
+  const handleToggleAction = async (itemId: string, currentStatus: string) => {
+    setUpdatingItem(itemId);
+    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+    const success = await updateActionItemStatus(itemId, newStatus);
+    if (success && onActionUpdate) {
+      onActionUpdate();
+    }
+    setUpdatingItem(null);
+  };
 
   const coachFirstName = coachName.split(' ')[0];
 
@@ -155,23 +168,42 @@ export default function SessionPrep({ sessions, actionItems, coachName, userEmai
             </div>
           )}
 
-          {/* Open Action Items - if any */}
-          {pendingActions.length > 0 && (
+          {/* Action Items - show all with checkboxes */}
+          {actionItems.length > 0 && (
             <div className="bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-gray-100">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
-                Open Action Items ({pendingActions.length})
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+                Action Items ({actionItems.filter(a => a.status === 'pending').length} open)
               </p>
-              <ul className="space-y-2">
-                {pendingActions.slice(0, 3).map((action) => (
-                  <li key={action.id} className="flex items-start gap-2 text-sm text-gray-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-boon-blue mt-2 flex-shrink-0" />
-                    <span className="line-clamp-1">{action.action_text}</span>
-                  </li>
-                ))}
-                {pendingActions.length > 3 && (
-                  <li className="text-xs text-gray-400 pl-3.5">+{pendingActions.length - 3} more</li>
+              <div className="space-y-2">
+                {actionItems.slice(0, 5).map((action) => {
+                  const isCompleted = action.status === 'completed';
+                  const isUpdating = updatingItem === action.id;
+                  return (
+                    <label
+                      key={action.id}
+                      className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-all ${
+                        isCompleted
+                          ? 'bg-green-50/50 text-gray-400'
+                          : 'hover:bg-white text-gray-700'
+                      } ${isUpdating ? 'opacity-50' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isCompleted}
+                        disabled={isUpdating}
+                        onChange={() => handleToggleAction(action.id, action.status)}
+                        className="mt-0.5 w-4 h-4 rounded border-gray-300 text-boon-blue focus:ring-boon-blue"
+                      />
+                      <span className={`text-sm ${isCompleted ? 'line-through' : ''}`}>
+                        {action.action_text}
+                      </span>
+                    </label>
+                  );
+                })}
+                {actionItems.length > 5 && (
+                  <p className="text-xs text-gray-400 pl-7">+{actionItems.length - 5} more</p>
                 )}
-              </ul>
+              </div>
             </div>
           )}
         </div>
