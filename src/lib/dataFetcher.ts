@@ -891,21 +891,18 @@ export async function submitCheckpoint(
   if (data.sessionNumber) outcomesParts.push(`Session ${data.sessionNumber}`);
   if (data.coachMatchRating) outcomesParts.push(`Coach match: ${data.coachMatchRating}/10`);
 
+  // Use RPC function to bypass RLS issues
   const { data: result, error } = await supabase
-    .from('survey_submissions')
-    .insert({
-      email: email.toLowerCase(),
-      survey_type: surveyType,
-      coach_name: data.coachName,
-      coach_satisfaction: data.sessionRating,
-      outcomes: outcomesParts.length > 0 ? outcomesParts.join(', ') : null,
-      feedback_suggestions: data.feedbackText,
-      nps: data.nps,
-      open_to_testimonial: data.testimonialConsent,
-      submitted_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
+    .rpc('submit_survey_for_user', {
+      user_email: email.toLowerCase(),
+      p_survey_type: surveyType,
+      p_coach_name: data.coachName,
+      p_coach_satisfaction: data.sessionRating,
+      p_outcomes: outcomesParts.length > 0 ? outcomesParts.join(', ') : null,
+      p_feedback_suggestions: data.feedbackText,
+      p_nps: data.nps,
+      p_open_to_testimonial: data.testimonialConsent,
+    });
 
   if (error) {
     console.error('Error submitting check-in:', error);
@@ -1137,22 +1134,21 @@ export async function submitScaleFeedbackSurvey(
   const outcomesParts: string[] = [`Session ${sessionNumber}`];
   if (data.outcomes) outcomesParts.push(data.outcomes);
 
+  // Use RPC function to bypass RLS issues
   const { error } = await supabase
-    .from('survey_submissions')
-    .insert({
-      email: email.toLowerCase(),
-      survey_type: surveyType,
-      coach_name: coachName,
-      coach_satisfaction: data.coach_satisfaction,
-      wants_rematch: data.wants_rematch || false,
-      rematch_reason: data.rematch_reason || null,
-      coach_qualities: data.coach_qualities,
-      has_booked_next_session: data.has_booked_next_session,
-      nps: data.nps,
-      feedback_suggestions: data.feedback_suggestions || null,
-      outcomes: outcomesParts.join(', '),
-      open_to_testimonial: data.open_to_testimonial || false,
-      submitted_at: new Date().toISOString(),
+    .rpc('submit_survey_for_user', {
+      user_email: email.toLowerCase(),
+      p_survey_type: surveyType,
+      p_coach_name: coachName,
+      p_coach_satisfaction: data.coach_satisfaction,
+      p_outcomes: outcomesParts.join(', '),
+      p_feedback_suggestions: data.feedback_suggestions || null,
+      p_nps: data.nps,
+      p_open_to_testimonial: data.open_to_testimonial || false,
+      p_wants_rematch: data.wants_rematch || false,
+      p_rematch_reason: data.rematch_reason || null,
+      p_coach_qualities: data.coach_qualities,
+      p_has_booked_next_session: data.has_booked_next_session,
     });
 
   if (error) {
