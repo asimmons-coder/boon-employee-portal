@@ -934,15 +934,17 @@ export async function submitCheckpoint(
   }
 
   // Update with employee data (fire and forget - don't block on this)
-  supabase
-    .from('employees')
-    .select('first_name, last_name, account_name, program_title, program_type')
-    .ilike('company_email', email)
-    .limit(1)
-    .then(({ data: empData }) => {
+  (async () => {
+    try {
+      const { data: empData } = await supabase
+        .from('employees')
+        .select('first_name, last_name, account_name, program_title, program_type')
+        .ilike('company_email', email)
+        .limit(1);
+
       if (empData && empData[0]) {
         const emp = empData[0];
-        supabase
+        await supabase
           .from('survey_submissions')
           .update({
             first_name: emp.first_name,
@@ -952,12 +954,13 @@ export async function submitCheckpoint(
             program_title: emp.program_title,
             program_type: emp.program_type,
           })
-          .eq('id', result.id)
-          .then(() => console.log('Updated survey with employee data'))
-          .catch((e) => console.log('Failed to update employee data:', e));
+          .eq('id', result.id);
+        console.log('Updated survey with employee data');
       }
-    })
-    .catch((e) => console.log('Employee lookup failed:', e));
+    } catch (e) {
+      console.log('Employee data update failed:', e);
+    }
+  })();
 
   // Map back to Checkpoint type for compatibility
   const checkpoint: Checkpoint = {
