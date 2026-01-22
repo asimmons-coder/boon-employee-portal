@@ -39,6 +39,9 @@ export default function ScaleHome({
   const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
   const lastSession = completedSessions.length > 0 ? completedSessions[0] : null;
 
+  // Find most recent session with goals or plan (for "Where You Left Off")
+  const sessionWithGoals = completedSessions.find(s => s.goals || s.plan) || null;
+
   // Get current focus from latest checkpoint
   const currentFocus = checkpointStatus.latestCheckpoint?.focus_area;
 
@@ -180,29 +183,29 @@ export default function ScaleHome({
               </div>
             </div>
           </section>
-        ) : (lastSession?.goals || lastSession?.plan) ? (
+        ) : sessionWithGoals ? (
           <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
             <div className="flex items-start justify-between mb-6">
               <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Where You Left Off</h2>
               <span className="text-xs font-medium text-gray-400">
-                {new Date(lastSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {new Date(sessionWithGoals.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </span>
             </div>
 
             {/* Goals */}
-            {lastSession.goals && (
+            {sessionWithGoals.goals && (
               <div className="mb-6">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Goals</h3>
-                <p className="font-serif text-gray-700 leading-relaxed whitespace-pre-line">{lastSession.goals}</p>
+                <p className="font-serif text-gray-700 leading-relaxed whitespace-pre-line">{sessionWithGoals.goals}</p>
               </div>
             )}
 
             {/* Action Items from plan - with checkboxes */}
-            {lastSession.plan && (
+            {sessionWithGoals.plan && (
               <div>
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Action Items</h3>
                 <div className="space-y-2">
-                  {lastSession.plan.split('\n').filter(line => line.trim()).map((item, idx) => {
+                  {sessionWithGoals.plan.split('\n').filter(line => line.trim()).map((item, idx) => {
                     // Clean up the item text (remove leading bullets, dashes, numbers)
                     const cleanText = item.trim().replace(/^[\s•\-\*\d\.:\)]+/, '').trim();
                     if (!cleanText || cleanText.length < 5) return null;
