@@ -908,22 +908,25 @@ export async function submitCheckpoint(
   if (data.sessionNumber) outcomesParts.push(`Session ${data.sessionNumber}`);
   if (data.coachMatchRating) outcomesParts.push(`Coach match: ${data.coachMatchRating}/10`);
 
-  // Use RPC function to bypass RLS issues
+  // Insert directly into survey_submissions
   const { data: result, error } = await supabase
-    .rpc('submit_survey_for_user', {
-      user_email: email.toLowerCase(),
-      p_survey_type: surveyType,
-      p_coach_name: data.coachName,
-      p_coach_satisfaction: data.sessionRating,
-      p_outcomes: outcomesParts.length > 0 ? outcomesParts.join(', ') : null,
-      p_feedback_suggestions: data.feedbackText,
-      p_nps: data.nps,
-      p_open_to_testimonial: data.testimonialConsent,
-      p_match_rating: data.coachMatchRating,
-      p_next_session_booked: data.nextSessionBooked,
-      p_not_booked_reasons: data.notBookedReasons,
-      p_open_to_followup: data.openToFollowup,
-    });
+    .from('survey_submissions')
+    .insert({
+      email: email.toLowerCase(),
+      survey_type: surveyType,
+      coach_name: data.coachName,
+      coach_satisfaction: data.sessionRating,
+      outcomes: outcomesParts.length > 0 ? outcomesParts.join(', ') : null,
+      feedback_suggestions: data.feedbackText,
+      nps: data.nps,
+      open_to_testimonial: data.testimonialConsent,
+      match_rating: data.coachMatchRating,
+      next_session_booked: data.nextSessionBooked,
+      not_booked_reasons: data.notBookedReasons,
+      open_to_followup: data.openToFollowup,
+    })
+    .select()
+    .single();
 
   if (error) {
     console.error('Error submitting check-in:', error);
@@ -934,10 +937,10 @@ export async function submitCheckpoint(
   const checkpoint: Checkpoint = {
     id: result.id,
     email: result.email,
-    checkpoint_number: result.session_number,
-    session_count_at_checkpoint: result.session_number,
+    checkpoint_number: data.sessionNumber,
+    session_count_at_checkpoint: data.sessionNumber,
     competency_scores: {
-      adaptability_and_resilience: result.coach_satisfaction || 0,
+      adaptability_and_resilience: data.sessionRating || 0,
       building_relationships_at_work: data.coachMatchRating || 0,
       change_management: 0,
       delegation_and_accountability: 0,
@@ -954,7 +957,7 @@ export async function submitCheckpoint(
     focus_area: null,
     nps_score: result.nps,
     testimonial_consent: result.open_to_testimonial || false,
-    created_at: result.submitted_at,
+    created_at: result.submitted_at || result.created_at,
   };
 
   return { success: true, data: checkpoint };
