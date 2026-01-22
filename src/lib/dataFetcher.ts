@@ -937,7 +937,7 @@ export async function submitCheckpoint(
   (async () => {
     try {
       const { data: empData } = await supabase
-        .from('employees')
+        .from('employee_manager')
         .select('first_name, last_name, account_name, program_title, program_type')
         .ilike('company_email', email)
         .limit(1);
