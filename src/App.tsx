@@ -511,6 +511,10 @@ function ProtectedApp() {
             sessionId={lastSession?.id || ''}
             sessionNumber={coachingState.scaleCheckpointStatus.nextCheckpointDueAtSession}
             coachName={lastSession?.coach_name || sessions[0]?.coach_name || 'your coach'}
+            firstName={employee?.first_name || null}
+            lastName={employee?.last_name || null}
+            companyName={employee?.company_name || null}
+            coachingProgram={employee?.coaching_program || null}
             onComplete={handleCheckpointComplete}
             onClose={() => setShowCheckpointFlow(false)}
           />

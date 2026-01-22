@@ -8,6 +8,11 @@ interface CheckpointFlowProps {
   sessionId: string;
   sessionNumber: number;
   coachName: string;
+  // Employee data to include in survey (avoids re-fetching)
+  firstName: string | null;
+  lastName: string | null;
+  companyName: string | null;
+  coachingProgram: string | null;
   onComplete: (checkpoint: Checkpoint) => void;
   onClose: () => void;
 }
@@ -33,6 +38,10 @@ export default function CheckpointFlow({
   sessionId,
   sessionNumber,
   coachName,
+  firstName,
+  lastName,
+  companyName,
+  coachingProgram,
   onComplete,
   onClose,
 }: CheckpointFlowProps) {
@@ -150,6 +159,11 @@ export default function CheckpointFlow({
       nextSessionBooked: bookedNext === 'yes' ? true : bookedNext === 'no' ? false : null,
       notBookedReasons,
       openToFollowup: openToChat === 'yes' ? true : openToChat === 'no' ? false : null,
+      // Employee data (passed from parent, not re-fetched)
+      firstName,
+      lastName,
+      companyName,
+      coachingProgram,
     };
 
     const result = await submitCheckpoint(userEmail, checkinData);

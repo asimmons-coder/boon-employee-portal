@@ -886,6 +886,11 @@ export interface ScaleCheckinData {
   nextSessionBooked: boolean | null;
   notBookedReasons: string[] | null;
   openToFollowup: boolean | null;
+  // Employee data (passed from component, not re-fetched)
+  firstName: string | null;
+  lastName: string | null;
+  companyName: string | null;      // Maps to survey_submissions.account_name
+  coachingProgram: string | null;  // Maps to survey_submissions.program_type
 }
 
 export async function submitCheckpoint(
@@ -908,23 +913,13 @@ export async function submitCheckpoint(
   if (data.sessionNumber) outcomesParts.push(`Session ${data.sessionNumber}`);
   if (data.coachMatchRating) outcomesParts.push(`Coach match: ${data.coachMatchRating}/10`);
 
-  // First, fetch employee data using the existing function (which we know works)
-  console.log('[submitCheckpoint] Looking up employee data for:', email);
-  const emp = await fetchEmployeeProfile(email);
-  console.log('[submitCheckpoint] Employee lookup result:', emp ? {
-    first_name: emp.first_name,
-    last_name: emp.last_name,
-    company_name: emp.company_name,
-    coaching_program: emp.coaching_program,
-  } : 'not found');
-  // Map employee_manager columns to survey_submissions columns
-  const employeeFields = emp ? {
-    first_name: emp.first_name,
-    last_name: emp.last_name,
-    participant_name: [emp.first_name, emp.last_name].filter(Boolean).join(' ') || null,
-    account_name: emp.company_name,        // employee_manager.company_name → survey_submissions.account_name
-    program_type: emp.coaching_program,    // employee_manager.coaching_program → survey_submissions.program_type
-  } : {};
+  // Use employee data passed from the component (already loaded at app start)
+  console.log('[submitCheckpoint] Using passed employee data:', {
+    firstName: data.firstName,
+    lastName: data.lastName,
+    companyName: data.companyName,
+    coachingProgram: data.coachingProgram,
+  });
 
   // Insert with all data including employee fields
   const { data: result, error } = await supabase
@@ -942,7 +937,12 @@ export async function submitCheckpoint(
       next_session_booked: data.nextSessionBooked,
       not_booked_reasons: data.notBookedReasons,
       open_to_followup: data.openToFollowup,
-      ...employeeFields,
+      // Employee data (passed from component)
+      first_name: data.firstName,
+      last_name: data.lastName,
+      participant_name: [data.firstName, data.lastName].filter(Boolean).join(' ') || null,
+      account_name: data.companyName,
+      program_type: data.coachingProgram,
     })
     .select()
     .single();
