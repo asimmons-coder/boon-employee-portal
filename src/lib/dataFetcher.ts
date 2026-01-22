@@ -908,11 +908,28 @@ export async function submitCheckpoint(
   if (data.sessionNumber) outcomesParts.push(`Session ${data.sessionNumber}`);
   if (data.coachMatchRating) outcomesParts.push(`Coach match: ${data.coachMatchRating}/10`);
 
+  // Look up employee data to populate name/account fields
+  const { data: empData } = await supabase
+    .from('employees')
+    .select('first_name, last_name, account_name, program_title, program_type')
+    .ilike('company_email', email)
+    .single();
+
+  const participantName = empData?.first_name && empData?.last_name
+    ? `${empData.first_name} ${empData.last_name}`
+    : empData?.first_name || empData?.last_name || null;
+
   // Insert directly into survey_submissions
   const { data: result, error } = await supabase
     .from('survey_submissions')
     .insert({
       email: email.toLowerCase(),
+      first_name: empData?.first_name || null,
+      last_name: empData?.last_name || null,
+      participant_name: participantName,
+      account_name: empData?.account_name || null,
+      program_title: empData?.program_title || null,
+      program_type: empData?.program_type || null,
       survey_type: surveyType,
       coach_name: data.coachName,
       coach_satisfaction: data.sessionRating,
