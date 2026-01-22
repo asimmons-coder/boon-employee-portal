@@ -166,27 +166,36 @@ export default function CheckpointFlow({
       coachingProgram,
     };
 
-    const result = await submitCheckpoint(userEmail, checkinData);
+    try {
+      console.log('[CheckpointFlow] Submitting checkin data:', checkinData);
+      const result = await submitCheckpoint(userEmail, checkinData);
+      console.log('[CheckpointFlow] Submit result:', result);
 
-    if (result.success && result.data) {
-      // Store win in coaching_wins table if user entered one
-      if (winsText.trim()) {
-        await addCoachingWin(
-          userEmail,
-          employeeId,
-          winsText.trim(),
-          sessionNumber,
-          false,
-          'check_in_survey'
-        );
+      if (result.success && result.data) {
+        // Store win in coaching_wins table if user entered one
+        if (winsText.trim()) {
+          await addCoachingWin(
+            userEmail,
+            employeeId,
+            winsText.trim(),
+            sessionNumber,
+            false,
+            'check_in_survey'
+          );
+        }
+
+        setStep('complete');
+        setTimeout(() => {
+          onComplete(result.data!);
+        }, 2000);
+      } else {
+        console.error('[CheckpointFlow] Submit failed:', result.error);
+        setError(result.error || 'Something went wrong. Please try again.');
+        setStep('open_to_chat');
       }
-
-      setStep('complete');
-      setTimeout(() => {
-        onComplete(result.data!);
-      }, 2000);
-    } else {
-      setError(result.error || 'Something went wrong. Please try again.');
+    } catch (err) {
+      console.error('[CheckpointFlow] Unexpected error:', err);
+      setError('An unexpected error occurred. Please try again.');
       setStep('open_to_chat');
     }
   };
