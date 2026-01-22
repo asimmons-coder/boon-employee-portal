@@ -919,6 +919,10 @@ export async function submitCheckpoint(
       p_feedback_suggestions: data.feedbackText,
       p_nps: data.nps,
       p_open_to_testimonial: data.testimonialConsent,
+      p_match_rating: data.coachMatchRating,
+      p_next_session_booked: data.nextSessionBooked,
+      p_not_booked_reasons: data.notBookedReasons,
+      p_open_to_followup: data.openToFollowup,
     });
 
   if (error) {
