@@ -940,7 +940,7 @@ export async function submitCheckpoint(
       // Employee data (passed from component)
       first_name: data.firstName,
       last_name: data.lastName,
-      participant_name: [data.firstName, data.lastName].filter(Boolean).join(' ') || null,
+      // participant_name is auto-generated from first_name + last_name
       account_name: data.companyName,
       program_type: data.coachingProgram,
     })
