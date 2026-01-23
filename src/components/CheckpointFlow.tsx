@@ -14,6 +14,10 @@ interface CheckpointFlowProps {
   companyName: string | null;
   coachingProgram: string | null;
   companyId: string | null;
+  // Baseline data for Session 6 comparison (from welcome survey)
+  baselineSatisfaction: number | null;
+  baselineProductivity: number | null;
+  baselineWorkLifeBalance: number | null;
   onComplete: (checkpoint: Checkpoint) => void;
   onClose: () => void;
 }
@@ -21,17 +25,29 @@ interface CheckpointFlowProps {
 type Step =
   | 'experience_rating'      // Q1: How's your coaching experience so far? (1-10)
   | 'coach_match'            // Q2: How's your match with {coach}? (1-10)
-  | 'whats_not_working'      // Q3: [If match ≤8] What's not working? (required)
-  | 'wins'                   // Q4: Any wins or breakthroughs? (optional)
-  | 'continue_with_coach'    // Q5: [If match ≤8] Continue with {coach}? (Yes/Explore)
-  | 'better_match'           // Q6: [If explore] What would make a better match?
-  | 'booked_next'            // Q7: Booked your next session?
-  | 'whats_in_the_way'       // Q7b: [If no] What's in the way?
-  | 'anything_else'          // Q8: Anything else?
-  | 'nps'                    // Q9: NPS (0-10)
-  | 'open_to_chat'           // Q10: Open to a quick chat?
+  | 'whats_not_working'      // Q3: [If match ≤7] What's not working? (required)
+  | 'wellbeing'              // Q4 (Session 6 only): Job satisfaction, productivity, work-life balance
+  | 'benefits'               // Q5 (Session 6 only): What benefits have you experienced?
+  | 'wins'                   // Q6: Any wins or breakthroughs? (optional)
+  | 'continue_with_coach'    // Q7: [If match ≤7] Continue with {coach}? (Yes/Explore)
+  | 'better_match'           // Q8: [If explore] What would make a better match?
+  | 'booked_next'            // Q9: Booked your next session?
+  | 'whats_in_the_way'       // Q9b: [If no] What's in the way?
+  | 'anything_else'          // Q10: Anything else?
+  | 'nps'                    // Q11: NPS (0-10)
+  | 'open_to_chat'           // Q12: Open to a quick chat?
   | 'submitting'
   | 'complete';
+
+// Benefits options for Session 6
+const BENEFIT_OPTIONS = [
+  { value: 'more_productive', label: 'More productive at work' },
+  { value: 'manage_stress', label: 'Better able to manage stress' },
+  { value: 'more_present', label: 'More present outside of work' },
+  { value: 'more_confident', label: 'More confident in my abilities' },
+  { value: 'more_optimistic', label: 'More optimistic about the future' },
+  { value: 'no_changes', label: "Haven't noticed significant changes yet" },
+];
 
 export default function CheckpointFlow({
   userEmail,
@@ -44,6 +60,9 @@ export default function CheckpointFlow({
   companyName,
   coachingProgram,
   companyId,
+  baselineSatisfaction,
+  baselineProductivity,
+  baselineWorkLifeBalance,
   onComplete,
   onClose,
 }: CheckpointFlowProps) {
@@ -64,8 +83,15 @@ export default function CheckpointFlow({
   const [openToChat, setOpenToChat] = useState<'yes' | 'no' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Session 6+ wellbeing state
+  const [jobSatisfaction, setJobSatisfaction] = useState<number | null>(null);
+  const [productivity, setProductivity] = useState<number | null>(null);
+  const [workLifeBalance, setWorkLifeBalance] = useState<number | null>(null);
+  const [selectedBenefits, setSelectedBenefits] = useState<string[]>([]);
+
   const coachFirstName = coachName?.split(' ')[0] || 'your coach';
-  const needsCoachFeedback = coachMatchRating !== null && coachMatchRating <= 8;
+  const needsCoachFeedback = coachMatchRating !== null && coachMatchRating <= 7;
+  const isSession6Plus = sessionNumber >= 6;
 
   // Calculate progress
   const getStepNumber = (): number => {
@@ -73,6 +99,7 @@ export default function CheckpointFlow({
       'experience_rating',
       'coach_match',
       ...(needsCoachFeedback ? ['whats_not_working' as Step] : []),
+      ...(isSession6Plus ? ['wellbeing' as Step, 'benefits' as Step] : []),
       'wins',
       ...(needsCoachFeedback ? ['continue_with_coach' as Step] : []),
       ...(needsCoachFeedback && continueWithCoach === 'explore' ? ['better_match' as Step] : []),
@@ -91,6 +118,7 @@ export default function CheckpointFlow({
     if (needsCoachFeedback) total += 2; // whats_not_working + continue_with_coach
     if (needsCoachFeedback && continueWithCoach === 'explore') total += 1; // better_match
     if (bookedNext === 'no') total += 1; // whats_in_the_way
+    if (isSession6Plus) total += 2; // wellbeing + benefits
     return total;
   };
 
@@ -106,6 +134,37 @@ export default function CheckpointFlow({
     if (whatsNotWorkingText) {
       feedbackParts.push(`What's not working: ${whatsNotWorkingText}`);
     }
+
+    // Session 6+ wellbeing data
+    if (isSession6Plus && jobSatisfaction !== null) {
+      const wellbeingLines = [];
+      if (jobSatisfaction !== null) {
+        const satDiff = baselineSatisfaction ? jobSatisfaction - baselineSatisfaction : null;
+        const satChange = satDiff !== null ? (satDiff > 0 ? `+${satDiff}` : satDiff === 0 ? 'no change' : `${satDiff}`) : '';
+        wellbeingLines.push(`Job satisfaction: ${jobSatisfaction}/10${satChange ? ` (${satChange} from baseline)` : ''}`);
+      }
+      if (productivity !== null) {
+        const prodDiff = baselineProductivity ? productivity - baselineProductivity : null;
+        const prodChange = prodDiff !== null ? (prodDiff > 0 ? `+${prodDiff}` : prodDiff === 0 ? 'no change' : `${prodDiff}`) : '';
+        wellbeingLines.push(`Productivity: ${productivity}/10${prodChange ? ` (${prodChange} from baseline)` : ''}`);
+      }
+      if (workLifeBalance !== null) {
+        const wlbDiff = baselineWorkLifeBalance ? workLifeBalance - baselineWorkLifeBalance : null;
+        const wlbChange = wlbDiff !== null ? (wlbDiff > 0 ? `+${wlbDiff}` : wlbDiff === 0 ? 'no change' : `${wlbDiff}`) : '';
+        wellbeingLines.push(`Work-life balance: ${workLifeBalance}/10${wlbChange ? ` (${wlbChange} from baseline)` : ''}`);
+      }
+      feedbackParts.push(`Wellbeing check:\n${wellbeingLines.join('\n')}`);
+    }
+
+    // Session 6+ benefits
+    if (isSession6Plus && selectedBenefits.length > 0) {
+      const benefitLabels = selectedBenefits.map(value => {
+        const option = BENEFIT_OPTIONS.find(o => o.value === value);
+        return option?.label || value;
+      });
+      feedbackParts.push(`Benefits experienced: ${benefitLabels.join(', ')}`);
+    }
+
     if (winsText) {
       feedbackParts.push(`Wins/breakthroughs: ${winsText}`);
     }
@@ -210,9 +269,25 @@ export default function CheckpointFlow({
         setStep('coach_match');
         break;
       case 'coach_match':
-        setStep(needsCoachFeedback ? 'whats_not_working' : 'wins');
+        if (needsCoachFeedback) {
+          setStep('whats_not_working');
+        } else if (isSession6Plus) {
+          setStep('wellbeing');
+        } else {
+          setStep('wins');
+        }
         break;
       case 'whats_not_working':
+        if (isSession6Plus) {
+          setStep('wellbeing');
+        } else {
+          setStep('wins');
+        }
+        break;
+      case 'wellbeing':
+        setStep('benefits');
+        break;
+      case 'benefits':
         setStep('wins');
         break;
       case 'wins':
@@ -250,8 +325,20 @@ export default function CheckpointFlow({
       case 'whats_not_working':
         setStep('coach_match');
         break;
-      case 'wins':
+      case 'wellbeing':
         setStep(needsCoachFeedback ? 'whats_not_working' : 'coach_match');
+        break;
+      case 'benefits':
+        setStep('wellbeing');
+        break;
+      case 'wins':
+        if (isSession6Plus) {
+          setStep('benefits');
+        } else if (needsCoachFeedback) {
+          setStep('whats_not_working');
+        } else {
+          setStep('coach_match');
+        }
         break;
       case 'continue_with_coach':
         setStep('wins');
@@ -291,6 +378,10 @@ export default function CheckpointFlow({
         return coachMatchRating !== null;
       case 'whats_not_working':
         return whatsNotWorkingText.trim().length > 0;
+      case 'wellbeing':
+        return jobSatisfaction !== null && productivity !== null && workLifeBalance !== null;
+      case 'benefits':
+        return selectedBenefits.length > 0;
       case 'wins':
         return true; // optional
       case 'continue_with_coach':
@@ -419,7 +510,7 @@ export default function CheckpointFlow({
             </div>
           )}
 
-          {/* Q3: What's not working (if match ≤8) */}
+          {/* Q3: What's not working (if match ≤7) */}
           {step === 'whats_not_working' && (
             <div className="space-y-6 py-4">
               <div>
@@ -440,7 +531,186 @@ export default function CheckpointFlow({
             </div>
           )}
 
-          {/* Q4: Wins */}
+          {/* Q4: Wellbeing (Session 6+ only) */}
+          {step === 'wellbeing' && (
+            <div className="space-y-6 py-4">
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-extrabold text-boon-text mb-2">
+                  How are you doing?
+                </h3>
+                <p className="text-gray-500 text-sm">
+                  Compare to when you started
+                </p>
+              </div>
+
+              {/* Job Satisfaction */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-bold text-boon-text">Job satisfaction</label>
+                  {baselineSatisfaction && (
+                    <span className="text-xs text-gray-400">Started at {baselineSatisfaction}</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => {
+                    const isBaseline = baselineSatisfaction === score;
+                    return (
+                      <button
+                        key={score}
+                        onClick={() => setJobSatisfaction(score)}
+                        className={`py-3 rounded-xl text-xs font-bold transition-all relative ${
+                          jobSatisfaction === score
+                            ? 'bg-boon-blue text-white shadow-lg scale-105'
+                            : isBaseline
+                            ? 'bg-purple-100 text-purple-600 border-2 border-purple-300'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {score}
+                        {isBaseline && jobSatisfaction !== score && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Productivity */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-bold text-boon-text">Productivity</label>
+                  {baselineProductivity && (
+                    <span className="text-xs text-gray-400">Started at {baselineProductivity}</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => {
+                    const isBaseline = baselineProductivity === score;
+                    return (
+                      <button
+                        key={score}
+                        onClick={() => setProductivity(score)}
+                        className={`py-3 rounded-xl text-xs font-bold transition-all relative ${
+                          productivity === score
+                            ? 'bg-boon-blue text-white shadow-lg scale-105'
+                            : isBaseline
+                            ? 'bg-purple-100 text-purple-600 border-2 border-purple-300'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {score}
+                        {isBaseline && productivity !== score && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Work-Life Balance */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-bold text-boon-text">Work-life balance</label>
+                  {baselineWorkLifeBalance && (
+                    <span className="text-xs text-gray-400">Started at {baselineWorkLifeBalance}</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => {
+                    const isBaseline = baselineWorkLifeBalance === score;
+                    return (
+                      <button
+                        key={score}
+                        onClick={() => setWorkLifeBalance(score)}
+                        className={`py-3 rounded-xl text-xs font-bold transition-all relative ${
+                          workLifeBalance === score
+                            ? 'bg-boon-blue text-white shadow-lg scale-105'
+                            : isBaseline
+                            ? 'bg-purple-100 text-purple-600 border-2 border-purple-300'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {score}
+                        {isBaseline && workLifeBalance !== score && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center justify-center gap-4 pt-2 text-xs text-gray-500">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 bg-purple-100 border border-purple-300 rounded" />
+                  Your baseline
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Q5: Benefits (Session 6+ only) */}
+          {step === 'benefits' && (
+            <div className="space-y-6 py-4">
+              <div className="text-center mb-4">
+                <h3 className="text-xl font-extrabold text-boon-text mb-2">
+                  What benefits have you experienced?
+                </h3>
+                <p className="text-gray-500 text-sm">
+                  Select all that apply
+                </p>
+              </div>
+              <div className="space-y-3">
+                {BENEFIT_OPTIONS.map((option) => {
+                  const isSelected = selectedBenefits.includes(option.value);
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedBenefits(selectedBenefits.filter(b => b !== option.value));
+                        } else {
+                          // If selecting "no_changes", clear other selections
+                          if (option.value === 'no_changes') {
+                            setSelectedBenefits(['no_changes']);
+                          } else {
+                            // If selecting a benefit, remove "no_changes" if present
+                            setSelectedBenefits([
+                              ...selectedBenefits.filter(b => b !== 'no_changes'),
+                              option.value
+                            ]);
+                          }
+                        }
+                      }}
+                      className={`w-full p-4 rounded-2xl text-left transition-all border-2 ${
+                        isSelected
+                          ? 'border-boon-blue bg-boon-lightBlue/30'
+                          : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
+                          isSelected ? 'bg-boon-blue' : 'border-2 border-gray-300'
+                        }`}>
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="font-medium text-boon-text">{option.label}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Q6: Wins */}
           {step === 'wins' && (
             <div className="space-y-6 py-4">
               <div>
