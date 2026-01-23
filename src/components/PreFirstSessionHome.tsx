@@ -72,7 +72,8 @@ export default function PreFirstSessionHome({
 
   // Coach display data
   const coachPhotoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;
-  const displayMatchSummary = matchSummary || 'Your coach is here to help you achieve your goals.';
+  // Use fetched match summary, fallback to baseline/welcomeSurvey match_summary, then default
+  const displayMatchSummary = matchSummary || baseline?.match_summary || welcomeSurveyScale?.match_summary || 'Your coach is here to help you achieve your goals.';
 
   // Debug: Log coach data to verify headline and notable_credentials
   console.log('[PreFirstSessionHome] Coach name:', coach?.name);
@@ -167,37 +168,34 @@ export default function PreFirstSessionHome({
     .map(([, label]) => label)
   : [];
 
-  // Get focus areas from GROW baseline (lowest-scored competencies they want to improve)
-  const competencyLabels: Record<string, string> = {
-    comp_adaptability_and_resilience: 'Adaptability & Resilience',
-    comp_building_relationships_at_work: 'Building Relationships',
-    comp_change_management: 'Change Management',
-    comp_delegation_and_accountability: 'Delegation & Accountability',
-    comp_effective_communication: 'Effective Communication',
-    comp_effective_planning_and_execution: 'Planning & Execution',
-    comp_emotional_intelligence: 'Emotional Intelligence',
-    comp_giving_and_receiving_feedback: 'Giving & Receiving Feedback',
-    comp_persuasion_and_influence: 'Persuasion & Influence',
-    comp_self_confidence_and_imposter_syndrome: 'Self-Confidence',
-    comp_strategic_thinking: 'Strategic Thinking',
-    comp_time_management_and_productivity: 'Time Management',
+  // GROW focus area labels (maps focus_* fields to display labels)
+  const growFocusAreaLabels: Record<string, string> = {
+    focus_effective_communication: 'Effective Communication',
+    focus_persuasion_and_influence: 'Persuasion & Influence',
+    focus_adaptability_and_resilience: 'Adaptability & Resilience',
+    focus_strategic_thinking: 'Strategic Thinking',
+    focus_emotional_intelligence: 'Emotional Intelligence',
+    focus_building_relationships_at_work: 'Building Relationships',
+    focus_self_confidence_and_imposter_syndrome: 'Self-Confidence',
+    focus_delegation_and_accountability: 'Delegation & Accountability',
+    focus_giving_and_receiving_feedback: 'Giving & Receiving Feedback',
+    focus_effective_planning_and_execution: 'Planning & Execution',
+    focus_change_management: 'Change Management',
+    focus_time_management_and_productivity: 'Time Management',
   };
 
-  // Get the 3 lowest-scored competencies as growth areas (for GROW/EXEC)
-  const growCompetencyAreas = baseline ? Object.entries(competencyLabels)
-    .map(([key, label]) => ({
-      key,
-      label,
-      score: baseline[key as keyof typeof baseline] as number | null,
-    }))
-    .filter(c => c.score !== null && c.score > 0)
-    .sort((a, b) => (a.score || 0) - (b.score || 0))
-    .slice(0, 3)
-    .map(c => c.label)
+  // Get selected focus areas from GROW baseline (user-selected areas they want to work on)
+  const growFocusAreas = baseline ? Object.entries(growFocusAreaLabels)
+    .filter(([key]) => {
+      const value = baseline[key as keyof typeof baseline];
+      // Handle both boolean true and string 'true'
+      return value === true || value === 'true';
+    })
+    .map(([, label]) => label)
   : [];
 
   // Use appropriate focus areas based on program type
-  const focusAreas = isScaleUser ? scaleFocusAreas : growCompetencyAreas;
+  const focusAreas = isScaleUser ? scaleFocusAreas : growFocusAreas;
 
   // Check if session is within 30 minutes (joinable window: 30 min before to 60 min after)
   const isSessionJoinable = (session: Session) => {
@@ -380,17 +378,17 @@ export default function PreFirstSessionHome({
             </div>
           )}
 
-          {/* Show focus areas (from SCALE survey or GROW competencies) */}
+          {/* Show focus areas (from SCALE survey or GROW baseline) */}
           {focusAreas.length > 0 && (
             <div>
               {!coachingGoals && (
                 <p className="text-xs font-bold text-purple-600 uppercase tracking-widest mb-3">
-                  {isScaleUser ? 'Focus areas you selected' : 'Areas you identified for growth'}
+                  Focus areas you selected
                 </p>
               )}
               {coachingGoals && (
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                  Focus areas from your assessment
+                  Focus areas you selected
                 </p>
               )}
               <div className="flex flex-wrap gap-2">

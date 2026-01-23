@@ -135,6 +135,28 @@ function ProtectedApp() {
           finalProgramType = 'SCALE';
         }
 
+        // Fallback 3: Check baseline.program_type (for GROW users)
+        if (!finalProgramType && baselineData?.program_type) {
+          const baselineProgram = baselineData.program_type.toUpperCase();
+          console.log('[App.loadData] Fallback 3: checking baseline.program_type:', baselineProgram);
+          if (baselineProgram.includes('GROW')) {
+            finalProgramType = 'GROW';
+            console.log('[App.loadData] Derived GROW from baseline.program_type');
+          } else if (baselineProgram.includes('EXEC')) {
+            finalProgramType = 'EXEC';
+            console.log('[App.loadData] Derived EXEC from baseline.program_type');
+          } else if (baselineProgram.includes('SCALE') || baselineProgram.includes('SLX')) {
+            finalProgramType = 'SCALE';
+            console.log('[App.loadData] Derived SCALE from baseline.program_type');
+          }
+        }
+
+        // Fallback 4: If user has baseline data but not welcome_survey_scale, likely GROW
+        if (!finalProgramType && baselineData && !welcomeSurveyScaleData) {
+          console.log('[App.loadData] Fallback 4: User has baseline but no welcome_survey_scale, defaulting to GROW');
+          finalProgramType = 'GROW';
+        }
+
         setProgramType(finalProgramType);
         setActionItems(actionItemsData);
         setReflection(reflectionData);

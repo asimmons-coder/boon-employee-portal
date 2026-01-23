@@ -97,6 +97,21 @@ export interface BaselineSurvey {
   comp_self_confidence_and_imposter_syndrome: number | null;
   comp_strategic_thinking: number | null;
   comp_time_management_and_productivity: number | null;
+  // 12 Focus area boolean fields (which areas user selected to work on)
+  focus_effective_communication?: boolean | string;
+  focus_persuasion_and_influence?: boolean | string;
+  focus_adaptability_and_resilience?: boolean | string;
+  focus_strategic_thinking?: boolean | string;
+  focus_emotional_intelligence?: boolean | string;
+  focus_building_relationships_at_work?: boolean | string;
+  focus_self_confidence_and_imposter_syndrome?: boolean | string;
+  focus_delegation_and_accountability?: boolean | string;
+  focus_giving_and_receiving_feedback?: boolean | string;
+  focus_effective_planning_and_execution?: boolean | string;
+  focus_change_management?: boolean | string;
+  focus_time_management_and_productivity?: boolean | string;
+  // Program type from survey submission
+  program_type?: string | null;
 }
 
 // Welcome survey for SCALE users

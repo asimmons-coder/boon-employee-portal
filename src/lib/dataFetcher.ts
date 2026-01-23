@@ -532,7 +532,7 @@ export async function fetchMatchSummary(employeeId: string, email?: string): Pro
     const { data: scaleByEmail, error: scaleEmailError } = await supabase
       .from('welcome_survey_scale')
       .select('match_summary, employee_id, email')
-      .eq('email', email.toLowerCase())
+      .ilike('email', email)
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -564,7 +564,7 @@ export async function fetchMatchSummary(employeeId: string, email?: string): Pro
     const { data: baselineByEmail, error: baselineEmailError } = await supabase
       .from('welcome_survey_baseline')
       .select('match_summary, employee_id, email')
-      .eq('email', email.toLowerCase())
+      .ilike('email', email)
       .order('created_at', { ascending: false })
       .limit(1);
 
