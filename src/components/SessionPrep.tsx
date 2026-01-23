@@ -14,7 +14,9 @@ interface SessionPrepProps {
 export default function SessionPrep({ sessions, actionItems, coachName, userEmail: _userEmail, onActionUpdate }: SessionPrepProps) {
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
-  const lastSession = completedSessions[0];
+
+  // Find most recent session with goals or plan (for showing relevant context)
+  const sessionWithGoals = completedSessions.find(s => s.goals || s.plan) || null;
 
   // Session prep intention state
   const [intention, setIntention] = useState('');
@@ -160,27 +162,39 @@ export default function SessionPrep({ sessions, actionItems, coachName, userEmai
 
         {/* Context Section */}
         <div className="mb-8 space-y-4">
-          {/* Current Goal - if exists */}
-          {lastSession?.goals && (
+          {/* Current Goal - from most recent session with goals */}
+          {sessionWithGoals?.goals && (
             <div className="bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-gray-100">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Current Goal</p>
-              <p className="text-sm text-gray-700">{lastSession.goals}</p>
+              <p className="text-sm text-gray-700">{sessionWithGoals.goals}</p>
             </div>
           )}
 
-          {/* Action Items - show all with checkboxes */}
-          {actionItems.length > 0 && (
+          {/* Action Items - from most recent session's plan field */}
+          {sessionWithGoals?.plan && (
             <div className="bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-gray-100">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                Action Items ({actionItems.filter(a => a.status === 'pending').length} open)
+                Action Items ({sessionWithGoals.plan.split('\n').filter(line => {
+                  const cleanText = line.trim().replace(/^[\s•\-\*\d\.:\)]+/, '').trim();
+                  return cleanText && cleanText.length >= 5;
+                }).length} open)
               </p>
               <div className="space-y-2">
-                {actionItems.slice(0, 5).map((action) => {
-                  const isCompleted = action.status === 'completed';
-                  const isUpdating = updatingItem === action.id;
+                {sessionWithGoals.plan.split('\n').filter(line => line.trim()).slice(0, 5).map((item, idx) => {
+                  const cleanText = item.trim().replace(/^[\s•\-\*\d\.:\)]+/, '').trim();
+                  if (!cleanText || cleanText.length < 5) return null;
+
+                  // Check if this item exists in actionItems and get its status
+                  const matchingAction = actionItems.find(ai =>
+                    ai.action_text.toLowerCase().includes(cleanText.toLowerCase().slice(0, 30)) ||
+                    cleanText.toLowerCase().includes(ai.action_text.toLowerCase().slice(0, 30))
+                  );
+                  const isCompleted = matchingAction?.status === 'completed';
+                  const isUpdating = matchingAction && updatingItem === matchingAction.id;
+
                   return (
                     <label
-                      key={action.id}
+                      key={idx}
                       className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-all ${
                         isCompleted
                           ? 'bg-green-50/50 text-gray-400'
@@ -190,19 +204,20 @@ export default function SessionPrep({ sessions, actionItems, coachName, userEmai
                       <input
                         type="checkbox"
                         checked={isCompleted}
-                        disabled={isUpdating}
-                        onChange={() => handleToggleAction(action.id, action.status)}
+                        disabled={!matchingAction || isUpdating}
+                        onChange={() => {
+                          if (matchingAction) {
+                            handleToggleAction(matchingAction.id, matchingAction.status);
+                          }
+                        }}
                         className="mt-0.5 w-4 h-4 rounded border-gray-300 text-boon-blue focus:ring-boon-blue"
                       />
                       <span className={`text-sm ${isCompleted ? 'line-through' : ''}`}>
-                        {action.action_text}
+                        {cleanText}
                       </span>
                     </label>
                   );
                 })}
-                {actionItems.length > 5 && (
-                  <p className="text-xs text-gray-400 pl-7">+{actionItems.length - 5} more</p>
-                )}
               </div>
             </div>
           )}
