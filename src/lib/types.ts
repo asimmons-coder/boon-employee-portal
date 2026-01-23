@@ -18,6 +18,7 @@ export interface Employee {
   // Actual column names in employee_manager table
   company_name: string | null;
   coaching_program: string | null;
+  company_id: string | null;  // Foreign key to companies table
 }
 
 export interface Session {

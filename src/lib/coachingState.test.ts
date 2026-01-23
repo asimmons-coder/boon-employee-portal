@@ -25,6 +25,7 @@ const createEmployee = (overrides: Partial<Employee> = {}): Employee => ({
   created_at: '2024-01-01T00:00:00Z',
   company_name: null,
   coaching_program: null,
+  company_id: null,
   ...overrides,
 });
 
