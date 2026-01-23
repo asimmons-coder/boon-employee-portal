@@ -156,9 +156,8 @@ function calculateScaleCheckpointStatus(
     : null;
 
   // Calculate current checkpoint number (next one to complete)
-  const currentCheckpointNumber = latestCheckpoint
-    ? latestCheckpoint.checkpoint_number + 1
-    : 1;
+  // This is simply the count of completed checkpoints + 1
+  const currentCheckpointNumber = checkpoints.length + 1;
 
   // Calculate sessions since last checkpoint
   const sessionsAtLastCheckpoint = latestCheckpoint
