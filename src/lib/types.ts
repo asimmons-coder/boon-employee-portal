@@ -244,7 +244,7 @@ export interface SlackConnectionStatus {
 export interface SlackNudge {
   id: string;
   employee_email: string;
-  nudge_type: 'action_reminder' | 'goal_checkin' | 'session_prep' | 'weekly_digest' | 'streak_celebration';
+  nudge_type: 'action_reminder' | 'goal_checkin' | 'session_prep' | 'weekly_digest' | 'daily_digest' | 'streak_celebration';
   reference_id: string | null;
   status: 'sent' | 'delivered' | 'responded' | 'dismissed' | 'failed';
   response: string | null;

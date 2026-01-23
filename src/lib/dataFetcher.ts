@@ -682,13 +682,18 @@ export async function updateSlackSettings(settings: {
 }
 
 /**
- * Fetch nudge history for the current user
+ * Fetch nudge history for the current user (last 30 days only)
  */
 export async function fetchNudgeHistory(email: string): Promise<SlackNudge[]> {
+  // Only fetch nudges from the last 30 days
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
   const { data, error } = await supabase
     .from('slack_nudges')
     .select('*')
     .ilike('employee_email', email)
+    .gte('sent_at', thirtyDaysAgo.toISOString())
     .order('sent_at', { ascending: false })
     .limit(20);
 

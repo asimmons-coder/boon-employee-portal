@@ -691,8 +691,8 @@ Deno.serve(async (req) => {
 });
 
 /**
- * Check if current time is within the user's preferred window
- * (within 1 hour of their preferred time)
+ * Check if current time matches the user's preferred hour
+ * (must be the exact hour they specified)
  */
 function isAppropriateTime(preferredTime: string, timezone: string): boolean {
   try {
@@ -708,8 +708,8 @@ function isAppropriateTime(preferredTime: string, timezone: string): boolean {
     const currentHour = parseInt(userTime, 10);
     const preferredHour = parseInt(preferredTime.split(':')[0], 10);
 
-    // Allow nudges within 1 hour of preferred time
-    return Math.abs(currentHour - preferredHour) <= 1;
+    // Only allow nudges at the exact preferred hour (prevents multiple nudges per day)
+    return currentHour === preferredHour;
   } catch {
     // Default to allowing if timezone parsing fails
     return true;

@@ -429,7 +429,7 @@ CREATE TABLE IF NOT EXISTS public.employee_slack_connections (
 CREATE TABLE IF NOT EXISTS public.slack_nudges (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_email TEXT NOT NULL,
-  nudge_type TEXT NOT NULL CHECK (nudge_type IN ('action_reminder', 'goal_checkin', 'session_prep', 'weekly_digest', 'streak_celebration')),
+  nudge_type TEXT NOT NULL CHECK (nudge_type IN ('action_reminder', 'goal_checkin', 'session_prep', 'weekly_digest', 'daily_digest', 'streak_celebration')),
   reference_id UUID,                   -- action_item_id or session_id
   reference_type TEXT,                 -- 'action_item' or 'session'
   message_ts TEXT,                     -- Slack message timestamp (for updates)
@@ -443,7 +443,7 @@ CREATE TABLE IF NOT EXISTS public.slack_nudges (
 -- Nudge templates (customizable per company)
 CREATE TABLE IF NOT EXISTS public.nudge_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nudge_type TEXT NOT NULL CHECK (nudge_type IN ('action_reminder', 'goal_checkin', 'session_prep', 'weekly_digest', 'streak_celebration')),
+  nudge_type TEXT NOT NULL CHECK (nudge_type IN ('action_reminder', 'goal_checkin', 'session_prep', 'weekly_digest', 'daily_digest', 'streak_celebration')),
   template_name TEXT,
   message_blocks JSONB NOT NULL,       -- Slack Block Kit JSON
   is_default BOOLEAN DEFAULT false,
