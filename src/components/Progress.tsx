@@ -479,7 +479,22 @@ export default function ProgressPage({
       );
     }
 
-    // GROW/EXEC pre-first-session: Show the existing anticipation state
+    // Build baseline competency data for pre-first-session display
+    const baselineCompetencyData = COMPETENCIES.map(comp => {
+      const baselineKey = `comp_${comp.key}` as keyof BaselineSurvey;
+      const baselineValue = baseline?.[baselineKey] as number | null;
+      return {
+        key: comp.key,
+        label: comp.label,
+        shortLabel: comp.shortLabel,
+        baseline: baselineValue ?? 0,
+      };
+    });
+
+    // Check if we have any baseline competency data
+    const hasBaselineCompetencies = baselineCompetencyData.some(c => c.baseline > 0);
+
+    // GROW/EXEC pre-first-session: Show baseline competencies if available
     return (
       <div className="space-y-8 animate-fade-in">
         <header className="text-center sm:text-left">
@@ -487,7 +502,7 @@ export default function ProgressPage({
           <p className="text-gray-500 mt-2 font-medium">Track your leadership growth over time.</p>
         </header>
 
-        {/* Anticipation State */}
+        {/* Hero Section */}
         <section className="bg-gradient-to-br from-purple-50 to-boon-lightBlue/20 rounded-[2.5rem] p-10 md:p-14 border border-purple-100 text-center">
           <div className="w-20 h-20 mx-auto mb-8 bg-purple-100 rounded-full flex items-center justify-center">
             <svg className="w-10 h-10 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -497,13 +512,70 @@ export default function ProgressPage({
           <h2 className="text-2xl font-extrabold text-boon-text mb-4">
             Your Leadership Profile
           </h2>
-          <p className="text-gray-600 text-lg max-w-lg mx-auto leading-relaxed mb-6">
-            Your leadership profile will emerge as you work with {coachFirstName}.
-          </p>
-          <p className="text-gray-500 text-sm max-w-md mx-auto">
-            After your first session, you'll see insights on your competencies, growth patterns, and wellbeing metrics here.
+          <p className="text-gray-600 text-lg max-w-lg mx-auto leading-relaxed">
+            {hasBaselineCompetencies
+              ? `Here's where you're starting. As you work with ${coachFirstName}, you'll see your growth across these competencies.`
+              : `Your leadership profile will emerge as you work with ${coachFirstName}.`
+            }
           </p>
         </section>
+
+        {/* Baseline Competencies Grid */}
+        {hasBaselineCompetencies && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-extrabold text-boon-text">Your Starting Point</h2>
+              <span className="text-xs text-gray-400">From your welcome survey</span>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {baselineCompetencyData.filter(c => c.baseline > 0).map(comp => (
+                <div
+                  key={comp.key}
+                  className="bg-white p-5 rounded-2xl border border-gray-100"
+                >
+                  <h3 className="font-bold text-boon-text text-sm leading-tight mb-4">{comp.label}</h3>
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-400 uppercase tracking-wide">Baseline</span>
+                      <span className="font-bold text-purple-600">{comp.baseline}/5</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-purple-400 rounded-full transition-all duration-500"
+                        style={{ width: `${(comp.baseline) * 20}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Wellbeing Baseline */}
+        {baseline && (baseline.satisfaction || baseline.productivity || baseline.work_life_balance || baseline.motivation) && (
+          <section className="bg-gray-50 rounded-[2rem] p-6 border border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-600">Wellbeing Baseline</h3>
+              <span className="text-[10px] text-gray-400">From welcome survey</span>
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+              {[
+                { key: 'satisfaction', label: 'Satisfaction', value: baseline.satisfaction },
+                { key: 'productivity', label: 'Productivity', value: baseline.productivity },
+                { key: 'work_life_balance', label: 'Balance', value: baseline.work_life_balance },
+                { key: 'motivation', label: 'Motivation', value: baseline.motivation },
+              ].map((metric) => (
+                <div key={metric.key} className="text-center">
+                  <p className="text-xl font-bold text-boon-text">
+                    {metric.value || '—'}<span className="text-sm text-gray-400">/5</span>
+                  </p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{metric.label}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* What to Expect */}
         <section className="bg-white rounded-[2rem] p-8 border border-gray-100">
