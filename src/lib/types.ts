@@ -280,6 +280,10 @@ export interface Checkpoint {
   nps_score: number | null;
   testimonial_consent: boolean;
   created_at: string;
+  // Session 6+ wellbeing data
+  wellbeing_satisfaction: number | null;
+  wellbeing_productivity: number | null;
+  wellbeing_balance: number | null;
 }
 
 // SCALE checkpoint tracking data

@@ -814,6 +814,10 @@ export async function fetchCheckpoints(email: string): Promise<Checkpoint[]> {
       nps_score: s.nps as number | null,
       testimonial_consent: s.open_to_testimonial as boolean || false,
       created_at: s.submitted_at as string || s.created_at as string,
+      // Session 6+ wellbeing data
+      wellbeing_satisfaction: s.wellbeing_satisfaction as number | null,
+      wellbeing_productivity: s.wellbeing_productivity as number | null,
+      wellbeing_balance: s.wellbeing_balance as number | null,
     };
   }) as Checkpoint[];
 }
@@ -872,6 +876,10 @@ export async function fetchLatestCheckpoint(email: string): Promise<Checkpoint |
     nps_score: s.nps,
     testimonial_consent: s.open_to_testimonial || false,
     created_at: s.submitted_at || s.created_at,
+    // Session 6+ wellbeing data
+    wellbeing_satisfaction: s.wellbeing_satisfaction as number | null,
+    wellbeing_productivity: s.wellbeing_productivity as number | null,
+    wellbeing_balance: s.wellbeing_balance as number | null,
   } as Checkpoint;
 }
 
@@ -1010,6 +1018,10 @@ export async function submitCheckpoint(
     nps_score: result.nps,
     testimonial_consent: result.open_to_testimonial || false,
     created_at: result.submitted_at || result.created_at,
+    // Session 6+ wellbeing data
+    wellbeing_satisfaction: data.wellbeingSatisfaction,
+    wellbeing_productivity: data.wellbeingProductivity,
+    wellbeing_balance: data.wellbeingBalance,
   };
 
   return { success: true, data: checkpoint };

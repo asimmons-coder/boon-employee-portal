@@ -97,8 +97,10 @@ export default function ProgressPage({
   onAddWin
 }: ProgressPageProps) {
   const [activeTab, setActiveTab] = useState<'competencies' | 'wellbeing'>('competencies');
-  // Reserved for future use - checkpoint expansion feature
-  void _checkpoints;
+  // Get latest checkpoint with wellbeing data (Session 6+)
+  const latestWellbeingCheckpoint = _checkpoints
+    .filter(cp => cp.wellbeing_satisfaction !== null || cp.wellbeing_productivity !== null || cp.wellbeing_balance !== null)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null;
   const [showAddWinModal, setShowAddWinModal] = useState(false);
   const [newWinText, setNewWinText] = useState('');
   const [isSubmittingWin, setIsSubmittingWin] = useState(false);
@@ -858,26 +860,71 @@ export default function ProgressPage({
           </div>
         </div>
 
-        {/* Your Starting Point - Baseline Metrics */}
+        {/* Wellbeing Progress - Baseline vs Current */}
         {welcomeSurveyScale && (welcomeSurveyScale.satisfaction || welcomeSurveyScale.productivity || welcomeSurveyScale.work_life_balance) && (
           <section className="bg-gray-50 rounded-[2rem] p-6 border border-gray-100">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-600">Your Starting Point</h3>
-              <span className="text-[10px] text-gray-400">From welcome survey · Check-in every 6 sessions</span>
+              <h3 className="text-sm font-bold text-gray-600">
+                {latestWellbeingCheckpoint ? 'Your Wellbeing Progress' : 'Your Starting Point'}
+              </h3>
+              <span className="text-[10px] text-gray-400">
+                {latestWellbeingCheckpoint
+                  ? `Updated Session ${latestWellbeingCheckpoint.checkpoint_number}`
+                  : 'From welcome survey · Check-in every 6 sessions'}
+              </span>
             </div>
             <div className="grid grid-cols-3 gap-4">
               {wellbeingMetrics.map((metric) => {
-                const vsBenchmark = calculateVsBenchmark(metric.value, metric.benchmark);
+                const baselineValue = metric.value;
+                const currentValue = latestWellbeingCheckpoint
+                  ? (metric.key === 'satisfaction' ? latestWellbeingCheckpoint.wellbeing_satisfaction
+                    : metric.key === 'productivity' ? latestWellbeingCheckpoint.wellbeing_productivity
+                    : latestWellbeingCheckpoint.wellbeing_balance)
+                  : null;
+                const hasUpdate = currentValue !== null;
+                const improvement = hasUpdate && baselineValue ? currentValue - baselineValue : null;
+
                 return (
                   <div key={metric.key} className="text-center">
-                    <p className="text-xl font-bold text-boon-text">
-                      {metric.value || '—'}<span className="text-sm text-gray-400">/10</span>
-                    </p>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{metric.label}</p>
-                    {vsBenchmark !== null && (
-                      <p className={`text-xs mt-1 ${vsBenchmark >= 0 ? 'text-green-600' : 'text-amber-600'}`}>
-                        {vsBenchmark >= 0 ? '+' : ''}{vsBenchmark}% vs avg
-                      </p>
+                    {hasUpdate ? (
+                      <>
+                        {/* Current score - prominent */}
+                        <p className="text-xl font-bold text-boon-text">
+                          {currentValue}<span className="text-sm text-gray-400">/10</span>
+                        </p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{metric.label}</p>
+                        {/* Show improvement from baseline */}
+                        {improvement !== null && improvement !== 0 && (
+                          <p className={`text-xs font-bold mt-1 ${improvement > 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                            {improvement > 0 ? '↑' : '↓'} {Math.abs(improvement)} from baseline
+                          </p>
+                        )}
+                        {improvement === 0 && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Same as baseline ({baselineValue})
+                          </p>
+                        )}
+                        {/* Baseline reference */}
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          Baseline: {baselineValue}/10
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        {/* Only baseline - original display */}
+                        <p className="text-xl font-bold text-boon-text">
+                          {baselineValue || '—'}<span className="text-sm text-gray-400">/10</span>
+                        </p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{metric.label}</p>
+                        {(() => {
+                          const vsBenchmark = calculateVsBenchmark(baselineValue, metric.benchmark);
+                          return vsBenchmark !== null ? (
+                            <p className={`text-xs mt-1 ${vsBenchmark >= 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                              {vsBenchmark >= 0 ? '+' : ''}{vsBenchmark}% vs avg
+                            </p>
+                          ) : null;
+                        })()}
+                      </>
                     )}
                   </div>
                 );
