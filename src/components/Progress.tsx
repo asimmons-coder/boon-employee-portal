@@ -523,10 +523,13 @@ export default function ProgressPage({
         {/* Baseline Competencies Grid */}
         {hasBaselineCompetencies && (
           <section>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-extrabold text-boon-text">Your Starting Point</h2>
               <span className="text-xs text-gray-400">From your welcome survey</span>
             </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Scores reflect where you are today — from Learning (1) to Mastering (5). Most people start at 2-3.
+            </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {baselineCompetencyData.filter(c => c.baseline > 0).map(comp => (
                 <div
@@ -561,18 +564,28 @@ export default function ProgressPage({
             </div>
             <div className="grid grid-cols-4 gap-4">
               {[
-                { key: 'satisfaction', label: 'Satisfaction', value: baseline.satisfaction },
-                { key: 'productivity', label: 'Productivity', value: baseline.productivity },
-                { key: 'work_life_balance', label: 'Balance', value: baseline.work_life_balance },
-                { key: 'motivation', label: 'Motivation', value: baseline.motivation },
-              ].map((metric) => (
-                <div key={metric.key} className="text-center">
-                  <p className="text-xl font-bold text-boon-text">
-                    {metric.value || '—'}<span className="text-sm text-gray-400">/5</span>
-                  </p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{metric.label}</p>
-                </div>
-              ))}
+                { key: 'satisfaction', label: 'Satisfaction', value: baseline.satisfaction, benchmark: BOON_BENCHMARKS.satisfaction },
+                { key: 'productivity', label: 'Productivity', value: baseline.productivity, benchmark: BOON_BENCHMARKS.productivity },
+                { key: 'work_life_balance', label: 'Balance', value: baseline.work_life_balance, benchmark: BOON_BENCHMARKS.work_life_balance },
+                { key: 'motivation', label: 'Motivation', value: baseline.motivation, benchmark: null },
+              ].map((metric) => {
+                const vsBenchmark = metric.benchmark && metric.value
+                  ? Math.round(((metric.value - metric.benchmark) / metric.benchmark) * 100)
+                  : null;
+                return (
+                  <div key={metric.key} className="text-center">
+                    <p className="text-xl font-bold text-boon-text">
+                      {metric.value || '—'}<span className="text-sm text-gray-400">/10</span>
+                    </p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{metric.label}</p>
+                    {vsBenchmark !== null && (
+                      <p className={`text-xs font-bold mt-1 ${vsBenchmark >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        {vsBenchmark >= 0 ? '+' : ''}{vsBenchmark}% vs avg
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
