@@ -882,7 +882,9 @@ export default function ProgressPage({
                     : latestWellbeingCheckpoint.wellbeing_balance)
                   : null;
                 const hasUpdate = currentValue !== null;
-                const improvement = hasUpdate && baselineValue ? currentValue - baselineValue : null;
+                const improvementPct = hasUpdate && baselineValue
+                  ? Math.round(((currentValue - baselineValue) / baselineValue) * 100)
+                  : null;
 
                 return (
                   <div key={metric.key} className="text-center">
@@ -893,13 +895,13 @@ export default function ProgressPage({
                           {currentValue}<span className="text-sm text-gray-400">/10</span>
                         </p>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{metric.label}</p>
-                        {/* Show improvement from baseline */}
-                        {improvement !== null && improvement !== 0 && (
-                          <p className={`text-xs font-bold mt-1 ${improvement > 0 ? 'text-green-600' : 'text-amber-600'}`}>
-                            {improvement > 0 ? '↑' : '↓'} {Math.abs(improvement)} from baseline
+                        {/* Show improvement from baseline as percentage */}
+                        {improvementPct !== null && improvementPct !== 0 && (
+                          <p className={`text-xs font-bold mt-1 ${improvementPct > 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                            {improvementPct > 0 ? '↑' : '↓'} {Math.abs(improvementPct)}% from baseline
                           </p>
                         )}
-                        {improvement === 0 && (
+                        {improvementPct === 0 && (
                           <p className="text-xs text-gray-400 mt-1">
                             Same as baseline ({baselineValue})
                           </p>
