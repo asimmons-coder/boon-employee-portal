@@ -150,12 +150,20 @@ export async function fetchProgressData(email: string): Promise<SurveyResponse[]
  * Contains both wellbeing metrics and competency baselines
  */
 export async function fetchBaseline(email: string): Promise<BaselineSurvey | null> {
+  console.log('[fetchBaseline] Looking up for email:', email);
+
   const { data, error } = await supabase
     .from('welcome_survey_baseline')
     .select('*')
     .ilike('email', email)
     .order('id', { ascending: false })
     .limit(1);
+
+  console.log('[fetchBaseline] Result:', {
+    found: data?.length || 0,
+    error: error?.message,
+    firstRecord: data?.[0] ? { id: data[0].id, email: data[0].email, program_type: data[0].program_type } : null
+  });
 
   if (error) {
     console.error('Error fetching baseline:', error);
