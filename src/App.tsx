@@ -516,6 +516,9 @@ function ProtectedApp() {
             companyName={employee?.company_name || null}
             coachingProgram={employee?.coaching_program || null}
             companyId={employee?.company_id || null}
+            baselineSatisfaction={welcomeSurveyScale?.satisfaction ?? null}
+            baselineProductivity={welcomeSurveyScale?.productivity ?? null}
+            baselineWorkLifeBalance={welcomeSurveyScale?.work_life_balance ?? null}
             onComplete={handleCheckpointComplete}
             onClose={() => setShowCheckpointFlow(false)}
           />
