@@ -376,12 +376,12 @@ export default function SurveyModal({
         <span>{lowLabel}</span>
         <span>{highLabel}</span>
       </div>
-      <div className="flex gap-2 justify-center flex-wrap">
+      <div className="flex gap-1.5 justify-center">
         {Array.from({ length: max - min + 1 }, (_, i) => min + i).map(n => (
           <button
             key={n}
             onClick={() => onChange(n)}
-            className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
+            className={`w-9 h-9 rounded-lg font-bold text-sm transition-all ${
               value === n
                 ? 'bg-boon-amber text-white shadow-lg scale-110'
                 : 'bg-gray-100 text-gray-600 hover:bg-boon-amberLight'
