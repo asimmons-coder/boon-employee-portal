@@ -1507,7 +1507,7 @@ export async function fetchProgramInfo(programId: string | null): Promise<Progra
     return {
       program_title: byName.name || programId,
       program_type: byName.program_type || programType,
-      sessions_per_employee: byName.sessions_per_employee || (programType === 'GROW' ? 6 : 36),
+      sessions_per_employee: byName.sessions_per_employee || (programType === 'GROW' ? 12 : 36),
       program_start_date: null,
       program_end_date: byName.program_end_date || null,
     };

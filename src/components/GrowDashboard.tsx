@@ -63,19 +63,13 @@ export default function GrowDashboard({
   const sessionsWithCoach = completedSessions.filter(s => s.coach_name === coachName);
   const sessionCountWithCoach = sessionsWithCoach.length;
 
-  // Helper: Get coach photo URL or generate initials placeholder
-  const getCoachPhotoUrl = (size: number = 100) => {
+  // Helper: Get coach photo URL or generate placeholder
+  const getCoachPhotoUrl = () => {
     if (coachProfile?.photo_url) {
       return coachProfile.photo_url;
     }
-    const initials = coachName
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect fill="%23466FF6" width="${size}" height="${size}"/><text x="50%" y="50%" dy=".35em" fill="white" font-family="system-ui" font-size="${size * 0.4}" font-weight="600" text-anchor="middle">${initials}</text></svg>`;
-    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    // Use picsum.photos as placeholder (same as SCALE coach page)
+    return `https://picsum.photos/seed/${coachName.replace(/\s/g, '')}/200/200`;
   };
 
   // Action items for "Things You're Working On"
@@ -327,7 +321,7 @@ export default function GrowDashboard({
 
           <div className="flex items-center gap-4">
             <img
-              src={getCoachPhotoUrl(100)}
+              src={getCoachPhotoUrl()}
               alt={coachName}
               className="w-16 h-16 rounded-xl object-cover ring-2 ring-boon-bg shadow-sm"
             />
@@ -480,7 +474,7 @@ export default function GrowDashboard({
           </p>
           <div className="mt-6 flex items-center gap-3 relative z-10">
             <img
-              src={getCoachPhotoUrl(100)}
+              src={getCoachPhotoUrl()}
               alt="Coach"
               className="w-9 h-9 rounded-full object-cover ring-2 ring-boon-bg"
             />

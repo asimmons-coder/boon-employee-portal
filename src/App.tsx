@@ -490,7 +490,7 @@ function ProtectedApp() {
       case 'sessions':
         return <SessionsPage sessions={sessions} coachingState={coachingState} />;
       case 'progress':
-        return <ProgressPage progress={progress} baseline={baseline} welcomeSurveyScale={welcomeSurveyScale} competencyScores={competencyScores} sessions={sessions} actionItems={effectiveActionItems} programType={programType} coachingState={coachingState} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} coachingWins={coachingWins} onAddWin={handleAddWin} />;
+        return <ProgressPage progress={progress} baseline={baseline} welcomeSurveyScale={welcomeSurveyScale} competencyScores={competencyScores} sessions={sessions} actionItems={effectiveActionItems} programType={programType} coachingState={coachingState} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} coachingWins={coachingWins} onAddWin={handleAddWin} onNavigate={setView} />;
       case 'practice':
         const practiceCoachName = sessions.length > 0 ? sessions[0].coach_name : "Your Coach";
         return <Practice sessions={sessions} coachName={practiceCoachName} userEmail={employee?.company_email || ''} coachingState={coachingState} competencyScores={competencyScores} />;
