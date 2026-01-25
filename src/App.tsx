@@ -164,8 +164,8 @@ function ProtectedApp() {
         setCoachingWins(winsData);
 
         // Check for pending survey after data loads
-        // Pass program type to help detect GROW vs SCALE surveys
-        const pending = await fetchPendingSurvey(employee.company_email, programTypeData);
+        // Pass program type and loaded sessions to help detect GROW vs SCALE surveys
+        const pending = await fetchPendingSurvey(employee.company_email, finalProgramType, sessionsData);
         if (pending) {
           setPendingSurvey(pending);
           setShowSurveyModal(true);
