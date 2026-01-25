@@ -3,7 +3,7 @@ import type { Employee, Session, ActionItem, View, Coach } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import type { ProgramInfo, GrowFocusArea } from '../lib/dataFetcher';
 import { supabase } from '../lib/supabase';
-import { fetchCoachByName, fetchProgramInfo, fetchGrowFocusAreas } from '../lib/dataFetcher';
+import { fetchCoachByName, fetchProgramInfo, fetchGrowFocusAreas, parseCoachSpecialties } from '../lib/dataFetcher';
 import ProgramProgressCard from './ProgramProgressCard';
 import CompetencyProgressCard from './CompetencyProgressCard';
 
@@ -333,18 +333,42 @@ export default function GrowDashboard({
             />
             <div className="flex-1">
               <h3 className="text-lg font-bold text-boon-text">{coachName}</h3>
-              <p className="text-xs text-boon-blue font-bold uppercase tracking-widest mt-0.5">Executive Coach</p>
+              {coachProfile?.headline ? (
+                <p className="text-xs text-boon-blue font-bold uppercase tracking-widest mt-0.5">
+                  {coachProfile.headline}
+                </p>
+              ) : (
+                <p className="text-xs text-boon-blue font-bold uppercase tracking-widest mt-0.5">Executive Coach</p>
+              )}
               <p className="text-sm text-gray-500 mt-1">
                 {sessionCountWithCoach} {sessionCountWithCoach === 1 ? 'session' : 'sessions'} together
               </p>
             </div>
           </div>
 
-          {coachProfile?.bio && (
-            <p className="text-sm text-gray-600 mt-4 leading-relaxed line-clamp-2">
-              {coachProfile.bio}
-            </p>
-          )}
+          {/* Coach bio - with fallback */}
+          <p className="text-sm text-gray-600 mt-4 leading-relaxed line-clamp-3">
+            {coachProfile?.bio || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential through personalized coaching.`}
+          </p>
+
+          {/* Coach specialties */}
+          {(() => {
+            const specialties = coachProfile?.special_services
+              ? parseCoachSpecialties(coachProfile.special_services, 4)
+              : ['Leadership', 'Communication', 'Resilience'];
+            return (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {specialties.map((specialty, i) => (
+                  <span
+                    key={i}
+                    className="px-2.5 py-1 text-xs font-bold text-boon-blue bg-boon-lightBlue/30 rounded-full"
+                  >
+                    {specialty}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
         </section>
       </div>
 

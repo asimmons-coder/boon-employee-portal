@@ -1267,6 +1267,10 @@ export default function ProgressPage({
     ? Math.round(competenciesWithImprovement.reduce((sum, c) => sum + (c.improvement || 0), 0) / competenciesWithImprovement.length)
     : null;
 
+  // Check if there are actual "current" competency scores (from midpoint/end assessment)
+  // If not, we should only show baseline data and not misleading "Current" scores
+  const hasActualCurrentScores = competencyScores.length > 0;
+
   // Wellbeing metrics (keys match actual baseline column names)
   const wellbeingMetrics = [
     { key: 'satisfaction', label: 'Work Satisfaction', icon: '😊', color: '#4A90A4' },
@@ -1461,22 +1465,31 @@ export default function ProgressPage({
                       </div>
                     </div>
 
-                    {/* Current */}
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-400 uppercase tracking-wide">Current</span>
-                        <span className="font-bold text-purple-600">{comp.current || '—'}/5</span>
+                    {/* Current - only show if we have actual assessment data */}
+                    {hasActualCurrentScores ? (
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-400 uppercase tracking-wide">Current</span>
+                          <span className="font-bold text-purple-600">{comp.current || '—'}/5</span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                            style={{ width: `${(comp.current || 0) * 20}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-purple-500 rounded-full transition-all duration-500"
-                          style={{ width: `${(comp.current || 0) * 20}%` }}
-                        />
-                      </div>
-                    </div>
+                    ) : (
+                      /* Show "After Midpoint" placeholder when no current data */
+                      isGrowOrExec && !isCompleted && (
+                        <p className="text-xs text-gray-400 italic">
+                          Updated after midpoint assessment
+                        </p>
+                      )
+                    )}
 
-                    {/* Improvement indicator */}
-                    {comp.improvement !== null && (
+                    {/* Improvement indicator - only show if we have actual current scores */}
+                    {hasActualCurrentScores && comp.improvement !== null && (
                       <div className={`text-xs font-bold text-right ${comp.improvement >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                         {comp.improvement > 0 ? '↑' : comp.improvement < 0 ? '↓' : '→'} {Math.abs(comp.improvement)}%
                       </div>
@@ -1530,28 +1543,35 @@ export default function ProgressPage({
                       dataKey="baseline"
                       stroke="#9ca3af"
                       fill="#9ca3af"
-                      fillOpacity={0.2}
+                      fillOpacity={0.3}
                       strokeWidth={2}
                     />
-                    <Radar
-                      name="Current"
-                      dataKey="current"
-                      stroke="#8B5CF6"
-                      fill="#8B5CF6"
-                      fillOpacity={0.4}
-                      strokeWidth={2}
-                    />
-                    <Legend
-                      wrapperStyle={{ paddingTop: 20 }}
-                      formatter={(value) => (
-                        <span className="text-sm font-semibold text-gray-600">{value}</span>
-                      )}
-                    />
+                    {/* Only show Current layer if we have actual assessment data */}
+                    {hasActualCurrentScores && (
+                      <Radar
+                        name="Current"
+                        dataKey="current"
+                        stroke="#8B5CF6"
+                        fill="#8B5CF6"
+                        fillOpacity={0.4}
+                        strokeWidth={2}
+                      />
+                    )}
+                    {hasActualCurrentScores && (
+                      <Legend
+                        wrapperStyle={{ paddingTop: 20 }}
+                        formatter={(value) => (
+                          <span className="text-sm font-semibold text-gray-600">{value}</span>
+                        )}
+                      />
+                    )}
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
               <p className="text-center text-sm text-gray-500 mt-4">
-                The purple area shows your current competency levels compared to your baseline (gray).
+                {hasActualCurrentScores
+                  ? 'The purple area shows your current competency levels compared to your baseline (gray).'
+                  : 'Your baseline competency profile. Current levels will appear after your midpoint assessment.'}
               </p>
             </section>
           )}
@@ -1657,6 +1677,104 @@ export default function ProgressPage({
         </div>
       )}
 
+      {/* Session History - Show for GROW/Exec with completed sessions */}
+      {isGrowOrExec && completedSessions.length > 0 && !isCompleted && (
+        <section className="bg-white p-8 rounded-[2rem] border border-gray-100">
+          <h2 className="text-lg font-extrabold text-boon-text mb-6">Session History</h2>
+          <div className="space-y-4">
+            {completedSessions.slice().reverse().map((session, idx) => {
+              const sessionNum = idx + 1;
+              const sessionDate = new Date(session.session_date);
+              return (
+                <div key={session.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-boon-text">Session {sessionNum}</p>
+                    <p className="text-sm text-gray-500">
+                      {sessionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {session.coach_name && ` with ${session.coach_name.split(' ')[0]}`}
+                    </p>
+                  </div>
+                  {session.plan && (
+                    <div className="hidden sm:block max-w-[200px]">
+                      <p className="text-xs text-gray-400 italic truncate" title={session.plan}>
+                        {session.plan}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {/* Upcoming session indicator */}
+            {sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled') && (
+              <div className="flex items-center gap-4 p-4 bg-boon-lightBlue/20 rounded-xl border-2 border-dashed border-boon-blue/30">
+                <div className="w-10 h-10 bg-boon-blue ring-4 ring-boon-blue/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-boon-text">Session {completedSessions.length + 1}</p>
+                  <p className="text-sm text-boon-blue">
+                    {new Date(sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled')!.session_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    <span className="text-gray-400 ml-1">(upcoming)</span>
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Your Wins - Show for GROW/Exec */}
+      {isGrowOrExec && !isCompleted && (
+        <section className="bg-white rounded-[2rem] p-8 border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-extrabold text-boon-text">Your Wins</h2>
+            {onAddWin && (
+              <button
+                onClick={() => setShowAddWinModal(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-boon-blue hover:bg-boon-lightBlue/30 rounded-xl transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add a win
+              </button>
+            )}
+          </div>
+
+          {coachingWins.length > 0 ? (
+            <div className="space-y-4">
+              {coachingWins.map((win) => (
+                <div key={win.id} className="p-5 bg-gradient-to-br from-amber-50 to-orange-50/30 rounded-2xl border border-amber-100/50">
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">🏆</span>
+                    <div className="flex-1">
+                      <p className="text-gray-800 leading-relaxed">"{win.win_text}"</p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        {win.session_number && `Session ${win.session_number} · `}
+                        {new Date(win.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">🏆</span>
+              </div>
+              <p className="text-gray-600 font-medium mb-2">No wins yet—celebrate your first!</p>
+              <p className="text-sm text-gray-400">Track breakthroughs and accomplishments here.</p>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Insights Section - Reframed for completed users */}
       <section className="bg-gradient-to-br from-purple-50 to-boon-lightBlue/20 p-8 rounded-[2rem] border border-purple-100">
         <h2 className="text-lg font-extrabold text-boon-text mb-6">Insights</h2>
@@ -1695,7 +1813,11 @@ export default function ProgressPage({
               title: 'Growth',
               desc: competencyScores.length > 0
                 ? `You have ${competencyScores.filter(c => c.score >= 4).length} competencies at level 4 or above.`
-                : 'Your growth insights will appear as you complete assessments.'
+                : isGrowOrExec && completedSessions.length > 0
+                  ? `${completedSessions.length} session${completedSessions.length > 1 ? 's' : ''} completed. Updated scores after your midpoint check-in.`
+                  : baseline
+                    ? 'Building on your baseline. Growth scores after midpoint assessment.'
+                    : 'Your growth insights will appear as you complete assessments.'
             },
             {
               icon: '🎯',
@@ -1705,16 +1827,26 @@ export default function ProgressPage({
                     const lowest = competencyData.filter(c => c.current > 0).sort((a, b) => a.current - b.current)[0];
                     return lowest ? `Consider focusing on ${lowest.label} for development.` : 'Great balance across competencies!';
                   })()
-                : 'Focus areas will be identified after your baseline assessment.'
+                : isGrowOrExec && baseline
+                  ? (() => {
+                      // Find lowest baseline scores as focus areas
+                      const lowestBaseline = competencyData.filter(c => c.baseline > 0).sort((a, b) => a.baseline - b.baseline)[0];
+                      return lowestBaseline
+                        ? `Working on ${lowestBaseline.label} based on your baseline.`
+                        : 'Focus areas set during your coaching sessions.';
+                    })()
+                  : 'Focus areas will be identified after your baseline assessment.'
             },
             {
               icon: '💡',
               title: 'Next Step',
               desc: completedSessions.length === 0
                 ? 'Book your first coaching session to start your journey.'
-                : completedSessions.length < 3
+                : isGrowOrExec && completedSessions.length > 0
                   ? 'Continue building momentum with regular coaching sessions.'
-                  : 'Keep up the great work! Consider setting stretch goals.'
+                  : completedSessions.length < 3
+                    ? 'Continue building momentum with regular coaching sessions.'
+                    : 'Keep up the great work! Consider setting stretch goals.'
             }
           ]).map((card, i) => (
             <div
