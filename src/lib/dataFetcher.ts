@@ -1068,8 +1068,20 @@ export async function fetchCoreCompetencies(): Promise<CoreCompetency[]> {
 // Program-specific milestone arrays
 // SCALE: feedback at sessions 1, 3, 6, 12, 18, 24, 30, 36
 const SCALE_MILESTONES = [1, 3, 6, 12, 18, 24, 30, 36];
-// GROW: feedback at sessions 1, 6 (midpoint), 12 (end - handled separately)
-const GROW_MILESTONES = [1, 6];
+// GROW: feedback at sessions 1, midpoint (dynamically calculated), end (handled separately)
+
+/**
+ * Calculate GROW milestones based on total sessions
+ * Midpoint = Math.floor(totalSessions / 2)
+ * e.g., 8 sessions → midpoint at 4, 12 sessions → midpoint at 6
+ */
+function getGrowMilestones(totalSessions: number): { milestones: number[]; midpoint: number } {
+  const midpoint = Math.floor(totalSessions / 2);
+  return {
+    milestones: [1, midpoint],
+    midpoint,
+  };
+}
 
 /**
  * Check for pending survey after login
@@ -1094,7 +1106,27 @@ export async function fetchPendingSurvey(email: string, programType?: string | n
   // Determine program type first
   const normalizedProgram = programType?.toUpperCase() || '';
   const isGrow = normalizedProgram === 'GROW' || normalizedProgram.startsWith('GROW');
-  const milestones = isGrow ? GROW_MILESTONES : SCALE_MILESTONES;
+
+  // For GROW programs, fetch actual total sessions from program enrollment
+  let sessionsPerEmployee = isGrow ? 12 : 36; // defaults
+  let growMidpoint = 6; // default midpoint for 12 sessions
+
+  if (isGrow) {
+    const { data: enrollment } = await supabase
+      .from('program_enrollments')
+      .select('sessions_per_employee')
+      .ilike('employee_email', email)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (enrollment && enrollment.length > 0 && enrollment[0].sessions_per_employee) {
+      sessionsPerEmployee = enrollment[0].sessions_per_employee;
+    }
+    const growConfig = getGrowMilestones(sessionsPerEmployee);
+    growMidpoint = growConfig.midpoint;
+  }
+
+  const milestones = isGrow ? getGrowMilestones(sessionsPerEmployee).milestones : SCALE_MILESTONES;
 
   // Get completed sessions count for end-of-program detection
   const { data: completedCount } = await supabase
@@ -1105,10 +1137,7 @@ export async function fetchPendingSurvey(email: string, programType?: string | n
 
   const totalCompleted = completedCount?.length || 0;
 
-  // Check for end-of-program survey first
-  // Default sessions_per_employee is 12 for GROW, 36 for SCALE
-  const sessionsPerEmployee = isGrow ? 12 : 36;
-
+  // Check for end-of-program survey first (sessionsPerEmployee already calculated above)
   if (totalCompleted >= sessionsPerEmployee) {
     // Check if they've already submitted an end survey
     const { data: existingEndSurvey } = await supabase
@@ -1142,7 +1171,12 @@ export async function fetchPendingSurvey(email: string, programType?: string | n
 
   // Get completed sessions at survey milestones without matching survey
   // Order by ascending (oldest first) so users complete surveys in order
-  console.log('[fetchPendingSurvey] Checking milestones:', { milestones, isGrow });
+  console.log('[fetchPendingSurvey] Checking milestones:', {
+    milestones,
+    isGrow,
+    sessionsPerEmployee,
+    growMidpoint: isGrow ? growMidpoint : 'N/A',
+  });
 
   const { data: sessions, error: sessionsError } = await supabase
     .from('session_tracking')
@@ -1176,8 +1210,9 @@ export async function fetchPendingSurvey(email: string, programType?: string | n
 
     if (!existingSurvey || existingSurvey.length === 0) {
       // Determine survey type based on program and session number
+      // For GROW, midpoint is dynamically calculated (e.g., 4 for 8 sessions, 6 for 12 sessions)
       let surveyType: 'scale_feedback' | 'grow_midpoint' = 'scale_feedback';
-      if (isGrow && session.appointment_number === 6) {
+      if (isGrow && session.appointment_number === growMidpoint) {
         surveyType = 'grow_midpoint';
       }
 
