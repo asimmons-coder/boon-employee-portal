@@ -21,17 +21,18 @@ ADD CONSTRAINT survey_submissions_survey_type_check
 CHECK (survey_type IN ('scale_feedback', 'scale_end', 'grow_baseline', 'grow_midpoint', 'grow_end'));
 
 -- Update the pending_surveys view with proper GROW defaults
--- Note: Uses 'email' column from session_tracking (adjust if your column is named differently)
+-- session_tracking joins to employee_manager via employee_id to get email
 CREATE OR REPLACE VIEW pending_surveys AS
 WITH employee_session_counts AS (
-  -- Count completed sessions per employee
+  -- Count completed sessions per employee (join to get email)
   SELECT
-    email as employee_email,
-    employee_id,
+    em.company_email as employee_email,
+    st.employee_id,
     COUNT(*) as completed_sessions
-  FROM session_tracking
-  WHERE status = 'Completed'
-  GROUP BY email, employee_id
+  FROM session_tracking st
+  JOIN employee_manager em ON st.employee_id = em.id
+  WHERE st.status = 'Completed'
+  GROUP BY em.company_email, st.employee_id
 ),
 program_info AS (
   -- Get program config via employee_manager -> programs join
@@ -68,7 +69,7 @@ program_info AS (
 milestone_surveys AS (
   SELECT
     st.id as session_id,
-    st.email as email,
+    pi.company_email as email,
     st.employee_id,
     st.session_date,
     st.appointment_number as session_number,
@@ -86,12 +87,12 @@ milestone_surveys AS (
     END as suggested_survey_type,
     'milestone' as survey_trigger
   FROM session_tracking st
-  -- Join on email for more reliable matching (in case employee_id doesn't match)
-  JOIN program_info pi ON lower(st.email) = lower(pi.company_email)
+  -- Join to program_info via employee_id
+  JOIN program_info pi ON st.employee_id = pi.employee_id
   LEFT JOIN employee_session_counts esc ON st.employee_id = esc.employee_id
   -- Check for existing survey by email and session pattern in outcomes
   LEFT JOIN survey_submissions ss ON (
-    lower(ss.email) = lower(st.email)
+    lower(ss.email) = lower(pi.company_email)
     AND (
       ss.session_id = st.id
       OR ss.outcomes ILIKE '%Session ' || st.appointment_number::text || '%'
