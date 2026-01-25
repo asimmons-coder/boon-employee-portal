@@ -402,7 +402,7 @@ export default function SurveyModal({
         <span>{lowLabel}</span>
         <span>{highLabel}</span>
       </div>
-      <div className="flex gap-1 justify-center">
+      <div className="flex gap-1.5 justify-center">
         {Array.from({ length: max - min + 1 }, (_, i) => min + i).map(n => (
           <button
             key={n}
