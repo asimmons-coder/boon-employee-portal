@@ -192,9 +192,56 @@ export default function GrowDashboard({
       />
 
       {/* ═══════════════════════════════════════════════════════════════════
-          COMPETENCY FOCUS CARD - Full width (GROW-specific)
+          FOCUS AREAS / WHERE WE LEFT OFF - Depends on session completion
           ═══════════════════════════════════════════════════════════════════ */}
-      <CompetencyProgressCard focusAreas={focusAreas} />
+      {completedSessions.length === 0 ? (
+        // Pre-first session: Show baseline focus areas
+        <CompetencyProgressCard focusAreas={focusAreas} />
+      ) : (
+        // Post-first session: Show where we left off (goals + action items)
+        <section className="bg-gradient-to-br from-boon-amberLight/50 to-white rounded-[2rem] p-8 border border-boon-amber/20">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-boon-amber/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-boon-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Where We Left Off</h2>
+          </div>
+
+          {/* Current Goal from last session */}
+          {lastSession?.plan && (
+            <div className="mb-6 p-5 bg-white/60 rounded-xl border border-boon-amber/10">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Current Goal</p>
+              <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-lg text-boon-text leading-relaxed">
+                {lastSession.plan}
+              </p>
+            </div>
+          )}
+
+          {/* Action Items */}
+          {pendingActions.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Action Items</p>
+              {pendingActions.map((action) => (
+                <div
+                  key={action.id}
+                  className="p-4 bg-white/60 rounded-xl border border-boon-amber/10"
+                >
+                  <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-gray-700 leading-relaxed">{action.action_text}</p>
+                  <span className="text-xs text-gray-400 mt-2 block">
+                    From {new Date(action.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : !lastSession?.plan && (
+            <p className="text-gray-500 text-sm italic">
+              Your goals and action items from coaching sessions will appear here.
+            </p>
+          )}
+        </section>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════════
           YOUR NEXT SESSION - Same as SCALE but in two-column layout
@@ -368,9 +415,10 @@ export default function GrowDashboard({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          THINGS YOU'RE WORKING ON - Action items
+          THINGS YOU'RE WORKING ON - Action items (only show if no sessions completed)
+          Note: After first session, action items appear in "Where We Left Off" section
           ═══════════════════════════════════════════════════════════════════ */}
-      {pendingActions.length > 0 && (
+      {completedSessions.length === 0 && pendingActions.length > 0 && (
         <section className="bg-gradient-to-br from-boon-amberLight/30 to-white rounded-[2rem] p-8 border border-boon-amber/20">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-boon-amber/20 flex items-center justify-center">

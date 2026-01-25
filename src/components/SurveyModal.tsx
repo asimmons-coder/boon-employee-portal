@@ -112,6 +112,7 @@ export default function SurveyModal({
   const getTotalSteps = () => {
     switch (surveyType) {
       case 'scale_feedback':
+      case 'grow_midpoint': // Midpoint uses same format as regular feedback
         return 4; // satisfaction → qualities → booked → nps/feedback
       case 'scale_end':
         return 5; // + outcomes/testimonial
@@ -155,7 +156,7 @@ export default function SurveyModal({
 
   // Can proceed to next step?
   const canProceed = () => {
-    if (surveyType === 'scale_feedback' || surveyType === 'scale_end') {
+    if (surveyType === 'scale_feedback' || surveyType === 'scale_end' || surveyType === 'grow_midpoint') {
       switch (currentStep) {
         case 1:
           return coachSatisfaction !== null;
@@ -205,7 +206,7 @@ export default function SurveyModal({
     setError(null);
 
     try {
-      if (surveyType === 'scale_feedback' || surveyType === 'scale_end') {
+      if (surveyType === 'scale_feedback' || surveyType === 'scale_end' || surveyType === 'grow_midpoint') {
         const result = await submitScaleFeedbackSurvey(
           userEmail,
           sessionId!,
@@ -742,6 +743,8 @@ export default function SurveyModal({
     switch (surveyType) {
       case 'scale_feedback':
         return `Session ${sessionNumber} Feedback`;
+      case 'grow_midpoint':
+        return 'Midpoint Check-In';
       case 'scale_end':
         return 'Final Program Feedback';
       case 'grow_baseline':
@@ -804,7 +807,7 @@ export default function SurveyModal({
             </div>
           )}
 
-          {(surveyType === 'scale_feedback' || surveyType === 'scale_end') && renderScaleSurveyStep()}
+          {(surveyType === 'scale_feedback' || surveyType === 'scale_end' || surveyType === 'grow_midpoint') && renderScaleSurveyStep()}
           {surveyType === 'grow_baseline' && renderGrowBaselineStep()}
           {surveyType === 'grow_end' && renderGrowEndStep()}
         </div>

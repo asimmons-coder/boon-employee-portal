@@ -1068,8 +1068,8 @@ export async function fetchCoreCompetencies(): Promise<CoreCompetency[]> {
 // Program-specific milestone arrays
 // SCALE: feedback at sessions 1, 3, 6, 12, 18, 24, 30, 36
 const SCALE_MILESTONES = [1, 3, 6, 12, 18, 24, 30, 36];
-// GROW: feedback after every session (12 sessions total)
-const GROW_MILESTONES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+// GROW: feedback at sessions 1, 6 (midpoint), 12 (end - handled separately)
+const GROW_MILESTONES = [1, 6];
 
 /**
  * Check for pending survey after login
@@ -1175,14 +1175,18 @@ export async function fetchPendingSurvey(email: string, programType?: string | n
     console.log('[fetchPendingSurvey] Existing survey check:', { existingSurvey });
 
     if (!existingSurvey || existingSurvey.length === 0) {
-      // All milestone surveys use scale_feedback for now
-      // (GROW and SCALE use same questions for regular feedback)
+      // Determine survey type based on program and session number
+      let surveyType: 'scale_feedback' | 'grow_midpoint' = 'scale_feedback';
+      if (isGrow && session.appointment_number === 6) {
+        surveyType = 'grow_midpoint';
+      }
+
       const pending = {
         session_id: session.id,
         session_number: session.appointment_number,
         session_date: session.session_date,
         coach_name: session.coach_name || 'Your Coach',
-        survey_type: 'scale_feedback' as const,
+        survey_type: surveyType,
       };
       console.log('[fetchPendingSurvey] Found pending survey:', pending);
       return pending;
@@ -1242,7 +1246,7 @@ export async function submitScaleFeedbackSurvey(
     outcomes?: string;
     open_to_testimonial?: boolean;
   },
-  surveyType: 'scale_feedback' | 'scale_end' = 'scale_feedback'
+  surveyType: 'scale_feedback' | 'scale_end' | 'grow_midpoint' = 'scale_feedback'
 ): Promise<{ success: boolean; error?: string }> {
   // Build outcomes to include session info
   const outcomesParts: string[] = [`Session ${sessionNumber}`];
