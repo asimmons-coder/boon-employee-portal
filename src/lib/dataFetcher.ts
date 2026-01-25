@@ -1087,9 +1087,17 @@ function getGrowMilestones(totalSessions: number): { milestones: number[]; midpo
  * Check for pending survey after login
  * Returns the OLDEST session that needs a survey (so users complete in order)
  * Handles GROW vs SCALE program types with different milestone arrays
+ *
+ * @param email - User's email
+ * @param programType - Program type (GROW, SCALE, EXEC)
+ * @param loadedSessions - Optional: already-loaded sessions to avoid re-querying
  */
-export async function fetchPendingSurvey(email: string, programType?: string | null): Promise<PendingSurvey | null> {
-  console.log('[fetchPendingSurvey] Checking for pending survey:', { email, programType });
+export async function fetchPendingSurvey(
+  email: string,
+  programType?: string | null,
+  loadedSessions?: Array<{ id: string; appointment_number: number | null; session_date: string; coach_name: string; status: string }>
+): Promise<PendingSurvey | null> {
+  console.log('[fetchPendingSurvey] Checking for pending survey:', { email, programType, hasLoadedSessions: !!loadedSessions });
 
   // First, try the RPC function (uses the comprehensive pending_surveys view)
   const { data: rpcData, error: rpcError } = await supabase
@@ -1102,44 +1110,48 @@ export async function fetchPendingSurvey(email: string, programType?: string | n
     return rpcData[0] as PendingSurvey;
   }
 
-  // Fallback: manual query for pending surveys
-  // Determine program type first
+  // Fallback: use loaded sessions if available
   const normalizedProgram = programType?.toUpperCase() || '';
   const isGrow = normalizedProgram === 'GROW' || normalizedProgram.startsWith('GROW');
 
-  // For GROW programs, fetch actual total sessions from program enrollment
-  let sessionsPerEmployee = isGrow ? 12 : 36; // defaults
-  let growMidpoint = 6; // default midpoint for 12 sessions
-
-  if (isGrow) {
-    const { data: enrollment } = await supabase
-      .from('program_enrollments')
-      .select('sessions_per_employee')
-      .ilike('employee_email', email)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (enrollment && enrollment.length > 0 && enrollment[0].sessions_per_employee) {
-      sessionsPerEmployee = enrollment[0].sessions_per_employee;
-    }
-    const growConfig = getGrowMilestones(sessionsPerEmployee);
-    growMidpoint = growConfig.midpoint;
-  }
+  // For GROW programs, calculate midpoint
+  const sessionsPerEmployee = isGrow ? 12 : 36; // defaults
+  const growMidpoint = Math.floor(sessionsPerEmployee / 2);
 
   const milestones = isGrow ? getGrowMilestones(sessionsPerEmployee).milestones : SCALE_MILESTONES;
 
-  // Get completed sessions count for end-of-program detection
-  const { data: completedCount } = await supabase
-    .from('session_tracking')
-    .select('id', { count: 'exact' })
-    .ilike('employee_email', email)
-    .eq('status', 'Completed');
+  console.log('[fetchPendingSurvey] Checking milestones:', {
+    milestones,
+    isGrow,
+    sessionsPerEmployee,
+    growMidpoint: isGrow ? growMidpoint : 'N/A',
+  });
 
-  const totalCompleted = completedCount?.length || 0;
+  // Use loaded sessions if available, otherwise we can't check (RPC should have worked)
+  if (!loadedSessions || loadedSessions.length === 0) {
+    console.log('[fetchPendingSurvey] No loaded sessions available and RPC failed');
+    return null;
+  }
 
-  // Check for end-of-program survey first (sessionsPerEmployee already calculated above)
-  if (totalCompleted >= sessionsPerEmployee) {
-    // Check if they've already submitted an end survey
+  // Filter to completed sessions at milestone numbers
+  const completedSessions = loadedSessions.filter(s => s.status === 'Completed');
+  const milestoneSessions = completedSessions
+    .filter(s => s.appointment_number !== null && milestones.includes(s.appointment_number))
+    .sort((a, b) => new Date(a.session_date).getTime() - new Date(b.session_date).getTime());
+
+  console.log('[fetchPendingSurvey] Sessions at milestones:', {
+    total: loadedSessions.length,
+    completed: completedSessions.length,
+    atMilestones: milestoneSessions.length,
+  });
+
+  if (milestoneSessions.length === 0) {
+    console.log('[fetchPendingSurvey] No milestone sessions found');
+    return null;
+  }
+
+  // Check for end-of-program survey first
+  if (completedSessions.length >= sessionsPerEmployee) {
     const { data: existingEndSurvey } = await supabase
       .from('survey_submissions')
       .select('id')
@@ -1148,50 +1160,18 @@ export async function fetchPendingSurvey(email: string, programType?: string | n
       .limit(1);
 
     if (!existingEndSurvey || existingEndSurvey.length === 0) {
-      // Get the most recent session for context
-      const { data: latestSession } = await supabase
-        .from('session_tracking')
-        .select('id, session_date, appointment_number, coach_name')
-        .ilike('employee_email', email)
-        .eq('status', 'Completed')
-        .order('session_date', { ascending: false })
-        .limit(1);
-
-      if (latestSession && latestSession.length > 0) {
-        return {
-          session_id: latestSession[0].id,
-          session_number: latestSession[0].appointment_number,
-          session_date: latestSession[0].session_date,
-          coach_name: latestSession[0].coach_name || 'Your Coach',
-          survey_type: isGrow ? 'grow_end' : 'scale_end',
-        };
-      }
+      const latestSession = completedSessions[0]; // Already sorted desc in app
+      return {
+        session_id: latestSession.id,
+        session_number: latestSession.appointment_number ?? 1,
+        session_date: latestSession.session_date,
+        coach_name: latestSession.coach_name || 'Your Coach',
+        survey_type: isGrow ? 'grow_end' : 'scale_end',
+      };
     }
   }
 
-  // Get completed sessions at survey milestones without matching survey
-  // Order by ascending (oldest first) so users complete surveys in order
-  console.log('[fetchPendingSurvey] Checking milestones:', {
-    milestones,
-    isGrow,
-    sessionsPerEmployee,
-    growMidpoint: isGrow ? growMidpoint : 'N/A',
-  });
-
-  const { data: sessions, error: sessionsError } = await supabase
-    .from('session_tracking')
-    .select('id, employee_email, session_date, appointment_number, coach_name, program_name')
-    .ilike('employee_email', email)
-    .eq('status', 'Completed')
-    .in('appointment_number', milestones)
-    .order('session_date', { ascending: true });
-
-  console.log('[fetchPendingSurvey] Sessions at milestones:', { sessions, sessionsError });
-
-  if (sessionsError || !sessions || sessions.length === 0) {
-    console.log('[fetchPendingSurvey] No milestone sessions found');
-    return null;
-  }
+  const sessions = milestoneSessions;
 
   // Check which sessions don't have a survey yet
   // Since session_id column doesn't exist, check by matching outcomes field pattern
@@ -1218,7 +1198,7 @@ export async function fetchPendingSurvey(email: string, programType?: string | n
 
       const pending = {
         session_id: session.id,
-        session_number: session.appointment_number,
+        session_number: session.appointment_number ?? 1,
         session_date: session.session_date,
         coach_name: session.coach_name || 'Your Coach',
         survey_type: surveyType,
