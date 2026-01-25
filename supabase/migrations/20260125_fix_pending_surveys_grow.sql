@@ -21,16 +21,17 @@ ADD CONSTRAINT survey_submissions_survey_type_check
 CHECK (survey_type IN ('scale_feedback', 'scale_end', 'grow_baseline', 'grow_midpoint', 'grow_end'));
 
 -- Update the pending_surveys view with proper GROW defaults
+-- Note: Uses 'email' column from session_tracking (adjust if your column is named differently)
 CREATE OR REPLACE VIEW pending_surveys AS
 WITH employee_session_counts AS (
   -- Count completed sessions per employee
   SELECT
-    employee_email,
+    email as employee_email,
     employee_id,
     COUNT(*) as completed_sessions
   FROM session_tracking
   WHERE status = 'Completed'
-  GROUP BY employee_email, employee_id
+  GROUP BY email, employee_id
 ),
 program_info AS (
   -- Get program config via employee_manager -> programs join
@@ -67,7 +68,7 @@ program_info AS (
 milestone_surveys AS (
   SELECT
     st.id as session_id,
-    st.employee_email as email,
+    st.email as email,
     st.employee_id,
     st.session_date,
     st.appointment_number as session_number,
@@ -86,11 +87,11 @@ milestone_surveys AS (
     'milestone' as survey_trigger
   FROM session_tracking st
   -- Join on email for more reliable matching (in case employee_id doesn't match)
-  JOIN program_info pi ON lower(st.employee_email) = lower(pi.company_email)
+  JOIN program_info pi ON lower(st.email) = lower(pi.company_email)
   LEFT JOIN employee_session_counts esc ON st.employee_id = esc.employee_id
   -- Check for existing survey by email and session pattern in outcomes
   LEFT JOIN survey_submissions ss ON (
-    lower(ss.email) = lower(st.employee_email)
+    lower(ss.email) = lower(st.email)
     AND (
       ss.session_id = st.id
       OR ss.outcomes ILIKE '%Session ' || st.appointment_number::text || '%'
