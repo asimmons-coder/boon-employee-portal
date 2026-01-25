@@ -6,7 +6,8 @@ interface ProgramProgressCardProps {
 }
 
 export default function ProgramProgressCard({ programInfo, completedSessions }: ProgramProgressCardProps) {
-  const totalSessions = programInfo?.sessions_per_employee || 6;
+  // Default to 12 for GROW programs (most common case)
+  const totalSessions = programInfo?.sessions_per_employee || 12;
   const progressPercent = Math.min((completedSessions / totalSessions) * 100, 100);
 
   // Calculate time remaining

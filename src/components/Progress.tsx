@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, Session, ActionItem, Checkpoint, WelcomeSurveyScale, CoachingWin } from '../lib/types';
+import type { SurveyResponse, BaselineSurvey, CompetencyScore, ProgramType, Session, ActionItem, Checkpoint, WelcomeSurveyScale, CoachingWin, View } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import { isAlumniState, isPreFirstSession, isPendingReflectionState } from '../lib/coachingState';
 import {
@@ -33,6 +33,7 @@ interface ProgressPageProps {
   onStartCheckpoint?: () => void;
   coachingWins?: CoachingWin[];
   onAddWin?: (winText: string) => Promise<boolean>;
+  onNavigate?: (view: View) => void;
 }
 
 // The 12 competencies with their database column keys
@@ -94,7 +95,8 @@ export default function ProgressPage({
   checkpoints: _checkpoints = [],
   onStartCheckpoint,
   coachingWins = [],
-  onAddWin
+  onAddWin,
+  onNavigate,
 }: ProgressPageProps) {
   const [activeTab, setActiveTab] = useState<'competencies' | 'wellbeing'>('competencies');
   // Get latest checkpoint with wellbeing data (Session 6+)
@@ -1496,15 +1498,9 @@ export default function ProgressPage({
                     )}
 
                     {/* Practice Bridge - show for lower scoring competencies */}
-                    {(comp.scoreLabel?.toLowerCase() === 'applying' || comp.current <= 3) && comp.current > 0 && !isCompleted && (
+                    {(comp.scoreLabel?.toLowerCase() === 'applying' || comp.current <= 3) && comp.current > 0 && !isCompleted && onNavigate && (
                       <button
-                        onClick={() => {
-                          // Navigate to Practice with competency filter
-                          // Using window location for now - ideally use React Router
-                          window.dispatchEvent(new CustomEvent('navigate-to-practice', {
-                            detail: { competency: comp.key }
-                          }));
-                        }}
+                        onClick={() => onNavigate('practice')}
                         className="mt-3 w-full py-2 text-xs font-bold text-boon-blue bg-boon-lightBlue/30 rounded-lg hover:bg-boon-lightBlue transition-all flex items-center justify-center gap-1"
                       >
                         Practice this
