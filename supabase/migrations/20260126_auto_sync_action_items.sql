@@ -26,13 +26,14 @@ BEGIN
         -- Skip empty or very short lines
         IF action_text != '' AND length(action_text) > 5 THEN
           -- Insert if not duplicate
-          INSERT INTO action_items (email, session_id, coach_name, action_text, status, created_at)
+          INSERT INTO action_items (email, session_id, coach_name, action_text, status, due_date, created_at)
           SELECT
             employee_email,
             NEW.id,
             NEW.coach_name,
             action_text,
             'pending',
+            CURRENT_DATE + 7, -- Default due date: 1 week from now
             NOW()
           WHERE NOT EXISTS (
             SELECT 1 FROM action_items ai
@@ -83,13 +84,14 @@ plan_lines AS (
   LATERAL unnest(string_to_array(ls.plan, E'\n')) as line
   WHERE trim(line) != ''
 )
-INSERT INTO action_items (email, session_id, coach_name, action_text, status, created_at)
+INSERT INTO action_items (email, session_id, coach_name, action_text, status, due_date, created_at)
 SELECT
   pl.email,
   pl.session_id,
   pl.coach_name,
   pl.action_text,
   'pending',
+  CURRENT_DATE + 7, -- Default due date: 1 week from now
   NOW()
 FROM plan_lines pl
 WHERE pl.action_text != ''
