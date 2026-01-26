@@ -9,6 +9,7 @@ import {
   submitScaleFeedbackSurvey,
   submitGrowBaselineSurvey,
   submitGrowEndSurvey,
+  submitGrowFirstSessionSurvey,
   addCoachingWin,
 } from '../lib/dataFetcher';
 
@@ -148,6 +149,7 @@ export default function SurveyModal({
     switch (surveyType) {
       case 'scale_feedback':
       case 'grow_midpoint':
+      case 'grow_first_session':
         return getFeedbackSteps().length;
       case 'scale_end':
         return getFeedbackSteps().length + 1; // + outcomes
@@ -162,7 +164,7 @@ export default function SurveyModal({
 
   // Get current step identifier for feedback surveys
   const getCurrentStepId = () => {
-    if (surveyType === 'scale_feedback' || surveyType === 'grow_midpoint') {
+    if (surveyType === 'scale_feedback' || surveyType === 'grow_midpoint' || surveyType === 'grow_first_session') {
       const steps = getFeedbackSteps();
       return steps[currentStep - 1] || 'experience';
     }
@@ -200,7 +202,7 @@ export default function SurveyModal({
 
   // Can proceed to next step?
   const canProceed = () => {
-    if (surveyType === 'scale_feedback' || surveyType === 'grow_midpoint') {
+    if (surveyType === 'scale_feedback' || surveyType === 'grow_midpoint' || surveyType === 'grow_first_session') {
       const stepId = getCurrentStepId();
       switch (stepId) {
         case 'experience':
@@ -263,30 +265,54 @@ export default function SurveyModal({
     setError(null);
 
     try {
-      if (surveyType === 'scale_feedback' || surveyType === 'scale_end' || surveyType === 'grow_midpoint') {
-        // Map new fields to existing database structure
-        const result = await submitScaleFeedbackSurvey(
-          userEmail,
-          sessionId!,
-          sessionNumber!,
-          coachName,
-          {
-            coach_satisfaction: coachMatchRating!, // Use coach match rating
-            experience_rating: experienceRating!,
-            wants_rematch: continueWithCoach === 'explore',
-            rematch_reason: continueWithCoach === 'explore' ? betterMatchDescription : undefined,
-            whats_not_working: coachMatchRating !== null && coachMatchRating <= 8 ? whatsNotWorking : undefined,
-            coach_qualities: [], // Not collecting in new survey
-            has_booked_next_session: hasBookedNext!,
-            booking_blockers: hasBookedNext === false ? bookingBlockers : undefined,
-            nps: nps!,
-            feedback_suggestions: anythingElse || undefined,
-            outcomes: surveyType === 'scale_end' ? outcomes : undefined,
-            open_to_testimonial: surveyType === 'scale_end' ? openToTestimonial || false : undefined,
-            open_to_chat: openToChat || false,
-          },
-          surveyType
-        );
+      if (surveyType === 'scale_feedback' || surveyType === 'scale_end' || surveyType === 'grow_midpoint' || surveyType === 'grow_first_session') {
+        // Use appropriate submission function based on survey type
+        let result;
+
+        if (surveyType === 'grow_first_session') {
+          result = await submitGrowFirstSessionSurvey(
+            userEmail,
+            sessionNumber!,
+            coachName,
+            {
+              experience_rating: experienceRating!,
+              coach_match_rating: coachMatchRating!,
+              not_working_reason: coachMatchRating !== null && coachMatchRating <= 8 ? whatsNotWorking : undefined,
+              continue_with_coach: continueWithCoach === 'yes' ? true : continueWithCoach === 'explore' ? false : undefined,
+              better_match_feedback: continueWithCoach === 'explore' ? betterMatchDescription : undefined,
+              win_text: winText.trim() || undefined,
+              has_booked_next_session: hasBookedNext!,
+              not_booking_reasons: hasBookedNext === false ? bookingBlockers : undefined,
+              feedback_suggestions: anythingElse || undefined,
+              nps: nps!,
+              open_to_chat: openToChat!,
+            }
+          );
+        } else {
+          // Map new fields to existing database structure
+          result = await submitScaleFeedbackSurvey(
+            userEmail,
+            sessionId!,
+            sessionNumber!,
+            coachName,
+            {
+              coach_satisfaction: coachMatchRating!, // Use coach match rating
+              experience_rating: experienceRating!,
+              wants_rematch: continueWithCoach === 'explore',
+              rematch_reason: continueWithCoach === 'explore' ? betterMatchDescription : undefined,
+              whats_not_working: coachMatchRating !== null && coachMatchRating <= 8 ? whatsNotWorking : undefined,
+              coach_qualities: [], // Not collecting in new survey
+              has_booked_next_session: hasBookedNext!,
+              booking_blockers: hasBookedNext === false ? bookingBlockers : undefined,
+              nps: nps!,
+              feedback_suggestions: anythingElse || undefined,
+              outcomes: surveyType === 'scale_end' ? outcomes : undefined,
+              open_to_testimonial: surveyType === 'scale_end' ? openToTestimonial || false : undefined,
+              open_to_chat: openToChat || false,
+            },
+            surveyType
+          );
+        }
 
         if (!result.success) {
           throw new Error(result.error || 'Failed to submit survey');
@@ -339,7 +365,7 @@ export default function SurveyModal({
 
   // Next step handler - recalculates steps based on current answers
   const handleNext = () => {
-    if (surveyType === 'scale_feedback' || surveyType === 'grow_midpoint') {
+    if (surveyType === 'scale_feedback' || surveyType === 'grow_midpoint' || surveyType === 'grow_first_session') {
       const steps = getFeedbackSteps();
       if (currentStep < steps.length) {
         setCurrentStep(prev => prev + 1);
@@ -381,7 +407,7 @@ export default function SurveyModal({
           <button
             key={n}
             onClick={() => onChange(n)}
-            className={`w-9 h-9 rounded-lg font-bold text-sm transition-all ${
+            className={`w-8 h-8 rounded-lg font-bold text-xs transition-all ${
               value === n
                 ? 'bg-boon-amber text-white shadow-lg scale-110'
                 : 'bg-gray-100 text-gray-600 hover:bg-boon-amberLight'
@@ -865,6 +891,8 @@ export default function SurveyModal({
     switch (surveyType) {
       case 'scale_feedback':
         return `Session ${sessionNumber} Feedback`;
+      case 'grow_first_session':
+        return 'Post-Session Check-In';
       case 'grow_midpoint':
         return 'Midpoint Check-In';
       case 'scale_end':
@@ -880,7 +908,7 @@ export default function SurveyModal({
 
   // Calculate progress for feedback surveys
   const getProgressSteps = () => {
-    if (surveyType === 'scale_feedback' || surveyType === 'grow_midpoint') {
+    if (surveyType === 'scale_feedback' || surveyType === 'grow_midpoint' || surveyType === 'grow_first_session') {
       return getFeedbackSteps().length;
     }
     return totalSteps;
@@ -937,7 +965,7 @@ export default function SurveyModal({
             </div>
           )}
 
-          {(surveyType === 'scale_feedback' || surveyType === 'grow_midpoint') && renderFeedbackStep()}
+          {(surveyType === 'scale_feedback' || surveyType === 'grow_midpoint' || surveyType === 'grow_first_session') && renderFeedbackStep()}
           {surveyType === 'scale_end' && renderFeedbackStep()}
           {surveyType === 'grow_baseline' && renderGrowBaselineStep()}
           {surveyType === 'grow_end' && renderGrowEndStep()}
