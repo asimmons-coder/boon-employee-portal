@@ -68,9 +68,9 @@ export default function FeedbackPage() {
           setCoachName(context.coach_name);
 
           // Determine survey type based on context
-          // For now, default to scale_feedback
-          // Could check if it's the final session for scale_end
-          setSurveyType('scale_feedback');
+          // For now, default to feedback
+          // Could check if it's the final session for end_of_program
+          setSurveyType('feedback');
           setIsLoading(false);
         } catch (err) {
           setError('Failed to load survey context');

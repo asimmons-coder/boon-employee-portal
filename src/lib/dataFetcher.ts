@@ -1196,7 +1196,7 @@ export async function fetchPendingSurvey(
       .from('survey_submissions')
       .select('id')
       .ilike('email', email)
-      .in('survey_type', ['scale_end', 'grow_end'])
+      .in('survey_type', ['end_of_program', 'grow_end'])
       .limit(1);
 
     if (!existingEndSurvey || existingEndSurvey.length === 0) {
@@ -1210,7 +1210,7 @@ export async function fetchPendingSurvey(
         session_number: isNaN(sessionNum) ? 1 : sessionNum,
         session_date: latestSession.session_date,
         coach_name: latestSession.coach_name || 'Your Coach',
-        survey_type: isGrow ? 'grow_end' : 'scale_end',
+        survey_type: isGrow ? 'grow_end' : 'end_of_program',
       };
     }
   }
@@ -1320,7 +1320,7 @@ export async function submitScaleFeedbackSurvey(
     open_to_testimonial?: boolean;
     open_to_chat?: boolean;
   },
-  surveyType: 'scale_feedback' | 'scale_end' | 'grow_midpoint' = 'scale_feedback'
+  surveyType: 'feedback' | 'end_of_program' | 'midpoint' = 'feedback'
 ): Promise<{ success: boolean; error?: string }> {
   // Build outcomes to include session info and additional survey data
   const outcomesParts: string[] = [`Session ${sessionNumber}`];
