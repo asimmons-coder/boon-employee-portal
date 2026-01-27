@@ -325,6 +325,8 @@ export async function fetchLatestSurveyResponse(email: string): Promise<SurveyRe
  * Fetch action items for an employee
  */
 export async function fetchActionItems(email: string): Promise<ActionItem[]> {
+  console.log('[fetchActionItems] Fetching for email:', email);
+
   const { data, error } = await supabase
     .from('action_items')
     .select('*')
@@ -332,6 +334,11 @@ export async function fetchActionItems(email: string): Promise<ActionItem[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
+    console.log('[fetchActionItems] Error:', {
+      errorCode: error.code,
+      errorMessage: error.message,
+      searchedEmail: email
+    });
     // Table might not exist yet
     if (error.code !== '42P01') {
       console.error('Error fetching action items:', error);
@@ -339,6 +346,10 @@ export async function fetchActionItems(email: string): Promise<ActionItem[]> {
     return [];
   }
 
+  console.log('[fetchActionItems] Found items:', {
+    count: data?.length || 0,
+    items: data
+  });
   return (data as ActionItem[]) || [];
 }
 
@@ -396,6 +407,8 @@ export async function submitSessionFeedback(
  * Fetch coach details by name
  */
 export async function fetchCoachByName(coachName: string): Promise<Coach | null> {
+  console.log('[fetchCoachByName] Searching for coach:', coachName);
+
   const { data, error } = await supabase
     .from('coaches')
     .select('*')
@@ -403,6 +416,11 @@ export async function fetchCoachByName(coachName: string): Promise<Coach | null>
     .single();
 
   if (error) {
+    console.log('[fetchCoachByName] Error or no match:', {
+      errorCode: error.code,
+      errorMessage: error.message,
+      searchedName: coachName
+    });
     // Coaches table might not exist
     if (error.code !== 'PGRST116') {
       console.error('Error fetching coach by name:', error);
@@ -410,6 +428,11 @@ export async function fetchCoachByName(coachName: string): Promise<Coach | null>
     return null;
   }
 
+  console.log('[fetchCoachByName] Found coach:', {
+    name: data?.name,
+    hasPhotoUrl: !!data?.photo_url,
+    photoUrl: data?.photo_url
+  });
   return data as Coach;
 }
 
@@ -1173,7 +1196,7 @@ export async function fetchPendingSurvey(
       .from('survey_submissions')
       .select('id')
       .ilike('email', email)
-      .in('survey_type', ['scale_end', 'grow_end'])
+      .in('survey_type', ['end_of_program', 'grow_end'])
       .limit(1);
 
     if (!existingEndSurvey || existingEndSurvey.length === 0) {
@@ -1187,7 +1210,7 @@ export async function fetchPendingSurvey(
         session_number: isNaN(sessionNum) ? 1 : sessionNum,
         session_date: latestSession.session_date,
         coach_name: latestSession.coach_name || 'Your Coach',
-        survey_type: isGrow ? 'grow_end' : 'scale_end',
+        survey_type: isGrow ? 'grow_end' : 'end_of_program',
       };
     }
   }
@@ -1217,14 +1240,14 @@ export async function fetchPendingSurvey(
       const finalSessionNum = isNaN(sessionNum) ? 1 : sessionNum;
 
       // Determine survey type based on program and session number
-      // For GROW: session 1 = grow_first_session, midpoint = grow_midpoint
-      // For SCALE: all milestones = scale_feedback
-      let surveyType: 'scale_feedback' | 'grow_first_session' | 'grow_midpoint' = 'scale_feedback';
+      // For GROW: session 1 = first_session, midpoint = midpoint
+      // For SCALE: all milestones = feedback
+      let surveyType: 'feedback' | 'first_session' | 'midpoint' = 'feedback';
       if (isGrow) {
         if (finalSessionNum === 1) {
-          surveyType = 'grow_first_session';
+          surveyType = 'first_session';
         } else if (finalSessionNum === growMidpoint) {
-          surveyType = 'grow_midpoint';
+          surveyType = 'midpoint';
         }
       }
 
@@ -1297,7 +1320,7 @@ export async function submitScaleFeedbackSurvey(
     open_to_testimonial?: boolean;
     open_to_chat?: boolean;
   },
-  surveyType: 'scale_feedback' | 'scale_end' | 'grow_midpoint' = 'scale_feedback'
+  surveyType: 'feedback' | 'end_of_program' | 'midpoint' = 'feedback'
 ): Promise<{ success: boolean; error?: string }> {
   // Build outcomes to include session info and additional survey data
   const outcomesParts: string[] = [`Session ${sessionNumber}`];
@@ -1496,7 +1519,7 @@ export async function submitGrowFirstSessionSurvey(
   const { error } = await supabase
     .rpc('submit_survey_for_user', {
       user_email: email.toLowerCase(),
-      p_survey_type: 'grow_first_session',
+      p_survey_type: 'first_session',
       p_coach_name: coachName,
       p_coach_satisfaction: data.coach_match_rating, // Use coach match rating
       p_outcomes: outcomesParts.join(', '),

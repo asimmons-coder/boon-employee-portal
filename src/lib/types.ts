@@ -343,7 +343,7 @@ export interface ReflectionResponse {
 // NATIVE SURVEY SYSTEM
 // ============================================
 
-export type SurveyType = 'scale_feedback' | 'scale_end' | 'grow_baseline' | 'grow_first_session' | 'grow_midpoint' | 'grow_end';
+export type SurveyType = 'feedback' | 'touchpoint' | 'first_session' | 'sixth_session' | 'midpoint' | 'end_of_program' | 'grow_baseline' | 'grow_end';
 
 export type CoachQuality = 'made_me_feel_safe' | 'listened_well' | 'provided_tools' | 'challenged_me';
 

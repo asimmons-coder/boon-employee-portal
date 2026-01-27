@@ -3,7 +3,7 @@ import type { Employee, Session, ActionItem, View, Coach } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import type { ProgramInfo, GrowFocusArea } from '../lib/dataFetcher';
 import { supabase } from '../lib/supabase';
-import { fetchCoachByName, fetchProgramInfo, fetchGrowFocusAreas, parseCoachSpecialties } from '../lib/dataFetcher';
+import { fetchCoachByName, fetchProgramInfo, fetchGrowFocusAreas, parseCoachSpecialties, updateActionItemStatus } from '../lib/dataFetcher';
 import ProgramProgressCard from './ProgramProgressCard';
 import CompetencyProgressCard from './CompetencyProgressCard';
 
@@ -22,11 +22,11 @@ export default function GrowDashboard({
   sessions,
   actionItems,
   coachingState,
-  onActionUpdate: _onActionUpdate,
+  onActionUpdate,
   userEmail,
   onNavigate,
 }: GrowDashboardProps) {
-  void _onActionUpdate;
+  const [updatingActionId, setUpdatingActionId] = useState<string | null>(null);
 
   const completedSessions = sessions.filter(s => s.status === 'Completed');
   const upcomingSession = sessions.find(s => s.status === 'Upcoming' || s.status === 'Scheduled');
@@ -45,11 +45,20 @@ export default function GrowDashboard({
     const loadGrowData = async () => {
       if (!profile?.program || !userEmail) return;
 
+      console.log('[GrowDashboard] Loading data for:', { userEmail, coachName, program: profile.program });
+
       const [progInfo, areas, coach] = await Promise.all([
         fetchProgramInfo(profile.program),
         fetchGrowFocusAreas(userEmail),
         coachName !== 'Your Coach' ? fetchCoachByName(coachName) : Promise.resolve(null),
       ]);
+
+      console.log('[GrowDashboard] Coach fetch result:', {
+        coachName,
+        coachFound: !!coach,
+        coachPhotoUrl: coach?.photo_url,
+        fullCoachData: coach
+      });
 
       if (progInfo) setProgramInfo(progInfo);
       if (areas) setFocusAreas(areas);
@@ -74,6 +83,24 @@ export default function GrowDashboard({
 
   // Action items for "Things You're Working On"
   const pendingActions = actionItems.filter(a => a.status === 'pending');
+
+  // Debug: Log action items
+  console.log('[GrowDashboard] Action items:', {
+    totalReceived: actionItems.length,
+    pendingCount: pendingActions.length,
+    allItems: actionItems,
+    completedSessionsCount: completedSessions.length
+  });
+
+  // Handle completing an action item
+  async function handleCompleteAction(itemId: string) {
+    setUpdatingActionId(itemId);
+    const success = await updateActionItemStatus(itemId, 'completed');
+    if (success) {
+      onActionUpdate();
+    }
+    setUpdatingActionId(null);
+  }
 
   // Session prep reflection state
   const [reflection, setReflection] = useState('');
@@ -217,17 +244,32 @@ export default function GrowDashboard({
           {pendingActions.length > 0 ? (
             <div className="space-y-3">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Action Items</p>
-              {pendingActions.map((action) => (
-                <div
-                  key={action.id}
-                  className="p-4 bg-white/60 rounded-xl border border-boon-amber/10"
-                >
-                  <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-gray-700 leading-relaxed">{action.action_text}</p>
-                  <span className="text-xs text-gray-400 mt-2 block">
-                    From {new Date(action.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
-              ))}
+              {pendingActions.map((action) => {
+                const isUpdating = updatingActionId === action.id;
+                return (
+                  <div
+                    key={action.id}
+                    className={`p-4 bg-white/60 rounded-xl border border-boon-amber/10 flex items-start gap-3 ${isUpdating ? 'opacity-50' : ''}`}
+                  >
+                    <button
+                      onClick={() => handleCompleteAction(action.id)}
+                      disabled={isUpdating}
+                      className="mt-1 w-5 h-5 rounded-full border-2 border-gray-300 hover:border-boon-blue hover:bg-boon-blue/10 transition-all flex-shrink-0 flex items-center justify-center group"
+                      title="Mark as complete"
+                    >
+                      <svg className="w-2.5 h-2.5 text-transparent group-hover:text-boon-blue transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                    <div className="flex-1">
+                      <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-gray-700 leading-relaxed">{action.action_text}</p>
+                      <span className="text-xs text-gray-400 mt-2 block">
+                        From {new Date(action.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : !lastSession?.plan && (
             <p className="text-gray-500 text-sm italic">
@@ -447,17 +489,32 @@ export default function GrowDashboard({
             <h2 className="text-sm font-bold text-boon-amber uppercase tracking-widest">Things You're Working On</h2>
           </div>
           <div className="space-y-3">
-            {pendingActions.map((action) => (
-              <div
-                key={action.id}
-                className="p-4 bg-white/60 rounded-xl border border-boon-amber/10"
-              >
-                <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-gray-700 leading-relaxed">{action.action_text}</p>
-                <span className="text-xs text-gray-400 mt-2 block">
-                  From {new Date(action.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-              </div>
-            ))}
+            {pendingActions.map((action) => {
+              const isUpdating = updatingActionId === action.id;
+              return (
+                <div
+                  key={action.id}
+                  className={`p-4 bg-white/60 rounded-xl border border-boon-amber/10 flex items-start gap-3 ${isUpdating ? 'opacity-50' : ''}`}
+                >
+                  <button
+                    onClick={() => handleCompleteAction(action.id)}
+                    disabled={isUpdating}
+                    className="mt-1 w-5 h-5 rounded-full border-2 border-gray-300 hover:border-boon-blue hover:bg-boon-blue/10 transition-all flex-shrink-0 flex items-center justify-center group"
+                    title="Mark as complete"
+                  >
+                    <svg className="w-2.5 h-2.5 text-transparent group-hover:text-boon-blue transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </button>
+                  <div className="flex-1">
+                    <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-gray-700 leading-relaxed">{action.action_text}</p>
+                    <span className="text-xs text-gray-400 mt-2 block">
+                      From {new Date(action.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

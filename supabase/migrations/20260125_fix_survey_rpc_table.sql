@@ -1,6 +1,6 @@
 -- Migration: Fix submit_survey_for_user to use employee_manager table
 -- Date: 2026-01-25
--- The previous migration referenced 'employees' table which doesn't exist
+-- Uses actual survey_type values: feedback, touchpoint, first_session, sixth_session, midpoint, end_of_program
 
 -- Drop existing function
 DROP FUNCTION IF EXISTS submit_survey_for_user(TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, INTEGER, BOOLEAN, INTEGER, BOOLEAN, TEXT[], BOOLEAN);
@@ -33,7 +33,6 @@ BEGIN
   SELECT
     em.first_name,
     em.last_name,
-    COALESCE(em.first_name || ' ' || em.last_name, em.first_name, em.last_name) as participant_name,
     em.company_name as account_name,
     em.program as program_title,
     CASE
@@ -51,7 +50,6 @@ BEGIN
     email,
     first_name,
     last_name,
-    participant_name,
     account_name,
     program_title,
     program_type,
@@ -71,7 +69,6 @@ BEGIN
     lower(user_email),
     emp_record.first_name,
     emp_record.last_name,
-    emp_record.participant_name,
     emp_record.account_name,
     emp_record.program_title,
     emp_record.program_type,
