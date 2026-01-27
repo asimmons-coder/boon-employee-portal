@@ -1453,6 +1453,78 @@ export async function submitScaleFeedbackSurvey(
 }
 
 /**
+ * Submit a GROW midpoint survey (session 6 check-in)
+ */
+export async function submitGrowMidpointSurvey(
+  email: string,
+  sessionNumber: number,
+  coachName: string,
+  data: {
+    progress_rating: number;        // 1-10: Progress toward goals
+    confidence_rating: number;      // 1-10: Confidence applying learnings
+    meaningful_change?: string;     // Open text: Most meaningful change
+    coach_relationship_rating: number; // 1-10: Relationship with coach
+    coach_understands_rating: number;  // 1-10: Coach understands challenges
+    program_pace: 'too_slow' | 'just_right' | 'too_fast';
+    whats_working_well?: string;    // Open text: What's working
+    what_could_improve?: string;    // Open text: What could improve
+    remaining_focus?: string;       // Open text: Focus for remaining sessions
+    nps: number;                    // 0-10: NPS
+  }
+): Promise<{ success: boolean; error?: string }> {
+  // Build outcomes to include session info and ratings
+  const outcomesParts: string[] = [
+    `Session ${sessionNumber} Midpoint`,
+    `Progress: ${data.progress_rating}/10`,
+    `Confidence: ${data.confidence_rating}/10`,
+    `Coach Relationship: ${data.coach_relationship_rating}/10`,
+    `Coach Understanding: ${data.coach_understands_rating}/10`,
+    `Pace: ${data.program_pace.replace('_', ' ')}`,
+  ];
+
+  // Build feedback with open text responses
+  const feedbackParts: string[] = [];
+  if (data.meaningful_change) {
+    feedbackParts.push(`Meaningful change: ${data.meaningful_change}`);
+  }
+  if (data.whats_working_well) {
+    feedbackParts.push(`Working well: ${data.whats_working_well}`);
+  }
+  if (data.what_could_improve) {
+    feedbackParts.push(`Could improve: ${data.what_could_improve}`);
+  }
+  if (data.remaining_focus) {
+    feedbackParts.push(`Focus for remaining: ${data.remaining_focus}`);
+  }
+
+  const combinedFeedback = feedbackParts.join(' | ');
+
+  // Use the average of coach ratings as coach_satisfaction for compatibility
+  const coachSatisfaction = Math.round(
+    (data.coach_relationship_rating + data.coach_understands_rating) / 2
+  );
+
+  // Use RPC function to bypass RLS issues
+  const { error } = await supabase.rpc('submit_survey_for_user', {
+    user_email: email.toLowerCase(),
+    p_survey_type: 'grow_midpoint',
+    p_coach_name: coachName,
+    p_coach_satisfaction: coachSatisfaction,
+    p_outcomes: outcomesParts.join(', '),
+    p_feedback_suggestions: combinedFeedback || null,
+    p_nps: data.nps,
+    p_open_to_testimonial: false,
+  });
+
+  if (error) {
+    console.error('Error submitting midpoint survey:', error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
  * Submit a GROW baseline survey (pre-program competency assessment)
  */
 export async function submitGrowBaselineSurvey(

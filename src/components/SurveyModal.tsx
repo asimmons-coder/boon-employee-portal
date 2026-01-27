@@ -10,6 +10,7 @@ import {
   submitGrowBaselineSurvey,
   submitGrowEndSurvey,
   submitGrowFirstSessionSurvey,
+  submitGrowMidpointSurvey,
   addCoachingWin,
 } from '../lib/dataFetcher';
 
@@ -81,6 +82,17 @@ export default function SurveyModal({
   const [outcomes, setOutcomes] = useState('');
   const [openToTestimonial, setOpenToTestimonial] = useState<boolean | null>(null);
 
+  // GROW Midpoint survey form data
+  const [progressRating, setProgressRating] = useState<number | null>(null);
+  const [confidenceRating, setConfidenceRating] = useState<number | null>(null);
+  const [meaningfulChange, setMeaningfulChange] = useState('');
+  const [coachRelationshipRating, setCoachRelationshipRating] = useState<number | null>(null);
+  const [coachUnderstandsRating, setCoachUnderstandsRating] = useState<number | null>(null);
+  const [programPace, setProgramPace] = useState<'too_slow' | 'just_right' | 'too_fast' | null>(null);
+  const [whatsWorkingWell, setWhatsWorkingWell] = useState('');
+  const [whatCouldImprove, setWhatCouldImprove] = useState('');
+  const [remainingFocus, setRemainingFocus] = useState('');
+
   // Load competencies for GROW surveys
   useEffect(() => {
     if (surveyType === 'grow_baseline' || surveyType === 'grow_end') {
@@ -108,6 +120,16 @@ export default function SurveyModal({
       setFocusAreas([]);
       setOutcomes('');
       setOpenToTestimonial(null);
+      // Reset midpoint-specific fields
+      setProgressRating(null);
+      setConfidenceRating(null);
+      setMeaningfulChange('');
+      setCoachRelationshipRating(null);
+      setCoachUnderstandsRating(null);
+      setProgramPace(null);
+      setWhatsWorkingWell('');
+      setWhatCouldImprove('');
+      setRemainingFocus('');
     }
   }, [isOpen]);
 
@@ -144,13 +166,30 @@ export default function SurveyModal({
     return steps;
   };
 
+  // Define step flow for midpoint surveys (GROW-specific)
+  const getMidpointSteps = () => {
+    return [
+      'progress',           // How are you progressing toward your coaching goals?
+      'confidence',         // How confident are you applying learnings?
+      'meaningful_change',  // What's the most meaningful change?
+      'coach_relationship', // How would you rate your relationship with coach?
+      'coach_understands',  // Does coach understand your challenges?
+      'program_pace',       // How is the program pace?
+      'whats_working',      // What's working well?
+      'could_improve',      // What could be improved?
+      'remaining_focus',    // What to focus on for remaining sessions?
+      'nps',                // NPS
+    ];
+  };
+
   // Get total steps based on survey type
   const getTotalSteps = () => {
     switch (surveyType) {
       case 'feedback':
-      case 'midpoint':
       case 'first_session':
         return getFeedbackSteps().length;
+      case 'midpoint':
+        return getMidpointSteps().length;
       case 'end_of_program':
         return getFeedbackSteps().length + 1; // + outcomes
       case 'grow_baseline':
@@ -164,9 +203,13 @@ export default function SurveyModal({
 
   // Get current step identifier for feedback surveys
   const getCurrentStepId = () => {
-    if (surveyType === 'feedback' || surveyType === 'midpoint' || surveyType === 'first_session') {
+    if (surveyType === 'feedback' || surveyType === 'first_session') {
       const steps = getFeedbackSteps();
       return steps[currentStep - 1] || 'experience';
+    }
+    if (surveyType === 'midpoint') {
+      const steps = getMidpointSteps();
+      return steps[currentStep - 1] || 'progress';
     }
     return null;
   };
@@ -202,7 +245,7 @@ export default function SurveyModal({
 
   // Can proceed to next step?
   const canProceed = () => {
-    if (surveyType === 'feedback' || surveyType === 'midpoint' || surveyType === 'first_session') {
+    if (surveyType === 'feedback' || surveyType === 'first_session') {
       const stepId = getCurrentStepId();
       switch (stepId) {
         case 'experience':
@@ -227,6 +270,35 @@ export default function SurveyModal({
           return nps !== null;
         case 'open_to_chat':
           return openToChat !== null;
+        default:
+          return true;
+      }
+    }
+
+    // Midpoint survey validation
+    if (surveyType === 'midpoint') {
+      const stepId = getCurrentStepId();
+      switch (stepId) {
+        case 'progress':
+          return progressRating !== null;
+        case 'confidence':
+          return confidenceRating !== null;
+        case 'meaningful_change':
+          return true; // optional
+        case 'coach_relationship':
+          return coachRelationshipRating !== null;
+        case 'coach_understands':
+          return coachUnderstandsRating !== null;
+        case 'program_pace':
+          return programPace !== null;
+        case 'whats_working':
+          return true; // optional
+        case 'could_improve':
+          return true; // optional
+        case 'remaining_focus':
+          return true; // optional
+        case 'nps':
+          return nps !== null;
         default:
           return true;
       }
@@ -265,7 +337,35 @@ export default function SurveyModal({
     setError(null);
 
     try {
-      if (surveyType === 'feedback' || surveyType === 'end_of_program' || surveyType === 'midpoint' || surveyType === 'first_session') {
+      // Handle GROW midpoint survey with its own submission flow
+      if (surveyType === 'midpoint') {
+        const result = await submitGrowMidpointSurvey(
+          userEmail,
+          sessionNumber!,
+          coachName,
+          {
+            progress_rating: progressRating!,
+            confidence_rating: confidenceRating!,
+            meaningful_change: meaningfulChange.trim() || undefined,
+            coach_relationship_rating: coachRelationshipRating!,
+            coach_understands_rating: coachUnderstandsRating!,
+            program_pace: programPace!,
+            whats_working_well: whatsWorkingWell.trim() || undefined,
+            what_could_improve: whatCouldImprove.trim() || undefined,
+            remaining_focus: remainingFocus.trim() || undefined,
+            nps: nps!,
+          }
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to submit survey');
+        }
+
+        onComplete();
+        return;
+      }
+
+      if (surveyType === 'feedback' || surveyType === 'end_of_program' || surveyType === 'first_session') {
         // Use appropriate submission function based on survey type
         let result;
 
@@ -365,8 +465,15 @@ export default function SurveyModal({
 
   // Next step handler - recalculates steps based on current answers
   const handleNext = () => {
-    if (surveyType === 'feedback' || surveyType === 'midpoint' || surveyType === 'first_session') {
+    if (surveyType === 'feedback' || surveyType === 'first_session') {
       const steps = getFeedbackSteps();
+      if (currentStep < steps.length) {
+        setCurrentStep(prev => prev + 1);
+      } else {
+        handleSubmit();
+      }
+    } else if (surveyType === 'midpoint') {
+      const steps = getMidpointSteps();
       if (currentStep < steps.length) {
         setCurrentStep(prev => prev + 1);
       } else {
@@ -704,6 +811,206 @@ export default function SurveyModal({
     }
   };
 
+  // Render midpoint survey step based on step ID
+  const renderMidpointStep = () => {
+    const stepId = getCurrentStepId();
+
+    switch (stepId) {
+      case 'progress':
+        return (
+          <div className="space-y-6">
+            <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text text-center">
+              How are you progressing toward your coaching goals?
+            </h3>
+            {renderRatingScale(
+              progressRating,
+              setProgressRating,
+              1,
+              10,
+              'No progress',
+              'Significant progress'
+            )}
+          </div>
+        );
+
+      case 'confidence':
+        return (
+          <div className="space-y-6">
+            <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text text-center">
+              How confident are you in applying what you've learned?
+            </h3>
+            {renderRatingScale(
+              confidenceRating,
+              setConfidenceRating,
+              1,
+              10,
+              'Not confident',
+              'Very confident'
+            )}
+          </div>
+        );
+
+      case 'meaningful_change':
+        return (
+          <div className="space-y-6">
+            <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text text-center">
+              What's the most meaningful change you've experienced so far?
+            </h3>
+            <textarea
+              value={meaningfulChange}
+              onChange={e => setMeaningfulChange(e.target.value)}
+              placeholder="Share a breakthrough, insight, or change you've noticed..."
+              style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}
+              className="w-full p-4 rounded-xl border border-gray-200 focus:border-boon-amber focus:ring-0 focus:outline-none text-sm min-h-[120px] resize-none"
+            />
+          </div>
+        );
+
+      case 'coach_relationship':
+        return (
+          <div className="space-y-6">
+            <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text text-center">
+              How would you rate your relationship with {coachFirstName}?
+            </h3>
+            {renderRatingScale(
+              coachRelationshipRating,
+              setCoachRelationshipRating,
+              1,
+              10,
+              'Needs improvement',
+              'Excellent'
+            )}
+          </div>
+        );
+
+      case 'coach_understands':
+        return (
+          <div className="space-y-6">
+            <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text text-center">
+              How well does {coachFirstName} understand your challenges?
+            </h3>
+            {renderRatingScale(
+              coachUnderstandsRating,
+              setCoachUnderstandsRating,
+              1,
+              10,
+              'Not well',
+              'Completely'
+            )}
+          </div>
+        );
+
+      case 'program_pace':
+        return (
+          <div className="space-y-6">
+            <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text text-center">
+              How is the pace of the program?
+            </h3>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setProgramPace('too_slow')}
+                className={`px-6 py-4 rounded-xl font-medium text-sm transition-all ${
+                  programPace === 'too_slow'
+                    ? 'bg-boon-amber text-white shadow-lg'
+                    : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-boon-amber'
+                }`}
+              >
+                Too slow
+              </button>
+              <button
+                onClick={() => setProgramPace('just_right')}
+                className={`px-6 py-4 rounded-xl font-medium text-sm transition-all ${
+                  programPace === 'just_right'
+                    ? 'bg-boon-amber text-white shadow-lg'
+                    : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-boon-amber'
+                }`}
+              >
+                Just right
+              </button>
+              <button
+                onClick={() => setProgramPace('too_fast')}
+                className={`px-6 py-4 rounded-xl font-medium text-sm transition-all ${
+                  programPace === 'too_fast'
+                    ? 'bg-boon-amber text-white shadow-lg'
+                    : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-boon-amber'
+                }`}
+              >
+                Too fast
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'whats_working':
+        return (
+          <div className="space-y-6">
+            <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text text-center">
+              What's working well in your coaching experience?
+            </h3>
+            <textarea
+              value={whatsWorkingWell}
+              onChange={e => setWhatsWorkingWell(e.target.value)}
+              placeholder="What aspects of coaching have been most valuable? (optional)"
+              style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}
+              className="w-full p-4 rounded-xl border border-gray-200 focus:border-boon-amber focus:ring-0 focus:outline-none text-sm min-h-[120px] resize-none"
+            />
+          </div>
+        );
+
+      case 'could_improve':
+        return (
+          <div className="space-y-6">
+            <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text text-center">
+              What could be improved?
+            </h3>
+            <textarea
+              value={whatCouldImprove}
+              onChange={e => setWhatCouldImprove(e.target.value)}
+              placeholder="Any suggestions for how we could make your experience better? (optional)"
+              style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}
+              className="w-full p-4 rounded-xl border border-gray-200 focus:border-boon-amber focus:ring-0 focus:outline-none text-sm min-h-[120px] resize-none"
+            />
+          </div>
+        );
+
+      case 'remaining_focus':
+        return (
+          <div className="space-y-6">
+            <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text text-center">
+              What would you like to focus on for the remaining sessions?
+            </h3>
+            <textarea
+              value={remainingFocus}
+              onChange={e => setRemainingFocus(e.target.value)}
+              placeholder="What goals or areas would you like to prioritize? (optional)"
+              style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}
+              className="w-full p-4 rounded-xl border border-gray-200 focus:border-boon-amber focus:ring-0 focus:outline-none text-sm min-h-[120px] resize-none"
+            />
+          </div>
+        );
+
+      case 'nps':
+        return (
+          <div className="space-y-6">
+            <h3 style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-xl text-boon-text text-center">
+              How likely are you to recommend Boon to a friend or colleague?
+            </h3>
+            {renderRatingScale(
+              nps,
+              setNps,
+              0,
+              10,
+              'Not likely',
+              'Very likely'
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   // Render GROW baseline survey steps
   const renderGrowBaselineStep = () => {
     switch (currentStep) {
@@ -908,8 +1215,11 @@ export default function SurveyModal({
 
   // Calculate progress for feedback surveys
   const getProgressSteps = () => {
-    if (surveyType === 'feedback' || surveyType === 'midpoint' || surveyType === 'first_session') {
+    if (surveyType === 'feedback' || surveyType === 'first_session') {
       return getFeedbackSteps().length;
+    }
+    if (surveyType === 'midpoint') {
+      return getMidpointSteps().length;
     }
     return totalSteps;
   };
@@ -965,7 +1275,8 @@ export default function SurveyModal({
             </div>
           )}
 
-          {(surveyType === 'feedback' || surveyType === 'midpoint' || surveyType === 'first_session') && renderFeedbackStep()}
+          {(surveyType === 'feedback' || surveyType === 'first_session') && renderFeedbackStep()}
+          {surveyType === 'midpoint' && renderMidpointStep()}
           {surveyType === 'end_of_program' && renderFeedbackStep()}
           {surveyType === 'grow_baseline' && renderGrowBaselineStep()}
           {surveyType === 'grow_end' && renderGrowEndStep()}
