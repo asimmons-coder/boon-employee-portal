@@ -43,19 +43,20 @@ export default function GrowDashboard({
   // Load GROW-specific data
   useEffect(() => {
     const loadGrowData = async () => {
-      if (!profile?.program || !userEmail) return;
+      // Only require userEmail - profile.program may be null if derived from session
+      if (!userEmail) return;
 
-      console.log('[GrowDashboard] Loading data for:', { userEmail, coachName, coachId: profile.coach_id, program: profile.program });
+      console.log('[GrowDashboard] Loading data for:', { userEmail, coachName, coachId: profile?.coach_id, program: profile?.program });
 
-      // Fetch program info and focus areas in parallel
+      // Fetch program info and focus areas in parallel (program info is optional)
       const [progInfo, areas] = await Promise.all([
-        fetchProgramInfo(profile.program),
+        profile?.program ? fetchProgramInfo(profile.program) : Promise.resolve(null),
         fetchGrowFocusAreas(userEmail),
       ]);
 
       // Try to fetch coach by ID first (more reliable), then fall back to name
       let coach: Coach | null = null;
-      if (profile.coach_id) {
+      if (profile?.coach_id) {
         coach = await fetchCoachById(profile.coach_id);
         console.log('[GrowDashboard] Coach fetch by ID result:', {
           coachId: profile.coach_id,
