@@ -57,7 +57,7 @@ export default function CoachProfile({ sessions, coachName, programType: _progra
           <img
             src={photoUrl}
             alt={coachName}
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
+            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover object-top ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
           />
         </div>
 

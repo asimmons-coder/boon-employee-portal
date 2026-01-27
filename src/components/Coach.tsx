@@ -74,7 +74,7 @@ export default function CoachPage({ coachName, sessions, bookingLink, programTyp
               <img
                 src={photoUrl}
                 alt={coachName}
-                className="w-full h-full rounded-full object-cover border-4 border-white shadow-xl"
+                className="w-full h-full rounded-full object-cover object-top border-4 border-white shadow-xl"
               />
               <div className="absolute bottom-0 right-0 w-7 h-7 bg-green-500 border-4 border-white rounded-full" />
             </div>
