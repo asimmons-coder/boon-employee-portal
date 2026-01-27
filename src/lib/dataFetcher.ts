@@ -474,14 +474,14 @@ export async function fetchCoachByName(coachName: string): Promise<Coach | null>
   const { data: rpcData, error: rpcError } = await supabase
     .rpc('get_coach_by_name', { coach_name_param: trimmedName });
 
-  if (!rpcError && rpcData && rpcData.length > 0) {
-    const coach = rpcData[0];
+  // RPC returns JSONB (single object), not an array
+  if (!rpcError && rpcData) {
     console.log('[fetchCoachByName] Found coach via RPC:', {
-      name: coach?.name,
-      hasPhotoUrl: !!coach?.photo_url,
-      photoUrl: coach?.photo_url
+      name: rpcData?.name,
+      hasPhotoUrl: !!rpcData?.photo_url,
+      photoUrl: rpcData?.photo_url
     });
-    return coach as Coach;
+    return rpcData as Coach;
   }
 
   console.log('[fetchCoachByName] No coach found for:', {
@@ -520,14 +520,14 @@ export async function fetchCoachById(coachId: string): Promise<Coach | null> {
   const { data: rpcData, error: rpcError } = await supabase
     .rpc('get_coach_by_id', { coach_id_param: coachId });
 
-  if (!rpcError && rpcData && rpcData.length > 0) {
-    const coach = rpcData[0];
+  // RPC returns JSONB (single object), not an array
+  if (!rpcError && rpcData) {
     console.log('[fetchCoachById] Found coach via RPC:', {
-      name: coach?.name,
-      hasPhotoUrl: !!coach?.photo_url,
-      photoUrl: coach?.photo_url
+      name: rpcData?.name,
+      hasPhotoUrl: !!rpcData?.photo_url,
+      photoUrl: rpcData?.photo_url
     });
-    return coach as Coach;
+    return rpcData as Coach;
   }
 
   console.log('[fetchCoachById] No coach found for ID:', {

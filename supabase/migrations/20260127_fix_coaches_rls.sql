@@ -25,45 +25,24 @@ TO anon
 USING (true);
 
 -- Create a SECURITY DEFINER function as a fallback
--- This bypasses RLS entirely for coach lookups
+-- Uses JSONB to return all columns flexibly (avoids column mismatch issues)
 CREATE OR REPLACE FUNCTION get_coach_by_name(coach_name_param TEXT)
-RETURNS TABLE (
-  id UUID,
-  name TEXT,
-  email TEXT,
-  bio TEXT,
-  photo_url TEXT,
-  headline TEXT,
-  notable_credentials TEXT,
-  special_services TEXT,
-  icf_level TEXT,
-  is_scale_coach BOOLEAN,
-  is_grow_coach BOOLEAN,
-  is_exec_coach BOOLEAN
-)
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  result JSONB;
 BEGIN
-  RETURN QUERY
-  SELECT
-    c.id,
-    c.name,
-    c.email,
-    c.bio,
-    c.photo_url,
-    c.headline,
-    c.notable_credentials,
-    c.special_services,
-    c.icf_level::TEXT,
-    c.is_scale_coach,
-    c.is_grow_coach,
-    c.is_exec_coach
+  SELECT to_jsonb(c.*)
+  INTO result
   FROM coaches c
   WHERE lower(c.name) = lower(coach_name_param)
      OR lower(c.name) LIKE '%' || lower(coach_name_param) || '%'
   LIMIT 1;
+
+  RETURN result;
 END;
 $$;
 
@@ -73,42 +52,21 @@ GRANT EXECUTE ON FUNCTION get_coach_by_name(TEXT) TO anon;
 
 -- Similar function for coach ID lookup
 CREATE OR REPLACE FUNCTION get_coach_by_id(coach_id_param UUID)
-RETURNS TABLE (
-  id UUID,
-  name TEXT,
-  email TEXT,
-  bio TEXT,
-  photo_url TEXT,
-  headline TEXT,
-  notable_credentials TEXT,
-  special_services TEXT,
-  icf_level TEXT,
-  is_scale_coach BOOLEAN,
-  is_grow_coach BOOLEAN,
-  is_exec_coach BOOLEAN
-)
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  result JSONB;
 BEGIN
-  RETURN QUERY
-  SELECT
-    c.id,
-    c.name,
-    c.email,
-    c.bio,
-    c.photo_url,
-    c.headline,
-    c.notable_credentials,
-    c.special_services,
-    c.icf_level::TEXT,
-    c.is_scale_coach,
-    c.is_grow_coach,
-    c.is_exec_coach
+  SELECT to_jsonb(c.*)
+  INTO result
   FROM coaches c
   WHERE c.id = coach_id_param
   LIMIT 1;
+
+  RETURN result;
 END;
 $$;
 
