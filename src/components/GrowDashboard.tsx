@@ -3,7 +3,7 @@ import type { Employee, Session, ActionItem, View, Coach } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import type { ProgramInfo, GrowFocusArea } from '../lib/dataFetcher';
 import { supabase } from '../lib/supabase';
-import { fetchCoachByName, fetchCoachById, fetchProgramInfo, fetchGrowFocusAreas, parseCoachSpecialties, updateActionItemStatus } from '../lib/dataFetcher';
+import { fetchCoachByName, fetchCoachById, fetchProgramInfo, fetchGrowFocusAreas, updateActionItemStatus, fetchMatchSummary } from '../lib/dataFetcher';
 import ProgramProgressCard from './ProgramProgressCard';
 import CompetencyProgressCard from './CompetencyProgressCard';
 
@@ -39,6 +39,7 @@ export default function GrowDashboard({
   const [programInfo, setProgramInfo] = useState<ProgramInfo | null>(null);
   const [focusAreas, setFocusAreas] = useState<GrowFocusArea[]>([]);
   const [coachProfile, setCoachProfile] = useState<Coach | null>(null);
+  const [matchSummary, setMatchSummary] = useState<string | null>(null);
 
   // Load GROW-specific data
   useEffect(() => {
@@ -82,9 +83,17 @@ export default function GrowDashboard({
         fullCoachData: coach
       });
 
+      // Fetch match summary for dynamic coach description
+      let summary: string | null = null;
+      if (profile?.id) {
+        summary = await fetchMatchSummary(profile.id, userEmail);
+        console.log('[GrowDashboard] Match summary result:', summary);
+      }
+
       if (progInfo) setProgramInfo(progInfo);
       if (areas) setFocusAreas(areas);
       if (coach) setCoachProfile(coach as Coach);
+      if (summary) setMatchSummary(summary);
     };
 
     loadGrowData();
@@ -302,82 +311,59 @@ export default function GrowDashboard({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          YOUR NEXT SESSION - Same as SCALE but in two-column layout
+          NEXT SESSION + COACH - Two columns when upcoming session, otherwise just coach card
           ═══════════════════════════════════════════════════════════════════ */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Next Session Card */}
-        <section className={`rounded-[2rem] p-6 border-2 transition-all ${
-          showJoinButton
-            ? 'bg-gradient-to-br from-boon-blue/10 via-white to-boon-lightBlue/30 border-boon-blue/40 shadow-xl'
-            : hasUpcomingSession
-            ? 'bg-white border-gray-100 shadow-sm'
-            : 'bg-gradient-to-br from-boon-blue/5 to-white border-boon-blue/20'
-        }`}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-              {hasUpcomingSession ? 'Your Next Session' : 'Book Your Next Session'}
-            </span>
-          </div>
+      <div className={hasUpcomingSession ? "grid md:grid-cols-2 gap-6" : ""}>
+        {/* Next Session Card - Only show when there's an upcoming session */}
+        {hasUpcomingSession && (
+          <section className={`rounded-[2rem] p-6 border-2 transition-all ${
+            showJoinButton
+              ? 'bg-gradient-to-br from-boon-blue/10 via-white to-boon-lightBlue/30 border-boon-blue/40 shadow-xl'
+              : 'bg-white border-gray-100 shadow-sm'
+          }`}>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                Your Next Session
+              </span>
+            </div>
 
-          {hasUpcomingSession ? (
-            <>
-              <div className="mb-4">
-                <p className="text-xl font-bold text-boon-text">
-                  {new Date(upcomingSession.session_date).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </p>
-                <p className="text-gray-500 text-sm mt-1">
-                  {new Date(upcomingSession.session_date).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })} with {coachFirstName}
-                </p>
-              </div>
-
-              {upcomingSession.zoom_join_link && (
-                <a
-                  href={upcomingSession.zoom_join_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                    showJoinButton
-                      ? 'text-white bg-green-600 hover:bg-green-700 shadow-lg'
-                      : 'text-boon-blue bg-boon-lightBlue hover:bg-boon-lightBlue/80'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  {showJoinButton ? 'Join Session' : 'Join Link'}
-                </a>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-gray-600 mb-4">
-                Ready to continue your journey with {coachFirstName}?
+            <div className="mb-4">
+              <p className="text-xl font-bold text-boon-text">
+                {new Date(upcomingSession.session_date).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })}
               </p>
-              {profile?.booking_link && (
-                <a
-                  href={profile.booking_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-boon-blue rounded-xl hover:bg-boon-darkBlue transition-all"
-                >
-                  Book Now
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </a>
-              )}
-            </>
-          )}
-        </section>
+              <p className="text-gray-500 text-sm mt-1">
+                {new Date(upcomingSession.session_date).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })} with {coachFirstName}
+              </p>
+            </div>
 
-        {/* Your Coach Card */}
+            {upcomingSession.zoom_join_link && (
+              <a
+                href={upcomingSession.zoom_join_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                  showJoinButton
+                    ? 'text-white bg-green-600 hover:bg-green-700 shadow-lg'
+                    : 'text-boon-blue bg-boon-lightBlue hover:bg-boon-lightBlue/80'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                {showJoinButton ? 'Join Session' : 'Join Link'}
+              </a>
+            )}
+          </section>
+        )}
+
+        {/* Your Coach Card - Full width when no upcoming session */}
         <section className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Your Coach</span>
@@ -404,29 +390,10 @@ export default function GrowDashboard({
             </div>
           </div>
 
-          {/* Coach bio - with fallback */}
-          <p className="text-sm text-gray-600 mt-4 leading-relaxed line-clamp-3">
-            {coachProfile?.bio || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential through personalized coaching.`}
+          {/* Dynamic coach description from match_summary, fallback to bio */}
+          <p className="text-sm text-gray-600 mt-4 leading-relaxed">
+            {matchSummary || coachProfile?.bio || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential through personalized coaching.`}
           </p>
-
-          {/* Coach specialties */}
-          {(() => {
-            const specialties = coachProfile?.special_services
-              ? parseCoachSpecialties(coachProfile.special_services, 4)
-              : ['Leadership', 'Communication', 'Resilience'];
-            return (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {specialties.map((specialty, i) => (
-                  <span
-                    key={i}
-                    className="px-2.5 py-1 text-xs font-bold text-boon-blue bg-boon-lightBlue/30 rounded-full"
-                  >
-                    {specialty}
-                  </span>
-                ))}
-              </div>
-            );
-          })()}
         </section>
       </div>
 
