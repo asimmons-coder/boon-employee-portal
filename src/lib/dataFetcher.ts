@@ -405,35 +405,76 @@ export async function submitSessionFeedback(
 
 /**
  * Fetch coach details by name
+ * Tries exact ilike match first, then falls back to flexible matching
  */
 export async function fetchCoachByName(coachName: string): Promise<Coach | null> {
-  console.log('[fetchCoachByName] Searching for coach:', coachName);
+  const trimmedName = coachName.trim();
+  console.log('[fetchCoachByName] Searching for coach:', trimmedName);
 
-  const { data, error } = await supabase
+  // First try exact ilike match
+  const { data: exactData, error: exactError } = await supabase
     .from('coaches')
     .select('*')
-    .ilike('name', coachName)
+    .ilike('name', trimmedName)
     .single();
 
-  if (error) {
-    console.log('[fetchCoachByName] Error or no match:', {
-      errorCode: error.code,
-      errorMessage: error.message,
-      searchedName: coachName
+  if (!exactError && exactData) {
+    console.log('[fetchCoachByName] Found coach (exact match):', {
+      name: exactData?.name,
+      hasPhotoUrl: !!exactData?.photo_url,
+      photoUrl: exactData?.photo_url
     });
-    // Coaches table might not exist
-    if (error.code !== 'PGRST116') {
-      console.error('Error fetching coach by name:', error);
-    }
-    return null;
+    return exactData as Coach;
   }
 
-  console.log('[fetchCoachByName] Found coach:', {
-    name: data?.name,
-    hasPhotoUrl: !!data?.photo_url,
-    photoUrl: data?.photo_url
+  // Try flexible match with wildcards (handles extra spaces, etc.)
+  const { data: flexData, error: flexError } = await supabase
+    .from('coaches')
+    .select('*')
+    .ilike('name', `%${trimmedName}%`)
+    .limit(1)
+    .single();
+
+  if (!flexError && flexData) {
+    console.log('[fetchCoachByName] Found coach (flexible match):', {
+      searchedName: trimmedName,
+      foundName: flexData?.name,
+      hasPhotoUrl: !!flexData?.photo_url,
+      photoUrl: flexData?.photo_url
+    });
+    return flexData as Coach;
+  }
+
+  // Try matching by first name + last name separately (handles formatting differences)
+  const nameParts = trimmedName.split(/\s+/).filter(Boolean);
+  if (nameParts.length >= 2) {
+    const firstName = nameParts[0];
+    const lastName = nameParts[nameParts.length - 1];
+
+    const { data: partsData, error: partsError } = await supabase
+      .from('coaches')
+      .select('*')
+      .ilike('name', `${firstName}%${lastName}`)
+      .limit(1)
+      .single();
+
+    if (!partsError && partsData) {
+      console.log('[fetchCoachByName] Found coach (name parts match):', {
+        searchedName: trimmedName,
+        foundName: partsData?.name,
+        hasPhotoUrl: !!partsData?.photo_url,
+        photoUrl: partsData?.photo_url
+      });
+      return partsData as Coach;
+    }
+  }
+
+  console.log('[fetchCoachByName] No coach found for:', {
+    searchedName: trimmedName,
+    exactError: exactError?.message,
+    flexError: flexError?.message
   });
-  return data as Coach;
+  return null;
 }
 
 /**

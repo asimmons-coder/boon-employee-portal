@@ -3,7 +3,7 @@ import type { Employee, Session, ActionItem, View, Coach } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import type { ProgramInfo, GrowFocusArea } from '../lib/dataFetcher';
 import { supabase } from '../lib/supabase';
-import { fetchCoachByName, fetchProgramInfo, fetchGrowFocusAreas, parseCoachSpecialties, updateActionItemStatus } from '../lib/dataFetcher';
+import { fetchCoachByName, fetchCoachById, fetchProgramInfo, fetchGrowFocusAreas, parseCoachSpecialties, updateActionItemStatus } from '../lib/dataFetcher';
 import ProgramProgressCard from './ProgramProgressCard';
 import CompetencyProgressCard from './CompetencyProgressCard';
 
@@ -45,15 +45,36 @@ export default function GrowDashboard({
     const loadGrowData = async () => {
       if (!profile?.program || !userEmail) return;
 
-      console.log('[GrowDashboard] Loading data for:', { userEmail, coachName, program: profile.program });
+      console.log('[GrowDashboard] Loading data for:', { userEmail, coachName, coachId: profile.coach_id, program: profile.program });
 
-      const [progInfo, areas, coach] = await Promise.all([
+      // Fetch program info and focus areas in parallel
+      const [progInfo, areas] = await Promise.all([
         fetchProgramInfo(profile.program),
         fetchGrowFocusAreas(userEmail),
-        coachName !== 'Your Coach' ? fetchCoachByName(coachName) : Promise.resolve(null),
       ]);
 
-      console.log('[GrowDashboard] Coach fetch result:', {
+      // Try to fetch coach by ID first (more reliable), then fall back to name
+      let coach: Coach | null = null;
+      if (profile.coach_id) {
+        coach = await fetchCoachById(profile.coach_id);
+        console.log('[GrowDashboard] Coach fetch by ID result:', {
+          coachId: profile.coach_id,
+          coachFound: !!coach,
+          coachPhotoUrl: coach?.photo_url
+        });
+      }
+
+      // Fall back to name lookup if ID lookup didn't work
+      if (!coach && coachName !== 'Your Coach') {
+        coach = await fetchCoachByName(coachName);
+        console.log('[GrowDashboard] Coach fetch by name result:', {
+          coachName,
+          coachFound: !!coach,
+          coachPhotoUrl: coach?.photo_url
+        });
+      }
+
+      console.log('[GrowDashboard] Final coach result:', {
         coachName,
         coachFound: !!coach,
         coachPhotoUrl: coach?.photo_url,
@@ -66,7 +87,7 @@ export default function GrowDashboard({
     };
 
     loadGrowData();
-  }, [profile?.program, userEmail, coachName]);
+  }, [profile?.program, profile?.coach_id, userEmail, coachName]);
 
   // Count sessions with this specific coach
   const sessionsWithCoach = completedSessions.filter(s => s.coach_name === coachName);
@@ -231,11 +252,11 @@ export default function GrowDashboard({
           </div>
 
           {/* Current Goal from last session */}
-          {lastSession?.plan && (
+          {lastSession?.goals && (
             <div className="mb-6 p-5 bg-white/60 rounded-xl border border-boon-amber/10">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Current Goal</p>
               <p style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }} className="text-lg text-boon-text leading-relaxed">
-                {lastSession.plan}
+                {lastSession.goals}
               </p>
             </div>
           )}
@@ -271,7 +292,7 @@ export default function GrowDashboard({
                 );
               })}
             </div>
-          ) : !lastSession?.plan && (
+          ) : !lastSession?.goals && (
             <p className="text-gray-500 text-sm italic">
               Your goals and action items from coaching sessions will appear here.
             </p>
@@ -423,10 +444,10 @@ export default function GrowDashboard({
           </div>
 
           {/* Last session context */}
-          {lastSession?.plan && (
+          {lastSession?.goals && (
             <div className="mb-6 p-5 bg-white/60 rounded-xl border border-boon-amber/10">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Last time, you were working on:</p>
-              <p className="font-serif text-gray-700 leading-relaxed italic">"{lastSession.plan}"</p>
+              <p className="font-serif text-gray-700 leading-relaxed italic">"{lastSession.goals}"</p>
             </div>
           )}
 
