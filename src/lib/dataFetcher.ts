@@ -405,7 +405,7 @@ export async function submitSessionFeedback(
 
 /**
  * Fetch coach details by name
- * Tries exact ilike match first, then falls back to flexible matching
+ * Tries direct query first, then RPC function to bypass RLS
  */
 export async function fetchCoachByName(coachName: string): Promise<Coach | null> {
   const trimmedName = coachName.trim();
@@ -469,32 +469,73 @@ export async function fetchCoachByName(coachName: string): Promise<Coach | null>
     }
   }
 
+  // Fallback: Try RPC function which uses SECURITY DEFINER to bypass RLS
+  console.log('[fetchCoachByName] Direct queries failed, trying RPC function');
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc('get_coach_by_name', { coach_name_param: trimmedName });
+
+  if (!rpcError && rpcData && rpcData.length > 0) {
+    const coach = rpcData[0];
+    console.log('[fetchCoachByName] Found coach via RPC:', {
+      name: coach?.name,
+      hasPhotoUrl: !!coach?.photo_url,
+      photoUrl: coach?.photo_url
+    });
+    return coach as Coach;
+  }
+
   console.log('[fetchCoachByName] No coach found for:', {
     searchedName: trimmedName,
     exactError: exactError?.message,
-    flexError: flexError?.message
+    flexError: flexError?.message,
+    rpcError: rpcError?.message
   });
   return null;
 }
 
 /**
  * Fetch coach details by ID
+ * Tries direct query first, then RPC function to bypass RLS
  */
 export async function fetchCoachById(coachId: string): Promise<Coach | null> {
+  console.log('[fetchCoachById] Searching for coach:', coachId);
+
   const { data, error } = await supabase
     .from('coaches')
     .select('*')
     .eq('id', coachId)
     .single();
 
-  if (error) {
-    if (error.code !== 'PGRST116') {
-      console.error('Error fetching coach by id:', error);
-    }
-    return null;
+  if (!error && data) {
+    console.log('[fetchCoachById] Found coach (direct query):', {
+      name: data?.name,
+      hasPhotoUrl: !!data?.photo_url,
+      photoUrl: data?.photo_url
+    });
+    return data as Coach;
   }
 
-  return data as Coach;
+  // Fallback: Try RPC function which uses SECURITY DEFINER to bypass RLS
+  console.log('[fetchCoachById] Direct query failed, trying RPC function');
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc('get_coach_by_id', { coach_id_param: coachId });
+
+  if (!rpcError && rpcData && rpcData.length > 0) {
+    const coach = rpcData[0];
+    console.log('[fetchCoachById] Found coach via RPC:', {
+      name: coach?.name,
+      hasPhotoUrl: !!coach?.photo_url,
+      photoUrl: coach?.photo_url
+    });
+    return coach as Coach;
+  }
+
+  console.log('[fetchCoachById] No coach found for ID:', {
+    coachId,
+    directError: error?.message,
+    rpcError: rpcError?.message
+  });
+  return null;
 }
 
 /**
