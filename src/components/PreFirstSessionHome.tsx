@@ -74,6 +74,27 @@ function truncateBio(text: string | null, maxLength: number = 280): string | nul
   return truncated + '...';
 }
 
+/**
+ * Create a personalized coach description based on the employee's coaching goals.
+ */
+function createPersonalizedDescription(coachFirstName: string, coachingGoals: string | null): string | null {
+  if (!coachingGoals) return null;
+
+  let truncatedGoals = coachingGoals;
+  if (coachingGoals.length > 150) {
+    const truncated = coachingGoals.substring(0, 150);
+    const lastPeriod = truncated.lastIndexOf('.');
+    if (lastPeriod > 80) {
+      truncatedGoals = coachingGoals.substring(0, lastPeriod + 1);
+    } else {
+      const lastSpace = truncated.lastIndexOf(' ');
+      truncatedGoals = lastSpace > 0 ? coachingGoals.substring(0, lastSpace) + '...' : truncated + '...';
+    }
+  }
+
+  return `Based on your goal to ${truncatedGoals.toLowerCase().replace(/^i want to |^i'd like to |^i would like to /i, '').replace(/\.$/, '')}, ${coachFirstName} will partner with you to develop strategies and build the skills you need to succeed.`;
+}
+
 interface PreFirstSessionHomeProps {
   profile: Employee | null;
   sessions: Session[];
@@ -142,11 +163,14 @@ export default function PreFirstSessionHome({
 
   // Coach display data
   const coachPhotoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;
-  // Extract only the relevant coach's summary from match_summary, fallback to truncated coach bio
+  // Extract only the relevant coach's summary from match_summary
+  // Fallback: personalized from coaching goals > truncated coach bio > generic
   const allMatchSummaries = matchSummary || baseline?.match_summary || welcomeSurveyScale?.match_summary || null;
   const extractedSummary = extractCoachSummary(allMatchSummaries, coachName);
+  const coachGoalsForPersonalization = baseline?.coaching_goals || welcomeSurveyScale?.coaching_goals || null;
+  const personalizedDesc = createPersonalizedDescription(coachFirstName, coachGoalsForPersonalization);
   const coachBio = coach?.bio || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential.`;
-  const displayMatchSummary = truncateBio(extractedSummary || coachBio, 280) || coachBio;
+  const displayMatchSummary = truncateBio(extractedSummary, 280) || personalizedDesc || truncateBio(coachBio, 280) || coachBio;
 
   // Debug: Log coach data to verify headline and notable_credentials
   console.log('[PreFirstSessionHome] Coach name:', coach?.name);
