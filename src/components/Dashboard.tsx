@@ -79,6 +79,7 @@ export default function Dashboard({ profile, sessions, actionItems, baseline, we
         sessions={sessions}
         actionItems={actionItems}
         baseline={baseline}
+        welcomeSurveyScale={welcomeSurveyScale}
         checkpointStatus={coachingState.scaleCheckpointStatus}
         onActionUpdate={onActionUpdate}
         userEmail={userEmail}

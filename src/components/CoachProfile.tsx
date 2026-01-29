@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Session, Coach, ProgramType } from '../lib/types';
+import type { Session, Coach, ProgramType, WelcomeSurveyScale } from '../lib/types';
 import { fetchCoachByName, fetchMatchSummary } from '../lib/dataFetcher';
 
 /**
@@ -72,15 +72,35 @@ function truncateBio(text: string | null, maxLength: number = 280): string | nul
   return truncated + '...';
 }
 
+/**
+ * Create a personalized coach description based on the employee's goals/topics.
+ */
+function createPersonalizedDescription(coachFirstName: string, goals: string | null): string | null {
+  if (!goals) return null;
+  if (goals.trim().length < 10) return null; // Too short to be meaningful
+
+  // Clean up the goals text
+  let cleanGoals = goals.trim();
+  // Remove common prefixes if present
+  cleanGoals = cleanGoals.replace(/^(i want to |i'd like to |i would like to |looking to )/i, '');
+  // Capitalize first letter
+  cleanGoals = cleanGoals.charAt(0).toUpperCase() + cleanGoals.slice(1);
+  // Remove trailing period if present (we'll add our own sentence structure)
+  cleanGoals = cleanGoals.replace(/\.$/, '');
+
+  return `${cleanGoals}—${coachFirstName} will partner with you to develop strategies and build the skills you need to succeed.`;
+}
+
 interface CoachProfileProps {
   sessions: Session[];
   coachName: string;
   programType?: ProgramType | null;
   employeeId?: string | null;
   userEmail?: string | null;
+  welcomeSurveyScale?: WelcomeSurveyScale | null;
 }
 
-export default function CoachProfile({ sessions, coachName, programType: _programType, employeeId, userEmail }: CoachProfileProps) {
+export default function CoachProfile({ sessions, coachName, programType: _programType, employeeId, userEmail, welcomeSurveyScale }: CoachProfileProps) {
   void _programType; // Unused but kept for API compatibility
   const [coach, setCoach] = useState<Coach | null>(null);
   const [matchSummary, setMatchSummary] = useState<string | null>(null);
@@ -116,10 +136,22 @@ export default function CoachProfile({ sessions, coachName, programType: _progra
     loadMatchSummary();
   }, [employeeId, userEmail]);
 
-  // Match summary or default text - extract only the relevant coach's summary, truncated
+  // Match summary or default text - extract only the relevant coach's summary
+  // Fallback order: extracted match_summary > personalized from goals/topics > truncated bio > generic
   const extractedSummary = extractCoachSummary(matchSummary, coachName);
+  const coachingGoals = welcomeSurveyScale?.coaching_goals || welcomeSurveyScale?.additional_topics || null;
+  const personalizedDesc = createPersonalizedDescription(coachFirstName, coachingGoals);
   const coachBio = coach?.bio || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential.`;
-  const displayMatchSummary = truncateBio(extractedSummary || coachBio, 280) || coachBio;
+
+  // Debug logging
+  console.log('[CoachProfile] Description debug:', {
+    hasExtractedSummary: !!extractedSummary,
+    coachingGoals,
+    personalizedDesc,
+    hasCoachBio: !!coach?.bio,
+  });
+
+  const displayMatchSummary = truncateBio(extractedSummary, 280) || personalizedDesc || truncateBio(coachBio, 280) || coachBio;
 
   // Photo URL - use real URL if available, otherwise placeholder
   const photoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;

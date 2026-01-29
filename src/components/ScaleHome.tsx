@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Employee, Session, ActionItem, BaselineSurvey, View } from '../lib/types';
+import type { Employee, Session, ActionItem, BaselineSurvey, WelcomeSurveyScale, View } from '../lib/types';
 import type { ScaleCheckpointStatus } from '../lib/types';
 import { updateActionItemStatus } from '../lib/dataFetcher';
 import SessionPrep from './SessionPrep';
@@ -10,6 +10,7 @@ interface ScaleHomeProps {
   sessions: Session[];
   actionItems: ActionItem[];
   baseline: BaselineSurvey | null;
+  welcomeSurveyScale?: WelcomeSurveyScale | null;
   checkpointStatus: ScaleCheckpointStatus;
   onActionUpdate: () => void;
   userEmail: string;
@@ -23,6 +24,7 @@ export default function ScaleHome({
   sessions,
   actionItems,
   baseline: _baseline,
+  welcomeSurveyScale,
   checkpointStatus,
   onActionUpdate,
   userEmail,
@@ -282,6 +284,7 @@ export default function ScaleHome({
           programType="SCALE"
           employeeId={profile?.id || null}
           userEmail={userEmail}
+          welcomeSurveyScale={welcomeSurveyScale}
         />
       )}
     </div>
