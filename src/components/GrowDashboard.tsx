@@ -7,6 +7,60 @@ import { fetchCoachByName, fetchCoachById, fetchProgramInfo, fetchGrowFocusAreas
 import ProgramProgressCard from './ProgramProgressCard';
 import CompetencyProgressCard from './CompetencyProgressCard';
 
+/**
+ * Extract the specific coach's summary from the full match_summary text.
+ * The match_summary typically contains multiple entries like:
+ * "Coach 1: Jane Doe - Jane brings... Coach 2: John Smith - John's expertise..."
+ * This function finds and returns only the summary for the specified coach.
+ */
+function extractCoachSummary(matchSummary: string | null, coachName: string): string | null {
+  if (!matchSummary || !coachName) return null;
+
+  // Get the coach's first name and last name
+  const nameParts = coachName.trim().split(' ');
+  const firstName = nameParts[0];
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+
+  // Try to find the coach's section in the match summary
+  // Pattern: "Coach N: [Name] - [description]"
+  const coachPattern = new RegExp(
+    `Coach\\s*\\d*:?\\s*${firstName}(?:\\s+\\w+)*\\s*[-–—]\\s*([^]*?)(?=Coach\\s*\\d|$)`,
+    'i'
+  );
+
+  const match = matchSummary.match(coachPattern);
+  if (match) {
+    // Return the full matched section including the coach's name intro
+    const fullMatch = match[0].trim();
+    // Clean up and return just the description part after the dash
+    const dashIndex = fullMatch.search(/[-–—]/);
+    if (dashIndex !== -1) {
+      return fullMatch.substring(dashIndex + 1).trim();
+    }
+    return fullMatch;
+  }
+
+  // Alternative: Try searching by last name if first name didn't match
+  if (lastName) {
+    const lastNamePattern = new RegExp(
+      `Coach\\s*\\d*:?\\s*\\w+\\s+${lastName}\\s*[-–—]\\s*([^]*?)(?=Coach\\s*\\d|$)`,
+      'i'
+    );
+    const lastNameMatch = matchSummary.match(lastNamePattern);
+    if (lastNameMatch) {
+      const fullMatch = lastNameMatch[0].trim();
+      const dashIndex = fullMatch.search(/[-–—]/);
+      if (dashIndex !== -1) {
+        return fullMatch.substring(dashIndex + 1).trim();
+      }
+      return fullMatch;
+    }
+  }
+
+  // Coach not found in match_summary
+  return null;
+}
+
 interface GrowDashboardProps {
   profile: Employee | null;
   sessions: Session[];
@@ -392,7 +446,7 @@ export default function GrowDashboard({
 
           {/* Dynamic coach description from match_summary, fallback to bio */}
           <p className="text-sm text-gray-600 mt-4 leading-relaxed">
-            {matchSummary || coachProfile?.bio || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential through personalized coaching.`}
+            {extractCoachSummary(matchSummary, coachName) || coachProfile?.bio || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential through personalized coaching.`}
           </p>
         </section>
       </div>
