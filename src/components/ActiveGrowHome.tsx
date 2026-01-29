@@ -39,16 +39,22 @@ export default function ActiveGrowHome({
 
   // Coach profile state
   const [coachProfile, setCoachProfile] = useState<Coach | null>(null);
+  const [isLoadingCoach, setIsLoadingCoach] = useState(true);
 
   // Fetch coach profile from coaches table
   useEffect(() => {
     const loadCoachProfile = async () => {
-      if (!coachName || coachName === 'Your Coach') return;
+      setIsLoadingCoach(true);
+      if (!coachName || coachName === 'Your Coach') {
+        setIsLoadingCoach(false);
+        return;
+      }
 
       const coach = await fetchCoachByName(coachName);
       if (coach) {
         setCoachProfile(coach as Coach);
       }
+      setIsLoadingCoach(false);
     };
 
     loadCoachProfile();
@@ -487,28 +493,42 @@ export default function ActiveGrowHome({
           {/* Your Coach - More prominent when no session scheduled */}
           <section className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Your Coach</h2>
-            <div className="flex flex-col sm:flex-row gap-6">
-              <img
-                src={getCoachPhotoUrl(200)}
-                alt={coachName}
-                className="w-24 h-24 rounded-2xl object-cover object-[center_15%] ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
-              />
-              <div className="flex-1 text-center sm:text-left">
-                <h3 className="text-xl font-bold text-boon-text">{coachName}</h3>
-                <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">Executive Coach</p>
-                {coachProfile?.bio ? (
-                  <p className="text-sm text-gray-600 mt-4 leading-relaxed">{coachProfile.bio}</p>
-                ) : (
-                  <p className="text-sm text-gray-600 mt-4 leading-relaxed">
-                    {coachFirstName} specializes in leadership development and emotional intelligence,
-                    helping professionals unlock their full potential through personalized coaching.
-                  </p>
-                )}
-                <p className="text-sm text-gray-500 mt-3">
-                  <span className="font-semibold text-boon-text">{sessionCountWithCoach} {sessionCountWithCoach === 1 ? 'session' : 'sessions'}</span> together
-                </p>
+            {isLoadingCoach ? (
+              /* Loading skeleton */
+              <div className="animate-pulse flex flex-col sm:flex-row gap-6">
+                <div className="w-24 h-24 rounded-2xl bg-gray-200 mx-auto sm:mx-0" />
+                <div className="flex-1 text-center sm:text-left space-y-3">
+                  <div className="h-6 bg-gray-200 rounded w-40 mx-auto sm:mx-0" />
+                  <div className="h-4 bg-gray-200 rounded w-32 mx-auto sm:mx-0" />
+                  <div className="h-4 bg-gray-200 rounded w-full mt-4" />
+                  <div className="h-4 bg-gray-200 rounded w-5/6" />
+                  <div className="h-4 bg-gray-200 rounded w-28 mx-auto sm:mx-0 mt-3" />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-6">
+                <img
+                  src={getCoachPhotoUrl(200)}
+                  alt={coachName}
+                  className="w-24 h-24 rounded-2xl object-cover object-[center_15%] ring-4 ring-boon-bg shadow-lg mx-auto sm:mx-0"
+                />
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="text-xl font-bold text-boon-text">{coachName}</h3>
+                  <p className="text-sm font-bold text-boon-blue uppercase tracking-widest mt-1">Executive Coach</p>
+                  {coachProfile?.bio ? (
+                    <p className="text-sm text-gray-600 mt-4 leading-relaxed">{coachProfile.bio}</p>
+                  ) : (
+                    <p className="text-sm text-gray-600 mt-4 leading-relaxed">
+                      {coachFirstName} specializes in leadership development and emotional intelligence,
+                      helping professionals unlock their full potential through personalized coaching.
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-500 mt-3">
+                    <span className="font-semibold text-boon-text">{sessionCountWithCoach} {sessionCountWithCoach === 1 ? 'session' : 'sessions'}</span> together
+                  </p>
+                </div>
+              </div>
+            )}
           </section>
         </>
       )}
@@ -654,20 +674,32 @@ export default function ActiveGrowHome({
       {/* Your Coach - Compact version for session scheduled state */}
       {hasUpcomingSession && (
         <section className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <img
-              src={getCoachPhotoUrl(100)}
-              alt={coachName}
-              className="w-14 h-14 rounded-xl object-cover object-[center_15%] ring-2 ring-boon-bg shadow-sm"
-            />
-            <div className="flex-1">
-              <h3 className="font-bold text-boon-text">{coachName}</h3>
-              <p className="text-xs text-gray-500">{sessionCountWithCoach} {sessionCountWithCoach === 1 ? 'session' : 'sessions'} together</p>
+          {isLoadingCoach ? (
+            /* Loading skeleton */
+            <div className="animate-pulse flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-gray-200" />
+              <div className="flex-1 space-y-2">
+                <div className="h-5 bg-gray-200 rounded w-32" />
+                <div className="h-3 bg-gray-200 rounded w-24" />
+              </div>
+              <div className="w-20 h-9 bg-gray-200 rounded-xl" />
             </div>
-            <button className="px-4 py-2 text-sm font-bold text-boon-blue border border-boon-blue/30 rounded-xl hover:bg-boon-blue/5 transition-colors">
-              Message
-            </button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <img
+                src={getCoachPhotoUrl(100)}
+                alt={coachName}
+                className="w-14 h-14 rounded-xl object-cover object-[center_15%] ring-2 ring-boon-bg shadow-sm"
+              />
+              <div className="flex-1">
+                <h3 className="font-bold text-boon-text">{coachName}</h3>
+                <p className="text-xs text-gray-500">{sessionCountWithCoach} {sessionCountWithCoach === 1 ? 'session' : 'sessions'} together</p>
+              </div>
+              <button className="px-4 py-2 text-sm font-bold text-boon-blue border border-boon-blue/30 rounded-xl hover:bg-boon-blue/5 transition-colors">
+                Message
+              </button>
+            </div>
+          )}
         </section>
       )}
 
