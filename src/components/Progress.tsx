@@ -33,6 +33,8 @@ interface ProgressPageProps {
   onStartCheckpoint?: () => void;
   coachingWins?: CoachingWin[];
   onAddWin?: (winText: string) => Promise<boolean>;
+  onDeleteWin?: (winId: string) => Promise<boolean>;
+  onUpdateWin?: (winId: string, winText: string) => Promise<boolean>;
   onNavigate?: (view: View) => void;
 }
 
@@ -96,6 +98,8 @@ export default function ProgressPage({
   onStartCheckpoint,
   coachingWins = [],
   onAddWin,
+  onDeleteWin,
+  onUpdateWin,
   onNavigate,
 }: ProgressPageProps) {
   const [activeTab, setActiveTab] = useState<'competencies' | 'wellbeing'>('competencies');
@@ -106,6 +110,37 @@ export default function ProgressPage({
   const [showAddWinModal, setShowAddWinModal] = useState(false);
   const [newWinText, setNewWinText] = useState('');
   const [isSubmittingWin, setIsSubmittingWin] = useState(false);
+
+  // Edit/delete win state
+  const [editingWinId, setEditingWinId] = useState<string | null>(null);
+  const [editWinText, setEditWinText] = useState('');
+  const [deletingWinId, setDeletingWinId] = useState<string | null>(null);
+
+  const handleDeleteWin = async (winId: string) => {
+    if (!onDeleteWin) return;
+    setDeletingWinId(winId);
+    await onDeleteWin(winId);
+    setDeletingWinId(null);
+  };
+
+  const handleStartEdit = (win: CoachingWin) => {
+    setEditingWinId(win.id);
+    setEditWinText(win.win_text);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingWinId(null);
+    setEditWinText('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!onUpdateWin || !editingWinId || !editWinText.trim()) return;
+    const success = await onUpdateWin(editingWinId, editWinText.trim());
+    if (success) {
+      setEditingWinId(null);
+      setEditWinText('');
+    }
+  };
 
   const handleAddWin = async () => {
     console.log('[Progress] handleAddWin called', { newWinText: newWinText.trim(), hasOnAddWin: !!onAddWin });
@@ -345,22 +380,77 @@ export default function ProgressPage({
               </div>
               <div className="space-y-4">
                 {coachingWins.map((win) => (
-                  <div key={win.id} className="bg-amber-50 rounded-xl p-5 border-l-4 border-orange-400">
-                    <p className="text-gray-800 italic text-lg leading-relaxed">"{win.win_text}"</p>
-                    <div className="flex items-center gap-3 mt-3 text-sm text-gray-500">
-                      {win.session_number && (
-                        <span className="bg-white px-3 py-1 rounded-full border border-gray-200">
-                          After Session {win.session_number}
-                        </span>
-                      )}
-                      <span>
-                        {new Date(win.created_at).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </span>
-                    </div>
+                  <div key={win.id} className="bg-amber-50 rounded-xl p-5 border-l-4 border-orange-400 group relative">
+                    {editingWinId === win.id ? (
+                      <div className="space-y-3">
+                        <textarea
+                          value={editWinText}
+                          onChange={(e) => setEditWinText(e.target.value)}
+                          className="w-full p-3 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+                          rows={3}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSaveEdit}
+                            className="px-3 py-1.5 bg-orange-400 text-white text-xs font-bold rounded-lg hover:bg-orange-500"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-3 py-1.5 bg-gray-200 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-gray-800 italic text-lg leading-relaxed pr-16">"{win.win_text}"</p>
+                        <div className="flex items-center gap-3 mt-3 text-sm text-gray-500">
+                          {win.session_number && (
+                            <span className="bg-white px-3 py-1 rounded-full border border-gray-200">
+                              Session {win.session_number}
+                            </span>
+                          )}
+                          <span>
+                            {new Date(win.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                        {/* Edit/Delete buttons */}
+                        {(onUpdateWin || onDeleteWin) && (
+                          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            {onUpdateWin && (
+                              <button
+                                onClick={() => handleStartEdit(win)}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded"
+                                title="Edit"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                              </button>
+                            )}
+                            {onDeleteWin && (
+                              <button
+                                onClick={() => handleDeleteWin(win.id)}
+                                disabled={deletingWinId === win.id}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded disabled:opacity-50"
+                                title="Delete"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -906,17 +996,70 @@ export default function ProgressPage({
           {coachingWins.length > 0 ? (
             <div className="space-y-4">
               {coachingWins.map((win) => (
-                <div key={win.id} className="p-5 bg-gradient-to-br from-amber-50 to-orange-50/30 rounded-2xl border border-amber-100/50">
-                  <div className="flex items-start gap-3">
-                    <span className="text-xl">🏆</span>
-                    <div className="flex-1">
-                      <p className="text-gray-800 leading-relaxed">"{win.win_text}"</p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        {win.session_number && `Session ${win.session_number} · `}
-                        {new Date(win.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
+                <div key={win.id} className="p-5 bg-gradient-to-br from-amber-50 to-orange-50/30 rounded-2xl border border-amber-100/50 group relative">
+                  {editingWinId === win.id ? (
+                    <div className="space-y-3">
+                      <textarea
+                        value={editWinText}
+                        onChange={(e) => setEditWinText(e.target.value)}
+                        className="w-full p-3 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        rows={3}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSaveEdit}
+                          className="px-3 py-1.5 bg-orange-400 text-white text-xs font-bold rounded-lg hover:bg-orange-500"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-3 py-1.5 bg-gray-200 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-300"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">🏆</span>
+                      <div className="flex-1 pr-12">
+                        <p className="text-gray-800 leading-relaxed">"{win.win_text}"</p>
+                        <p className="text-xs text-gray-400 mt-2">
+                          {win.session_number && `Session ${win.session_number} · `}
+                          {new Date(win.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                      {/* Edit/Delete buttons */}
+                      {(onUpdateWin || onDeleteWin) && (
+                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          {onUpdateWin && (
+                            <button
+                              onClick={() => handleStartEdit(win)}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded"
+                              title="Edit"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                          )}
+                          {onDeleteWin && (
+                            <button
+                              onClick={() => handleDeleteWin(win.id)}
+                              disabled={deletingWinId === win.id}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded disabled:opacity-50"
+                              title="Delete"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1745,17 +1888,70 @@ export default function ProgressPage({
           {coachingWins.length > 0 ? (
             <div className="space-y-4">
               {coachingWins.map((win) => (
-                <div key={win.id} className="p-5 bg-gradient-to-br from-amber-50 to-orange-50/30 rounded-2xl border border-amber-100/50">
-                  <div className="flex items-start gap-3">
-                    <span className="text-xl">🏆</span>
-                    <div className="flex-1">
-                      <p className="text-gray-800 leading-relaxed">"{win.win_text}"</p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        {win.session_number && `Session ${win.session_number} · `}
-                        {new Date(win.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
+                <div key={win.id} className="p-5 bg-gradient-to-br from-amber-50 to-orange-50/30 rounded-2xl border border-amber-100/50 group relative">
+                  {editingWinId === win.id ? (
+                    <div className="space-y-3">
+                      <textarea
+                        value={editWinText}
+                        onChange={(e) => setEditWinText(e.target.value)}
+                        className="w-full p-3 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        rows={3}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSaveEdit}
+                          className="px-3 py-1.5 bg-orange-400 text-white text-xs font-bold rounded-lg hover:bg-orange-500"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-3 py-1.5 bg-gray-200 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-300"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">🏆</span>
+                      <div className="flex-1 pr-12">
+                        <p className="text-gray-800 leading-relaxed">"{win.win_text}"</p>
+                        <p className="text-xs text-gray-400 mt-2">
+                          {win.session_number && `Session ${win.session_number} · `}
+                          {new Date(win.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                      {/* Edit/Delete buttons */}
+                      {(onUpdateWin || onDeleteWin) && (
+                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          {onUpdateWin && (
+                            <button
+                              onClick={() => handleStartEdit(win)}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded"
+                              title="Edit"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                          )}
+                          {onDeleteWin && (
+                            <button
+                              onClick={() => handleDeleteWin(win.id)}
+                              disabled={deletingWinId === win.id}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded disabled:opacity-50"
+                              title="Delete"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

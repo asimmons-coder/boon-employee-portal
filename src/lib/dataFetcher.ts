@@ -1998,3 +1998,46 @@ export async function addCoachingWin(
 
   return { success: false, error: 'Failed to add coaching win' };
 }
+
+/**
+ * Delete a coaching win
+ */
+export async function deleteCoachingWin(
+  winId: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log('[deleteCoachingWin] Deleting win:', winId);
+
+  const { error } = await supabase
+    .from('coaching_wins')
+    .delete()
+    .eq('id', winId);
+
+  if (error) {
+    console.error('[deleteCoachingWin] Error:', error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Update a coaching win's text
+ */
+export async function updateCoachingWin(
+  winId: string,
+  winText: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log('[updateCoachingWin] Updating win:', winId);
+
+  const { error } = await supabase
+    .from('coaching_wins')
+    .update({ win_text: winText.trim() })
+    .eq('id', winId);
+
+  if (error) {
+    console.error('[updateCoachingWin] Error:', error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/AuthContext';
-import { fetchSessions, fetchProgressData, fetchBaseline, fetchWelcomeSurveyScale, fetchCompetencyScores, fetchProgramType, fetchActionItems, fetchReflection, fetchCheckpoints, fetchPendingSurvey, fetchCoachingWins, addCoachingWin } from './lib/dataFetcher';
+import { fetchSessions, fetchProgressData, fetchBaseline, fetchWelcomeSurveyScale, fetchCompetencyScores, fetchProgramType, fetchActionItems, fetchReflection, fetchCheckpoints, fetchPendingSurvey, fetchCoachingWins, addCoachingWin, deleteCoachingWin, updateCoachingWin } from './lib/dataFetcher';
 import { getCoachingState, type CoachingStateData, type CoachingState } from './lib/coachingState';
 import type { View, Session, SurveyResponse, BaselineSurvey, WelcomeSurveyScale, CompetencyScore, ProgramType, ActionItem, ReflectionResponse, Checkpoint, PendingSurvey, CoachingWin } from './lib/types';
 
@@ -485,6 +485,28 @@ function ProtectedApp() {
     return false;
   };
 
+  const handleDeleteWin = async (winId: string): Promise<boolean> => {
+    if (!employee) return false;
+    const result = await deleteCoachingWin(winId);
+    if (result.success) {
+      const updatedWins = await fetchCoachingWins(employee.company_email);
+      setCoachingWins(updatedWins);
+      return true;
+    }
+    return false;
+  };
+
+  const handleUpdateWin = async (winId: string, winText: string): Promise<boolean> => {
+    if (!employee) return false;
+    const result = await updateCoachingWin(winId, winText);
+    if (result.success) {
+      const updatedWins = await fetchCoachingWins(employee.company_email);
+      setCoachingWins(updatedWins);
+      return true;
+    }
+    return false;
+  };
+
   const renderView = () => {
     switch (view) {
       case 'dashboard':
@@ -492,7 +514,7 @@ function ProtectedApp() {
       case 'sessions':
         return <SessionsPage sessions={sessions} coachingState={coachingState} />;
       case 'progress':
-        return <ProgressPage progress={progress} baseline={baseline} welcomeSurveyScale={welcomeSurveyScale} competencyScores={competencyScores} sessions={sessions} actionItems={effectiveActionItems} programType={programType} coachingState={coachingState} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} coachingWins={coachingWins} onAddWin={handleAddWin} onNavigate={setView} />;
+        return <ProgressPage progress={progress} baseline={baseline} welcomeSurveyScale={welcomeSurveyScale} competencyScores={competencyScores} sessions={sessions} actionItems={effectiveActionItems} programType={programType} coachingState={coachingState} onStartReflection={handleStartReflection} checkpoints={checkpoints} onStartCheckpoint={handleStartCheckpoint} coachingWins={coachingWins} onAddWin={handleAddWin} onDeleteWin={handleDeleteWin} onUpdateWin={handleUpdateWin} onNavigate={setView} />;
       case 'practice':
         const practiceCoachName = sessions.length > 0 ? sessions[0].coach_name : "Your Coach";
         return <Practice sessions={sessions} coachName={practiceCoachName} userEmail={employee?.company_email || ''} coachingState={coachingState} competencyScores={competencyScores} />;

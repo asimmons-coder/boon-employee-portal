@@ -48,6 +48,32 @@ function extractCoachSummary(matchSummary: string | null, coachName: string): st
   return null;
 }
 
+/**
+ * Truncate text to approximately N characters, ending at a sentence boundary.
+ */
+function truncateBio(text: string | null, maxLength: number = 280): string | null {
+  if (!text) return null;
+  if (text.length <= maxLength) return text;
+
+  const truncated = text.substring(0, maxLength);
+  const lastPeriod = truncated.lastIndexOf('.');
+  const lastExclaim = truncated.lastIndexOf('!');
+  const lastQuestion = truncated.lastIndexOf('?');
+
+  const lastSentenceEnd = Math.max(lastPeriod, lastExclaim, lastQuestion);
+
+  if (lastSentenceEnd > maxLength * 0.4) {
+    return text.substring(0, lastSentenceEnd + 1);
+  }
+
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > 0) {
+    return text.substring(0, lastSpace) + '...';
+  }
+
+  return truncated + '...';
+}
+
 interface CoachPageProps {
   coachName: string;
   sessions: Session[];
@@ -102,9 +128,9 @@ export default function CoachPage({ coachName, sessions, bookingLink, programTyp
   // Coach bio
   const coachBio = coach?.bio || `${coachFirstName} specializes in leadership development and emotional intelligence. With experience helping professionals at all levels, ${coachFirstName} helps individuals unlock their potential by balancing performance with sustainable wellbeing.`;
 
-  // Match summary or default text - extract only the relevant coach's summary
+  // Match summary or default text - extract only the relevant coach's summary, truncated
   const extractedSummary = extractCoachSummary(matchSummary, coachName);
-  const displayMatchSummary = extractedSummary || coachBio;
+  const displayMatchSummary = truncateBio(extractedSummary || coachBio, 280) || coachBio;
 
   return (
     <div className="space-y-8 animate-fade-in">

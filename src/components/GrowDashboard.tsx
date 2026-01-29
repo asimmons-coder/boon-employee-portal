@@ -61,6 +61,34 @@ function extractCoachSummary(matchSummary: string | null, coachName: string): st
   return null;
 }
 
+/**
+ * Truncate text to approximately N characters, ending at a sentence boundary.
+ */
+function truncateBio(text: string | null, maxLength: number = 280): string | null {
+  if (!text) return null;
+  if (text.length <= maxLength) return text;
+
+  // Try to find a sentence boundary within the max length
+  const truncated = text.substring(0, maxLength);
+  const lastPeriod = truncated.lastIndexOf('.');
+  const lastExclaim = truncated.lastIndexOf('!');
+  const lastQuestion = truncated.lastIndexOf('?');
+
+  const lastSentenceEnd = Math.max(lastPeriod, lastExclaim, lastQuestion);
+
+  if (lastSentenceEnd > maxLength * 0.4) {
+    return text.substring(0, lastSentenceEnd + 1);
+  }
+
+  // No good sentence boundary, truncate at word boundary
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > 0) {
+    return text.substring(0, lastSpace) + '...';
+  }
+
+  return truncated + '...';
+}
+
 interface GrowDashboardProps {
   profile: Employee | null;
   sessions: Session[];
@@ -444,9 +472,9 @@ export default function GrowDashboard({
             </div>
           </div>
 
-          {/* Dynamic coach description from match_summary, fallback to bio */}
+          {/* Dynamic coach description from match_summary, fallback to truncated bio */}
           <p className="text-sm text-gray-600 mt-4 leading-relaxed">
-            {extractCoachSummary(matchSummary, coachName) || coachProfile?.bio || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential through personalized coaching.`}
+            {truncateBio(extractCoachSummary(matchSummary, coachName) || coachProfile?.bio || null, 280) || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential through personalized coaching.`}
           </p>
         </section>
       </div>

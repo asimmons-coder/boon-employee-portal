@@ -48,6 +48,32 @@ function extractCoachSummary(matchSummary: string | null, coachName: string): st
   return null;
 }
 
+/**
+ * Truncate text to approximately N characters, ending at a sentence boundary.
+ */
+function truncateBio(text: string | null, maxLength: number = 280): string | null {
+  if (!text) return null;
+  if (text.length <= maxLength) return text;
+
+  const truncated = text.substring(0, maxLength);
+  const lastPeriod = truncated.lastIndexOf('.');
+  const lastExclaim = truncated.lastIndexOf('!');
+  const lastQuestion = truncated.lastIndexOf('?');
+
+  const lastSentenceEnd = Math.max(lastPeriod, lastExclaim, lastQuestion);
+
+  if (lastSentenceEnd > maxLength * 0.4) {
+    return text.substring(0, lastSentenceEnd + 1);
+  }
+
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > 0) {
+    return text.substring(0, lastSpace) + '...';
+  }
+
+  return truncated + '...';
+}
+
 interface PreFirstSessionHomeProps {
   profile: Employee | null;
   sessions: Session[];
@@ -116,11 +142,11 @@ export default function PreFirstSessionHome({
 
   // Coach display data
   const coachPhotoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;
-  // Extract only the relevant coach's summary from match_summary, fallback to coach bio
+  // Extract only the relevant coach's summary from match_summary, fallback to truncated coach bio
   const allMatchSummaries = matchSummary || baseline?.match_summary || welcomeSurveyScale?.match_summary || null;
   const extractedSummary = extractCoachSummary(allMatchSummaries, coachName);
   const coachBio = coach?.bio || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential.`;
-  const displayMatchSummary = extractedSummary || coachBio;
+  const displayMatchSummary = truncateBio(extractedSummary || coachBio, 280) || coachBio;
 
   // Debug: Log coach data to verify headline and notable_credentials
   console.log('[PreFirstSessionHome] Coach name:', coach?.name);
