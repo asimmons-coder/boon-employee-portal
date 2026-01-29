@@ -4,6 +4,50 @@ import { SCALE_FOCUS_AREA_LABELS } from '../lib/types';
 import { supabase } from '../lib/supabase';
 import { fetchCoachByName, fetchCoachById, fetchMatchSummary } from '../lib/dataFetcher';
 
+/**
+ * Extract the specific coach's summary from the full match_summary text.
+ */
+function extractCoachSummary(matchSummary: string | null, coachName: string): string | null {
+  if (!matchSummary || !coachName) return null;
+
+  const nameParts = coachName.trim().split(' ');
+  const firstName = nameParts[0];
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+
+  const coachPattern = new RegExp(
+    `Coach\\s*\\d*:?\\s*${firstName}(?:\\s+\\w+)*\\s*[-–—]\\s*([^]*?)(?=Coach\\s*\\d|$)`,
+    'i'
+  );
+
+  const match = matchSummary.match(coachPattern);
+  if (match) {
+    const fullMatch = match[0].trim();
+    const dashIndex = fullMatch.search(/[-–—]/);
+    if (dashIndex !== -1) {
+      return fullMatch.substring(dashIndex + 1).trim();
+    }
+    return fullMatch;
+  }
+
+  if (lastName) {
+    const lastNamePattern = new RegExp(
+      `Coach\\s*\\d*:?\\s*\\w+\\s+${lastName}\\s*[-–—]\\s*([^]*?)(?=Coach\\s*\\d|$)`,
+      'i'
+    );
+    const lastNameMatch = matchSummary.match(lastNamePattern);
+    if (lastNameMatch) {
+      const fullMatch = lastNameMatch[0].trim();
+      const dashIndex = fullMatch.search(/[-–—]/);
+      if (dashIndex !== -1) {
+        return fullMatch.substring(dashIndex + 1).trim();
+      }
+      return fullMatch;
+    }
+  }
+
+  return null;
+}
+
 interface PreFirstSessionHomeProps {
   profile: Employee | null;
   sessions: Session[];
@@ -72,8 +116,11 @@ export default function PreFirstSessionHome({
 
   // Coach display data
   const coachPhotoUrl = coach?.photo_url || `https://picsum.photos/seed/${coachName.replace(' ', '')}/200/200`;
-  // Use fetched match summary, fallback to baseline/welcomeSurvey match_summary, then default
-  const displayMatchSummary = matchSummary || baseline?.match_summary || welcomeSurveyScale?.match_summary || 'Your coach is here to help you achieve your goals.';
+  // Extract only the relevant coach's summary from match_summary, fallback to coach bio
+  const allMatchSummaries = matchSummary || baseline?.match_summary || welcomeSurveyScale?.match_summary || null;
+  const extractedSummary = extractCoachSummary(allMatchSummaries, coachName);
+  const coachBio = coach?.bio || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential.`;
+  const displayMatchSummary = extractedSummary || coachBio;
 
   // Debug: Log coach data to verify headline and notable_credentials
   console.log('[PreFirstSessionHome] Coach name:', coach?.name);

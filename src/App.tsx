@@ -13,6 +13,7 @@ import WelcomePage from './pages/WelcomePage';
 import MatchingPage from './pages/MatchingPage';
 import FeedbackPage from './pages/FeedbackPage';
 import WelcomeCompletePage from './pages/WelcomeCompletePage';
+import HelpPrivacyPage from './pages/HelpPrivacyPage';
 
 // Components
 import Layout from './components/Layout';
@@ -604,6 +605,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/welcome-complete" element={<WelcomeCompletePage />} />
+      <Route path="/help/privacy" element={<HelpPrivacyPage />} />
       <Route
         path="/feedback"
         element={

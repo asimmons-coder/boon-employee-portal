@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import {
   fetchSlackConnectionStatus,
@@ -477,7 +478,16 @@ export default function Settings() {
               <div className="text-sm text-gray-500">{employee?.company_email}</div>
             </div>
           </div>
-          <div className="pt-4 border-t border-gray-100">
+          <div className="pt-4 border-t border-gray-100 space-y-3">
+            <Link
+              to="/help/privacy"
+              className="flex items-center gap-2 text-boon-blue hover:text-boon-darkBlue font-medium text-sm transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Privacy & Confidentiality
+            </Link>
             <button
               onClick={signOut}
               className="flex items-center gap-2 text-red-600 hover:text-red-700 font-medium text-sm transition-colors"
