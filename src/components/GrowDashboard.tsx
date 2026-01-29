@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Employee, Session, ActionItem, View, Coach, BaselineSurvey } from '../lib/types';
+import type { Employee, Session, ActionItem, View, Coach, BaselineSurvey, WelcomeSurveyScale } from '../lib/types';
 import type { CoachingStateData } from '../lib/coachingState';
 import type { ProgramInfo, GrowFocusArea } from '../lib/dataFetcher';
 import { supabase } from '../lib/supabase';
@@ -116,6 +116,7 @@ interface GrowDashboardProps {
   sessions: Session[];
   actionItems: ActionItem[];
   baseline: BaselineSurvey | null;
+  welcomeSurveyScale?: WelcomeSurveyScale | null;
   coachingState: CoachingStateData;
   onActionUpdate: () => void;
   userEmail: string;
@@ -127,6 +128,7 @@ export default function GrowDashboard({
   sessions,
   actionItems,
   baseline,
+  welcomeSurveyScale,
   coachingState,
   onActionUpdate,
   userEmail,
@@ -524,9 +526,25 @@ export default function GrowDashboard({
               </div>
 
               {/* Dynamic coach description: match_summary > personalized from goals > truncated bio > generic */}
+              {(() => {
+                // Debug logging for coach description
+                const coachingGoals = baseline?.coaching_goals || welcomeSurveyScale?.coaching_goals || null;
+                console.log('[GrowDashboard] Coach description debug:', {
+                  matchSummary: matchSummary ? 'exists' : 'null',
+                  extractedSummary: extractCoachSummary(matchSummary, coachName),
+                  hasBaseline: !!baseline,
+                  hasWelcomeSurveyScale: !!welcomeSurveyScale,
+                  baselineGoals: baseline?.coaching_goals,
+                  scaleGoals: welcomeSurveyScale?.coaching_goals,
+                  coachingGoals,
+                  personalizedDesc: createPersonalizedDescription(coachFirstName, coachingGoals),
+                  coachBio: coachProfile?.bio ? 'exists' : 'null',
+                });
+                return null;
+              })()}
               <p className="text-sm text-gray-600 mt-4 leading-relaxed">
                 {truncateBio(extractCoachSummary(matchSummary, coachName), 280)
-                  || createPersonalizedDescription(coachFirstName, baseline?.coaching_goals || null)
+                  || createPersonalizedDescription(coachFirstName, baseline?.coaching_goals || welcomeSurveyScale?.coaching_goals || null)
                   || truncateBio(coachProfile?.bio || null, 280)
                   || `${coachFirstName} specializes in leadership development and helping professionals unlock their potential through personalized coaching.`}
               </p>
