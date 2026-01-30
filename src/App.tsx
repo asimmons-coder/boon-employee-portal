@@ -450,15 +450,43 @@ function ProtectedApp() {
 
   if (coachingState.state === 'SIGNED_UP_NOT_MATCHED') {
     // Show full dashboard experience with matching status banner
+    // Handle navigation to other views while in matching state
+    const renderMatchingView = () => {
+      switch (view) {
+        case 'dashboard':
+          return (
+            <MatchingHome
+              profile={employee}
+              baseline={baseline}
+              welcomeSurveyScale={welcomeSurveyScale}
+              programType={programType}
+              onNavigate={setView}
+            />
+          );
+        case 'sessions':
+          return <SessionsPage sessions={[]} coachingState={coachingState} />;
+        case 'progress':
+          return <ProgressPage progress={[]} baseline={baseline} welcomeSurveyScale={welcomeSurveyScale} competencyScores={competencyScores} sessions={[]} actionItems={[]} programType={programType} coachingState={coachingState} onStartReflection={() => {}} checkpoints={[]} onStartCheckpoint={() => {}} coachingWins={[]} onAddWin={async () => false} onDeleteWin={async () => false} onUpdateWin={async () => false} onNavigate={setView} />;
+        case 'practice':
+          return <Practice sessions={[]} coachName="Your Coach" userEmail={employee?.company_email || ''} coachingState={coachingState} competencyScores={competencyScores} />;
+        case 'settings':
+          return <Settings />;
+        default:
+          return (
+            <MatchingHome
+              profile={employee}
+              baseline={baseline}
+              welcomeSurveyScale={welcomeSurveyScale}
+              programType={programType}
+              onNavigate={setView}
+            />
+          );
+      }
+    };
+
     return (
       <Layout currentView={view} setView={setView} coachingState={coachingState}>
-        <MatchingHome
-          profile={employee}
-          baseline={baseline}
-          welcomeSurveyScale={welcomeSurveyScale}
-          programType={programType}
-          onNavigate={setView}
-        />
+        {renderMatchingView()}
         <AdminStatePreview
           currentState={actualCoachingState.state}
           overrideState={stateOverride}

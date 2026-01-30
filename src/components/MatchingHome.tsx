@@ -109,7 +109,7 @@ export default function MatchingHome({
           </div>
 
           <h2 className="text-2xl md:text-3xl font-extrabold text-boon-text mb-2">
-            Finding your best coach
+            Finding the right coach for you
           </h2>
           <p className="text-gray-500 max-w-md">
             We're carefully matching you with a coach who fits your goals, preferences, and style.
@@ -146,7 +146,7 @@ export default function MatchingHome({
         {/* Timeline Note */}
         <div className="bg-gradient-to-r from-boon-blue/5 to-boon-lightBlue/30 rounded-2xl p-4 text-center">
           <p className="text-sm text-gray-600">
-            Most people are matched within <span className="font-bold text-boon-text">24-48 hours</span>
+            Most people are matched within <span className="font-bold text-boon-text">24 hours</span>
           </p>
         </div>
       </section>
@@ -254,7 +254,7 @@ export default function MatchingHome({
             </div>
             <div>
               <p className="font-bold text-boon-text">Get matched with your coach</p>
-              <p className="text-sm text-gray-500">Usually within 24-48 hours</p>
+              <p className="text-sm text-gray-500">Usually within 24 hours</p>
             </div>
           </div>
 
