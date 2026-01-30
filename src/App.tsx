@@ -10,7 +10,6 @@ import LoginPage from './pages/LoginPage';
 import AuthCallback from './pages/AuthCallback';
 import NoEmployeeFound from './pages/NoEmployeeFound';
 import WelcomePage from './pages/WelcomePage';
-import MatchingPage from './pages/MatchingPage';
 import FeedbackPage from './pages/FeedbackPage';
 import WelcomeCompletePage from './pages/WelcomeCompletePage';
 import HelpPrivacyPage from './pages/HelpPrivacyPage';
@@ -18,6 +17,7 @@ import HelpPrivacyPage from './pages/HelpPrivacyPage';
 // Components
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
+import MatchingHome from './components/MatchingHome';
 import SessionsPage from './components/Sessions';
 import ProgressPage from './components/Progress';
 import Practice from './components/Practice';
@@ -449,9 +449,16 @@ function ProtectedApp() {
   }
 
   if (coachingState.state === 'SIGNED_UP_NOT_MATCHED') {
+    // Show full dashboard experience with matching status banner
     return (
-      <>
-        <MatchingPage />
+      <Layout currentView={view} setView={setView} coachingState={coachingState}>
+        <MatchingHome
+          profile={employee}
+          baseline={baseline}
+          welcomeSurveyScale={welcomeSurveyScale}
+          programType={programType}
+          onNavigate={setView}
+        />
         <AdminStatePreview
           currentState={actualCoachingState.state}
           overrideState={stateOverride}
@@ -460,7 +467,7 @@ function ProtectedApp() {
           programTypeOverride={programTypeOverride}
           onProgramTypeOverride={setProgramTypeOverride}
         />
-      </>
+      </Layout>
     );
   }
 
