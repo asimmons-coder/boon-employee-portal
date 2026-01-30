@@ -186,6 +186,7 @@ export default function PreFirstSessionHome({
   const [preSessionNote, setPreSessionNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Load existing pre-session note from session_tracking
   useEffect(() => {
@@ -222,30 +223,43 @@ export default function PreFirstSessionHome({
     if (!upcomingSession?.id) return;
 
     setIsSaving(true);
+    setSaveError(null);
 
     // Save to localStorage as backup
     const key = `pre_session_note_${userEmail}_${upcomingSession.id}`;
     localStorage.setItem(key, text);
 
     try {
-      // Save to session_tracking.employee_pre_session_note
-      const { error } = await supabase
-        .from('session_tracking')
-        .update({ employee_pre_session_note: text })
-        .eq('id', upcomingSession.id);
+      // Try RPC function first (bypasses RLS)
+      const { error: rpcError } = await supabase
+        .rpc('update_pre_session_note', {
+          session_id_param: upcomingSession.id,
+          note_text: text
+        });
 
-      if (error) {
-        console.error('[PreFirstSessionHome] Error saving pre-session note:', error);
+      if (!rpcError) {
+        console.log('[PreFirstSessionHome] Pre-session note saved via RPC');
       } else {
-        console.log('[PreFirstSessionHome] Pre-session note saved successfully');
+        console.warn('[PreFirstSessionHome] RPC failed, trying direct update:', rpcError);
+        // Fallback to direct update
+        const { error: updateError } = await supabase
+          .from('session_tracking')
+          .update({ employee_pre_session_note: text })
+          .eq('id', upcomingSession.id);
+
+        if (!updateError) {
+          console.log('[PreFirstSessionHome] Pre-session note saved via direct update');
+        } else {
+          console.error('[PreFirstSessionHome] Direct update also failed:', updateError);
+          setSaveError('Saved locally only - database update failed');
+        }
       }
-      setLastSaved(new Date());
     } catch (err) {
       console.error('[PreFirstSessionHome] Exception saving pre-session note:', err);
-      // localStorage saved as fallback
-      setLastSaved(new Date());
+      setSaveError('Saved locally only');
     }
 
+    setLastSaved(new Date());
     setIsSaving(false);
   }, [upcomingSession?.id, userEmail]);
 
@@ -317,7 +331,17 @@ export default function PreFirstSessionHome({
     return diffMinutes <= 30 && diffMinutes >= -60;
   };
 
+  // Check if session is within 24 hours (show join link)
+  const isSessionWithin24Hours = (session: Session) => {
+    if (!session.zoom_join_link) return false;
+    const sessionDate = new Date(session.session_date);
+    const now = new Date();
+    const diffHours = (sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return diffHours <= 24 && diffHours >= -1; // Show up to 1 hour after session start
+  };
+
   const showJoinButton = upcomingSession ? isSessionJoinable(upcomingSession) : false;
+  const showJoinLink = upcomingSession ? isSessionWithin24Hours(upcomingSession) : false;
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 md:space-y-12 animate-fade-in">
@@ -361,10 +385,10 @@ export default function PreFirstSessionHome({
           </div>
 
           {/* Session Actions */}
-          {upcomingSession?.zoom_join_link && (
+          {showJoinLink && (
             <div className="mt-6 pt-6 border-t border-boon-blue/10">
               <a
-                href={upcomingSession.zoom_join_link}
+                href={upcomingSession.zoom_join_link || ''}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`inline-flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-xl transition-all shadow-lg ${
@@ -562,12 +586,20 @@ export default function PreFirstSessionHome({
                 Saving...
               </span>
             )}
-            {!isSaving && lastSaved && (
+            {!isSaving && lastSaved && !saveError && (
               <span className="text-xs text-green-600 flex items-center gap-1">
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Saved
+              </span>
+            )}
+            {!isSaving && saveError && (
+              <span className="text-xs text-amber-600 flex items-center gap-1" title={saveError}>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Saved locally
               </span>
             )}
           </div>

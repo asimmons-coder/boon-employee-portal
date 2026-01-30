@@ -1443,12 +1443,19 @@ export default function ProgressPage({
     const progressKey = progressKeyMap[metric.key];
     const currentValue = latestProgress?.[progressKey] as number | null;
 
+    // GROW/EXEC uses 1-10 scale, SCALE uses 1-5 scale
+    const maxScore = isGrowOrExec ? 10 : 5;
+
     return {
       ...metric,
       baseline: baselineValue ?? 0,
       current: currentValue ?? baselineValue ?? 0,
+      maxScore,
     };
   });
+
+  // Check if there's any actual wellbeing data to show
+  const hasWellbeingData = wellbeingData.some(metric => metric.current > 0 || metric.baseline > 0);
 
   // Radar chart data for competencies
   const radarData = competencyData.map(comp => ({
@@ -1503,16 +1510,18 @@ export default function ProgressPage({
             {isCompleted ? 'Competency Profile' : 'Competencies'}
           </button>
         )}
-        <button
-          onClick={() => setActiveTab('wellbeing')}
-          className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
-            activeTab === 'wellbeing'
-              ? 'bg-white text-boon-text shadow-sm'
-              : 'text-gray-500 hover:text-boon-text'
-          }`}
-        >
-          Wellbeing
-        </button>
+        {hasWellbeingData && (
+          <button
+            onClick={() => setActiveTab('wellbeing')}
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
+              activeTab === 'wellbeing'
+                ? 'bg-white text-boon-text shadow-sm'
+                : 'text-gray-500 hover:text-boon-text'
+            }`}
+          >
+            Wellbeing
+          </button>
+        )}
       </div>
 
       {/* Stats Summary - Different for completed vs active */}
@@ -1761,7 +1770,7 @@ export default function ProgressPage({
       )}
 
       {/* Wellbeing Tab */}
-      {activeTab === 'wellbeing' && (
+      {activeTab === 'wellbeing' && hasWellbeingData && (
         <div className="space-y-8">
           <section>
             <h2 className="text-lg font-extrabold text-boon-text mb-4">Wellbeing Metrics</h2>
@@ -1780,14 +1789,14 @@ export default function ProgressPage({
                       <div className="flex justify-between text-xs mb-1">
                         <span className="text-gray-400 uppercase tracking-wide">Score</span>
                         <span className="font-bold" style={{ color: metric.color }}>
-                          {metric.current || '—'}/5
+                          {metric.current || '—'}/{metric.maxScore}
                         </span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-500"
                           style={{
-                            width: `${(metric.current || 0) * 20}%`,
+                            width: `${((metric.current || 0) / metric.maxScore) * 100}%`,
                             backgroundColor: metric.color
                           }}
                         />

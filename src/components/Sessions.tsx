@@ -24,28 +24,34 @@ export default function SessionsPage({ sessions, coachingState }: SessionsPagePr
   // Calendar State
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Get unique themes from all sessions for filtering
+  // Helper to extract sub-themes from other_themes string
+  const parseSubThemes = (otherThemes: string | null): string[] => {
+    if (!otherThemes) return [];
+    // Split by comma or semicolon, trim whitespace, filter empty
+    return otherThemes
+      .split(/[,;]/)
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+  };
+
+  // Get unique sub-themes from all sessions for filtering
   const allThemes = useMemo(() => {
     const themeSet = new Set<string>();
     sessions.forEach(s => {
-      if (s.leadership_management_skills) themeSet.add('Leadership');
-      if (s.communication_skills) themeSet.add('Communication');
-      if (s.mental_well_being) themeSet.add('Well-being');
+      // Use other_themes (sub-themes) instead of boolean category fields
+      const subThemes = parseSubThemes(s.other_themes);
+      subThemes.forEach(theme => themeSet.add(theme));
     });
-    return Array.from(themeSet);
+    return Array.from(themeSet).sort();
   }, [sessions]);
 
   const filteredSessions = sessions.filter(s => {
     // Status filter
     if (filter !== 'all' && s.status !== filter) return false;
 
-    // Theme filter
+    // Theme filter - use sub-themes from other_themes
     if (themeFilter) {
-      const sessionThemes = [
-        s.leadership_management_skills && 'Leadership',
-        s.communication_skills && 'Communication',
-        s.mental_well_being && 'Well-being',
-      ].filter(Boolean);
+      const sessionThemes = parseSubThemes(s.other_themes);
       if (!sessionThemes.includes(themeFilter)) return false;
     }
 
@@ -269,11 +275,8 @@ export default function SessionsPage({ sessions, coachingState }: SessionsPagePr
             {filteredSessions.length > 0 ? filteredSessions.map((session) => {
               const isExpanded = expandedSession === session.id;
               const hasDetails = session.goals || session.plan || session.summary;
-              const themes = [
-                session.leadership_management_skills && 'Leadership',
-                session.communication_skills && 'Communication',
-                session.mental_well_being && 'Well-being',
-              ].filter(Boolean);
+              // Use sub-themes from other_themes instead of boolean category fields
+              const themes = parseSubThemes(session.other_themes);
 
               return (
                 <div
