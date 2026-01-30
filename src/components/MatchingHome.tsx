@@ -138,7 +138,7 @@ export default function MatchingHome({
               <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <div className="w-2 h-2 bg-gray-300 rounded-full" />
               </div>
-              <span className="text-gray-400">You'll receive an email when matched</span>
+              <span className="text-gray-400">You'll receive an email/slack when matched</span>
             </li>
           </ul>
         </div>
