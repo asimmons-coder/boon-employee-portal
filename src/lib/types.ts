@@ -29,9 +29,10 @@ export interface Session {
   session_date: string;
   status: 'Completed' | 'Upcoming' | 'Scheduled' | 'Cancelled' | 'No Show';
   coach_name: string;
-  leadership_management_skills: boolean;
-  communication_skills: boolean;
-  mental_well_being: boolean;
+  // Theme columns contain text descriptions of sub-themes (e.g. "Navigating conflict"), not booleans
+  leadership_management_skills: string | null;
+  communication_skills: string | null;
+  mental_well_being: string | null;
   other_themes: string | null;
   summary: string | null;
   goals: string | null;
@@ -41,7 +42,8 @@ export interface Session {
   account_name: string | null;
   program_name: string | null;
   program_title: string | null;
-  appointment_number: number | null;
+  // appointment_number contains Salesforce ID (e.g. "SA-107788"), not a sequential number
+  appointment_number: string | null;
   created_at: string;
   // Zoom integration
   zoom_join_link: string | null;

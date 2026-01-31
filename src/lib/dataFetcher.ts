@@ -1200,7 +1200,7 @@ function getGrowMilestones(totalSessions: number): { milestones: number[]; midpo
 export async function fetchPendingSurvey(
   email: string,
   programType?: string | null,
-  loadedSessions?: Array<{ id: string; appointment_number: number | null; session_date: string; coach_name: string; status: string }>
+  loadedSessions?: Array<{ id: string; appointment_number: string | null; session_date: string; coach_name: string; status: string }>
 ): Promise<PendingSurvey | null> {
   console.log('[fetchPendingSurvey] Checking for pending survey:', { email, programType, hasLoadedSessions: !!loadedSessions });
 
