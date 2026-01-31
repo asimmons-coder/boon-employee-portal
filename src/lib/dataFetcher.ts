@@ -1238,33 +1238,37 @@ export async function fetchPendingSurvey(
     return null;
   }
 
-  // Filter to completed sessions at milestone numbers
-  // Note: appointment_number may come as string from database despite TypeScript type
-  const completedSessions = loadedSessions.filter(s => s.status === 'Completed');
+  // Filter to completed sessions and sort by date (oldest first) to determine session number
+  // Note: appointment_number contains Salesforce IDs (e.g. "SA-107788"), not sequential numbers
+  // So we calculate session number based on chronological order
+  const completedSessions = loadedSessions
+    .filter(s => s.status === 'Completed')
+    .sort((a, b) => new Date(a.session_date).getTime() - new Date(b.session_date).getTime());
 
-  console.log('[fetchPendingSurvey] Completed sessions:', completedSessions.map(s => ({
+  console.log('[fetchPendingSurvey] Completed sessions (sorted by date):', completedSessions.map((s, idx) => ({
     id: s.id,
-    appointment_number: s.appointment_number,
-    appointment_number_type: typeof s.appointment_number,
+    sessionNumber: idx + 1,
+    session_date: s.session_date,
     status: s.status
   })));
 
+  // Find sessions at milestone numbers (based on their position, not appointment_number)
   const milestoneSessions = completedSessions
-    .filter(s => {
-      if (s.appointment_number === null || s.appointment_number === undefined) return false;
-      // Convert to number in case it's stored as string in DB
-      const apptNum = typeof s.appointment_number === 'string'
-        ? parseInt(s.appointment_number, 10)
-        : s.appointment_number;
-      return !isNaN(apptNum) && milestones.includes(apptNum);
-    })
-    .sort((a, b) => new Date(a.session_date).getTime() - new Date(b.session_date).getTime());
+    .map((session, index) => ({
+      ...session,
+      calculatedSessionNumber: index + 1 // 1-indexed session number
+    }))
+    .filter(s => milestones.includes(s.calculatedSessionNumber));
 
   console.log('[fetchPendingSurvey] Sessions at milestones:', {
     total: loadedSessions.length,
     completed: completedSessions.length,
     atMilestones: milestoneSessions.length,
-    milestoneSessionIds: milestoneSessions.map(s => s.id),
+    milestoneDetails: milestoneSessions.map(s => ({
+      id: s.id,
+      sessionNumber: s.calculatedSessionNumber,
+      date: s.session_date
+    })),
   });
 
   if (milestoneSessions.length === 0) {
@@ -1282,14 +1286,11 @@ export async function fetchPendingSurvey(
       .limit(1);
 
     if (!existingEndSurvey || existingEndSurvey.length === 0) {
-      const latestSession = completedSessions[0]; // Already sorted desc in app
-      // Convert appointment_number to number (may come as string from DB)
-      const sessionNum = typeof latestSession.appointment_number === 'string'
-        ? parseInt(latestSession.appointment_number, 10)
-        : (latestSession.appointment_number ?? 1);
+      // Get the latest session (last in the sorted array)
+      const latestSession = completedSessions[completedSessions.length - 1];
       return {
         session_id: latestSession.id,
-        session_number: isNaN(sessionNum) ? 1 : sessionNum,
+        session_number: completedSessions.length,
         session_date: latestSession.session_date,
         coach_name: latestSession.coach_name || 'Your Coach',
         survey_type: isGrow ? 'grow_end' : 'end_of_program',
@@ -1297,13 +1298,15 @@ export async function fetchPendingSurvey(
     }
   }
 
-  const sessions = milestoneSessions;
-
-  // Check which sessions don't have a survey yet
-  // Since session_id column doesn't exist, check by matching outcomes field pattern
-  for (const session of sessions) {
-    const sessionPattern = `Session ${session.appointment_number}`;
-    console.log('[fetchPendingSurvey] Checking for existing survey:', { sessionPattern, sessionId: session.id });
+  // Check which milestone sessions don't have a survey yet
+  for (const session of milestoneSessions) {
+    const sessionNum = session.calculatedSessionNumber;
+    const sessionPattern = `Session ${sessionNum}`;
+    console.log('[fetchPendingSurvey] Checking for existing survey:', {
+      sessionPattern,
+      sessionId: session.id,
+      calculatedSessionNumber: sessionNum
+    });
 
     const { data: existingSurvey } = await supabase
       .from('survey_submissions')
@@ -1315,27 +1318,21 @@ export async function fetchPendingSurvey(
     console.log('[fetchPendingSurvey] Existing survey check:', { existingSurvey });
 
     if (!existingSurvey || existingSurvey.length === 0) {
-      // Convert appointment_number to number (may come as string from DB)
-      const sessionNum = typeof session.appointment_number === 'string'
-        ? parseInt(session.appointment_number, 10)
-        : (session.appointment_number ?? 1);
-      const finalSessionNum = isNaN(sessionNum) ? 1 : sessionNum;
-
       // Determine survey type based on program and session number
       // For GROW: session 1 = first_session, midpoint = midpoint
       // For SCALE: all milestones = feedback
       let surveyType: 'feedback' | 'first_session' | 'midpoint' = 'feedback';
       if (isGrow) {
-        if (finalSessionNum === 1) {
+        if (sessionNum === 1) {
           surveyType = 'first_session';
-        } else if (finalSessionNum === growMidpoint) {
+        } else if (sessionNum === growMidpoint) {
           surveyType = 'midpoint';
         }
       }
 
       const pending = {
         session_id: session.id,
-        session_number: finalSessionNum,
+        session_number: sessionNum,
         session_date: session.session_date,
         coach_name: session.coach_name || 'Your Coach',
         survey_type: surveyType,
