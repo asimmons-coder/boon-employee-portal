@@ -352,6 +352,46 @@ export default function GrowDashboard({
       </header>
 
       {/* ═══════════════════════════════════════════════════════════════════
+          BOOK YOUR NEXT SESSION - HERO CTA when no upcoming session
+          Shows first to drive engagement
+          ═══════════════════════════════════════════════════════════════════ */}
+      {!hasUpcomingSession && (
+        <section className="bg-gradient-to-br from-boon-blue/10 via-white to-boon-lightBlue/30 rounded-[2rem] p-8 border-2 border-boon-blue/30 shadow-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-boon-blue flex items-center justify-center shadow-lg shadow-boon-blue/30">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-boon-text">Book Your Next Session</h2>
+              <p className="text-gray-500 text-sm">Continue your coaching journey with {coachFirstName}</p>
+            </div>
+          </div>
+          {profile?.booking_link ? (
+            <a
+              href={profile.booking_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 px-8 py-4 text-base font-bold text-white bg-boon-blue rounded-xl hover:bg-boon-darkBlue transition-all shadow-lg shadow-boon-blue/30 active:scale-95"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Book a Session
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </a>
+          ) : (
+            <p className="text-gray-600 bg-white/60 px-5 py-4 rounded-xl border border-boon-blue/10">
+              <span className="font-medium">Ready to continue?</span> Reach out to {coachFirstName} or your program administrator to schedule your next session.
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
           PROGRAM PROGRESS CARD - Full width (GROW-specific)
           ═══════════════════════════════════════════════════════════════════ */}
       <ProgramProgressCard
@@ -421,42 +461,6 @@ export default function GrowDashboard({
           ) : !lastSession?.goals && (
             <p className="text-gray-500 text-sm italic">
               Your goals and action items from coaching sessions will appear here.
-            </p>
-          )}
-        </section>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          BOOK YOUR NEXT SESSION - Shows when no upcoming session
-          ═══════════════════════════════════════════════════════════════════ */}
-      {!hasUpcomingSession && (
-        <section className="bg-gradient-to-br from-boon-blue/5 via-white to-boon-lightBlue/20 rounded-[2rem] p-8 border-2 border-boon-blue/20">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-boon-blue flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h2 className="text-sm font-bold text-boon-blue uppercase tracking-widest">Book Your Next Session</h2>
-          </div>
-          <p className="text-gray-600 mb-6">
-            Continue your coaching journey with {coachFirstName}. Schedule your next session when you're ready.
-          </p>
-          {profile?.booking_link ? (
-            <a
-              href={profile.booking_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 text-base font-bold text-white bg-boon-blue rounded-xl hover:bg-boon-darkBlue transition-all shadow-lg shadow-boon-blue/20"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Book a Session
-            </a>
-          ) : (
-            <p className="text-sm text-gray-500 italic">
-              Reach out to {coachFirstName} or your program administrator to schedule your next session.
             </p>
           )}
         </section>
