@@ -274,9 +274,9 @@ function ProtectedApp() {
     })(),
     status: 'Upcoming',
     coach_name: mockCoachName,
-    leadership_management_skills: false,
-    communication_skills: false,
-    mental_well_being: false,
+    leadership_management_skills: null,
+    communication_skills: null,
+    mental_well_being: null,
     other_themes: null,
     summary: null,
     goals: null,
@@ -286,7 +286,7 @@ function ProtectedApp() {
     account_name: null,
     program_name: 'GROW',
     program_title: null,
-    appointment_number: 7,
+    appointment_number: 'SA-000007',
     created_at: new Date().toISOString(),
     zoom_join_link: 'https://zoom.us/j/123456789',
     employee_pre_session_note: null,
@@ -306,9 +306,9 @@ function ProtectedApp() {
     })(),
     status: 'Completed' as const,
     coach_name: mockCoachName,
-    leadership_management_skills: i >= 3,
-    communication_skills: i >= 2,
-    mental_well_being: i >= 4,
+    leadership_management_skills: i >= 3 ? 'Leading through change' : null,
+    communication_skills: i >= 2 ? 'Giving constructive feedback' : null,
+    mental_well_being: i >= 4 ? 'Managing stress' : null,
     other_themes: null,
     summary: i === 5 ? 'Great progress on reframing feedback as a gift. Next session we\'ll work on handling defensive reactions.' : null,
     goals: i === 5 ? 'Practice delivering constructive feedback to direct reports while maintaining psychological safety.' : null,
@@ -318,7 +318,7 @@ function ProtectedApp() {
     account_name: null,
     program_name: 'GROW',
     program_title: null,
-    appointment_number: i + 1,
+    appointment_number: `SA-00000${i + 1}`,
     created_at: new Date().toISOString(),
     zoom_join_link: null,
     employee_pre_session_note: null,
@@ -355,7 +355,7 @@ function ProtectedApp() {
   let effectiveSessions = sessions;
   if (isPreviewingPreFirstSession) {
     // Pre-first session: just one upcoming session
-    effectiveSessions = [{ ...mockUpcomingSession, appointment_number: 1 }];
+    effectiveSessions = [{ ...mockUpcomingSession, appointment_number: 'SA-000001' }];
   } else if (isPreviewingActiveProgram) {
     // Active program: completed sessions + upcoming session
     effectiveSessions = [...mockCompletedSessions, mockUpcomingSession];

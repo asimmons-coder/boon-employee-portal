@@ -427,6 +427,42 @@ export default function GrowDashboard({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
+          BOOK YOUR NEXT SESSION - Shows when no upcoming session
+          ═══════════════════════════════════════════════════════════════════ */}
+      {!hasUpcomingSession && (
+        <section className="bg-gradient-to-br from-boon-blue/5 via-white to-boon-lightBlue/20 rounded-[2rem] p-8 border-2 border-boon-blue/20">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-boon-blue flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h2 className="text-sm font-bold text-boon-blue uppercase tracking-widest">Book Your Next Session</h2>
+          </div>
+          <p className="text-gray-600 mb-6">
+            Continue your coaching journey with {coachFirstName}. Schedule your next session when you're ready.
+          </p>
+          {profile?.booking_link ? (
+            <a
+              href={profile.booking_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 text-base font-bold text-white bg-boon-blue rounded-xl hover:bg-boon-darkBlue transition-all shadow-lg shadow-boon-blue/20"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Book a Session
+            </a>
+          ) : (
+            <p className="text-sm text-gray-500 italic">
+              Reach out to {coachFirstName} or your program administrator to schedule your next session.
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
           NEXT SESSION + COACH - Two columns when upcoming session, otherwise just coach card
           ═══════════════════════════════════════════════════════════════════ */}
       <div className={hasUpcomingSession ? "grid md:grid-cols-2 gap-6" : ""}>

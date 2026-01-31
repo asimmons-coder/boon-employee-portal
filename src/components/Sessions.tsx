@@ -25,23 +25,17 @@ export default function SessionsPage({ sessions, coachingState }: SessionsPagePr
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // Helper to extract themes from session
-  // The theme columns (leadership_management_skills, communication_skills, mental_well_being)
-  // are TEXT fields containing the actual sub-theme descriptions
+  // The theme columns contain text descriptions of sub-themes (e.g. "Navigating conflict")
   const getSessionThemes = (session: Session): string[] => {
     const themes: string[] = [];
-    // Cast to unknown then string since TypeScript thinks these are booleans but they're actually text
-    const leadership = session.leadership_management_skills as unknown as string | null;
-    const communication = session.communication_skills as unknown as string | null;
-    const wellbeing = session.mental_well_being as unknown as string | null;
-
-    if (leadership && typeof leadership === 'string' && leadership.trim()) {
-      themes.push(leadership.trim());
+    if (session.leadership_management_skills?.trim()) {
+      themes.push(session.leadership_management_skills.trim());
     }
-    if (communication && typeof communication === 'string' && communication.trim()) {
-      themes.push(communication.trim());
+    if (session.communication_skills?.trim()) {
+      themes.push(session.communication_skills.trim());
     }
-    if (wellbeing && typeof wellbeing === 'string' && wellbeing.trim()) {
-      themes.push(wellbeing.trim());
+    if (session.mental_well_being?.trim()) {
+      themes.push(session.mental_well_being.trim());
     }
     return themes;
   };
